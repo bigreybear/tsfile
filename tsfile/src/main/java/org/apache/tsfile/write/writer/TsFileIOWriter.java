@@ -188,6 +188,7 @@ public class TsFileIOWriter implements AutoCloseable {
     if (currentChunkGroupDeviceId == null || chunkMetadataList.isEmpty()) {
       return;
     }
+    // NOTE apparently this list may hold multiple elements with identical deviceID
     chunkGroupMetadataList.add(
         new ChunkGroupMetadata(currentChunkGroupDeviceId, chunkMetadataList));
     currentChunkGroupDeviceId = null;
@@ -226,6 +227,7 @@ public class TsFileIOWriter implements AutoCloseable {
       int numOfPages,
       int mask)
       throws IOException {
+    // NOTE CALLED within chunkWriter, then Ser header and pageBuffer(actually contains multiple pages)
 
     currentChunkMetadata =
         new ChunkMetadata(measurementId, tsDataType, out.getPosition(), statistics);
@@ -315,6 +317,7 @@ public class TsFileIOWriter implements AutoCloseable {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void endFile() throws IOException {
+    lastForceData = System.nanoTime();
     checkInMemoryPathCount();
     readChunkMetadataAndConstructIndexTree();
 
@@ -328,6 +331,7 @@ public class TsFileIOWriter implements AutoCloseable {
 
     // flush page cache data to disk
     out.force();
+    forceIndex = System.nanoTime() - forceIndex;
     // close file
     out.close();
 
@@ -349,35 +353,47 @@ public class TsFileIOWriter implements AutoCloseable {
     }
   }
 
+  /**
+   * NOTE the worst of the this method is that most key variable are named after its type
+   * providing no semantics to understand. It's a result of lazy.
+   * @throws IOException
+   */
   private void readChunkMetadataAndConstructIndexTree() throws IOException {
     if (tempOutput != null) {
       tempOutput.close();
     }
     long metaOffset = out.getPosition();
 
+    out.force();
+    lastForceData = System.nanoTime() - lastForceData;
+    forceIndex = System.nanoTime();
+
     // serialize the SEPARATOR of MetaData
     ReadWriteIOUtils.write(MetaMarker.SEPARATOR, out.wrapAsStream());
 
+    // NOTE generation of TSMIterator will sort and merge cGM elements with identical deviceID
+    // NOTE cGML is populated at endChunkGroup
     TSMIterator tsmIterator =
         hasChunkMetadataInDisk
             ? TSMIterator.getTSMIteratorInDisk(
                 chunkMetadataTempFile, chunkGroupMetadataList, endPosInCMTForDevice)
             : TSMIterator.getTSMIteratorInMemory(chunkGroupMetadataList);
-    Map<String, MetadataIndexNode> deviceMetadataIndexMap = new TreeMap<>();
-    Queue<MetadataIndexNode> measurementMetadataIndexQueue = new ArrayDeque<>();
+    // NOTE dMIM holds all MINs, and build tree structure at end of the method
+    Map<String, MetadataIndexNode> deviceMetadataIndexMap = new TreeMap<>(); // should be named: allDeviceNodes
+    Queue<MetadataIndexNode> measurementMetadataIndexQueue = new ArrayDeque<>(); // should be named: measurementIndexOnCurrentDevice
     String currentDevice = null;
     String prevDevice = null;
     Path currentPath = null;
     MetadataIndexNode currentIndexNode =
         new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
-    int seriesIdxForCurrDevice = 0;
+    int seriesIdxForCurrDevice = 0; // NOTE actually: number of series within the device in processing
     BloomFilter filter =
         BloomFilter.getEmptyBloomFilter(
             TSFileDescriptor.getInstance().getConfig().getBloomFilterErrorRate(), pathCount);
 
     while (tsmIterator.hasNext()) {
       // read in all chunk metadata of one series
-      // construct the timeseries metadata for this series
+      // NOTE construct the timeseries metadata for this series
       Pair<Path, TimeseriesMetadata> timeseriesMetadataPair = tsmIterator.next();
       TimeseriesMetadata timeseriesMetadata = timeseriesMetadataPair.right;
       currentPath = timeseriesMetadataPair.left;
@@ -390,12 +406,15 @@ public class TsFileIOWriter implements AutoCloseable {
       if (!currentDevice.equals(prevDevice)) {
         if (prevDevice != null) {
           addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
+          // NOTE mapping deviceID to root-MIN of its measurements
+          // NOTE may
           deviceMetadataIndexMap.put(
               prevDevice,
               generateRootNode(
                   measurementMetadataIndexQueue, out, MetadataIndexNodeType.INTERNAL_MEASUREMENT));
           currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
         }
+        // NOTE the queue cleared ever time as new device enters the process
         measurementMetadataIndexQueue = new ArrayDeque<>();
         seriesIdxForCurrDevice = 0;
       }
@@ -405,6 +424,7 @@ public class TsFileIOWriter implements AutoCloseable {
           addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
           currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
         }
+        // NOTE SPARSE-index only 1/256 TSM position(out.getPosition) into currentIndexNode(L_M MIN)
         if (timeseriesMetadata.getTsDataType() != TSDataType.VECTOR) {
           currentIndexNode.addEntry(
               new MetadataIndexEntry(currentPath.getMeasurement(), out.getPosition()));
@@ -415,10 +435,11 @@ public class TsFileIOWriter implements AutoCloseable {
 
       prevDevice = currentDevice;
       seriesIdxForCurrDevice++;
-      // serialize the timeseries metadata to file
+      // serialize the timeseries metadata to file NOTE Ser TSM
       timeseriesMetadata.serializeTo(out.wrapAsStream());
     }
 
+    // NOTE UGLY way to handle last element
     addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
     if (prevDevice != null) {
       deviceMetadataIndexMap.put(
@@ -438,6 +459,16 @@ public class TsFileIOWriter implements AutoCloseable {
 
     // write TsFileMetaData size
     ReadWriteIOUtils.write(size, out.wrapAsStream());
+  }
+
+  long lastForceData, forceIndex;
+
+  public long reportLastForceData() {
+    return lastForceData;
+  }
+
+  public long reportForceIndex() {
+    return forceIndex;
   }
 
   /**
@@ -618,6 +649,7 @@ public class TsFileIOWriter implements AutoCloseable {
   protected int sortAndFlushChunkMetadata() throws IOException {
     int writtenSize = 0;
     // group by series
+    // NOTE this method is deprecated now
     List<Pair<Path, List<IChunkMetadata>>> sortedChunkMetadataList =
         TSMIterator.sortChunkMetadata(
             chunkGroupMetadataList, currentChunkGroupDeviceId, chunkMetadataList);

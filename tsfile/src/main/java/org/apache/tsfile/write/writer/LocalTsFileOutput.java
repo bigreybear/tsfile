@@ -30,6 +30,8 @@ import java.nio.ByteBuffer;
  */
 public class LocalTsFileOutput extends OutputStream implements TsFileOutput {
 
+  // NOTE understanding nested stream: FOS manipulates FileSystem directly but inefficiently
+  // NOTE  while BOS offers a accelerating buffer at default length 8192
   private FileOutputStream outputStream;
   private BufferedOutputStream bufferedStream;
   private long position;

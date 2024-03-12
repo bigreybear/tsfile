@@ -44,6 +44,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import static org.apache.tsfile.bmtool.Observer.reportTimeLaps;
+
 public class TsFileExecutor implements QueryExecutor {
 
   private IMetadataQuerier metadataQuerier;
@@ -177,7 +179,13 @@ public class TsFileExecutor implements QueryExecutor {
     List<TSDataType> dataTypes = new ArrayList<>();
 
     for (Path path : selectedPathList) {
+      // reportTimeLaps(null);
       List<IChunkMetadata> chunkMetadataList = metadataQuerier.getChunkMetaDataList(path);
+      // if (selectedPathList.size() > 1) {
+      //   reportTimeLaps("aligned");
+      // } else {
+      //   reportTimeLaps("single");
+      // }
       AbstractFileSeriesReader seriesReader;
       if (chunkMetadataList.isEmpty()) {
         seriesReader = new EmptyFileSeriesReader();
@@ -186,8 +194,10 @@ public class TsFileExecutor implements QueryExecutor {
         if (timeExpression == null) {
           seriesReader = new FileSeriesReader(chunkLoader, chunkMetadataList, null);
         } else {
+          // reportTimeLaps(null);
           seriesReader =
               new FileSeriesReader(chunkLoader, chunkMetadataList, timeExpression.getFilter());
+          // reportTimeLaps("create seriesReader");
         }
         dataTypes.add(chunkMetadataList.get(0).getDataType());
       }

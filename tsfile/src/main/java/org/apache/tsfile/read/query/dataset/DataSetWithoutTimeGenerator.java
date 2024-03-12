@@ -34,6 +34,8 @@ import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
 
+import static org.apache.tsfile.bmtool.Observer.reportTimeLaps;
+
 /** multi-way merging data set, no need to use TimeGenerator. */
 public class DataSetWithoutTimeGenerator extends QueryDataSet {
 
@@ -70,6 +72,7 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
     timeHeap = new PriorityQueue<>();
     timeSet = new HashSet<>();
 
+    // reportTimeLaps(null);
     for (int i = 0; i < paths.size(); i++) {
       AbstractFileSeriesReader reader = readers.get(i);
       if (!reader.hasNextBatch()) {
@@ -80,6 +83,7 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
         hasDataRemaining.add(true);
       }
     }
+    // reportTimeLaps("reader.get at paths size:" + paths.size());
 
     for (BatchData data : batchDataList) {
       if (data.hasCurrent()) {

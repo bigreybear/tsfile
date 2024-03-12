@@ -229,6 +229,7 @@ public class TsFileReadWriteTest {
     QueryExpression queryExpression = QueryExpression.create(paths, null);
 
     QueryDataSet queryDataSet = readTsFile.query(queryExpression);
+
     for (int j = 0; j < paths.size(); j++) {
       assertEquals(paths.get(j), queryDataSet.getPaths().get(j));
     }

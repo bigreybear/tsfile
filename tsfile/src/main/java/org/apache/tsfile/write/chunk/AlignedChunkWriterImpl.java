@@ -40,6 +40,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+// NOTE seems to be deprecated
 public class AlignedChunkWriterImpl implements IChunkWriter {
 
   private final TimeChunkWriter timeChunkWriter;

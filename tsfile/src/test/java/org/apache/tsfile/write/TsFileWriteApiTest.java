@@ -370,7 +370,7 @@ public class TsFileWriteApiTest {
         int row = tablet.rowSize++;
         timestamps[row] = startTime++;
         for (int i = 0; i < sensorNum; i++) {
-          if (i == 1 && r > 1000) {
+          if (i == 1 && r > 100 && r < 105) {
             tablet.bitMaps[i].mark((int) r % tablet.getMaxRowNumber());
             continue;
           }

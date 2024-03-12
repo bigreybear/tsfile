@@ -89,6 +89,7 @@ public class MetadataIndexConstructor {
       Map<String, MetadataIndexNode> deviceMetadataIndexMap, TsFileOutput out) throws IOException {
     // if not exceed the max child nodes num, ignore the device index and directly point to the
     // measurement
+    // NOTE sufficient to index all INTERNAL_MEAS with ONE LEAF_DEV
     if (deviceMetadataIndexMap.size() <= config.getMaxDegreeOfIndexNode()) {
       MetadataIndexNode metadataIndexNode =
           new MetadataIndexNode(MetadataIndexNodeType.LEAF_DEVICE);
@@ -133,17 +134,26 @@ public class MetadataIndexConstructor {
   public static MetadataIndexNode generateRootNode(
       Queue<MetadataIndexNode> metadataIndexNodeQueue, TsFileOutput out, MetadataIndexNodeType type)
       throws IOException {
+    // NOTE type is either INTERNAL_MEASUREMENT or INTERNAL_DEVICE
+    // NOTE generate a tree where leaves are original elements from the passing in queue
+    // NOTE return the root of the tree
+    // NOTE the tree could have multiple levels of INTERNAL MINs
     int queueSize = metadataIndexNodeQueue.size();
     MetadataIndexNode metadataIndexNode;
     MetadataIndexNode currentIndexNode = new MetadataIndexNode(type);
+    // NOTE if the queue size at 1, no MIN would be Sered, the
     while (queueSize != 1) {
       for (int i = 0; i < queueSize; i++) {
+        // NOTE inner loop consumes all elements when the outer loop begins
+        // NOTE CONSUME means: Ser to disk and index its offset within upper MIN
         metadataIndexNode = metadataIndexNodeQueue.poll();
         // when constructing from internal node, each node is related to an entry
         if (currentIndexNode.isFull()) {
+          // NOTE this add-action generates another level
           addCurrentIndexNodeToQueue(currentIndexNode, metadataIndexNodeQueue, out);
           currentIndexNode = new MetadataIndexNode(type);
         }
+        // NOTE store key/offset of the Sered MIN into its upper MIN(metadataIndexNode)
         currentIndexNode.addEntry(
             new MetadataIndexEntry(metadataIndexNode.peek().getName(), out.getPosition()));
         metadataIndexNode.serializeTo(out.wrapAsStream());

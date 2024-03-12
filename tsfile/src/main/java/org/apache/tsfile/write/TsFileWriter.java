@@ -38,9 +38,11 @@ import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.apache.tsfile.write.writer.TsFileOutput;
 
+import org.omg.PortableInterceptor.SYSTEM_EXCEPTION;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -492,6 +494,23 @@ public class TsFileWriter implements AutoCloseable {
     return checkMemorySizeAndMayFlushChunks();
   }
 
+  /**
+   * NOTE *UNDERSTANDING* from write API
+   * <pre>
+   *   TsFileWriter dependency Hierarchy
+   *     holds a map, mapping deviceID to its chunkGroupWriter, and the writer:
+   *       diverge into aligned/nonAligned writer
+   *       both holds a map, mapping measurementID to its chunkWriter, and the writer:
+   *         holds a buffer containing all data within the chunk, may consists of multiple pages
+   *         holds a pageWriter, and the writer:
+   *           counts number of records, checking whether enough to seal
+   *           holds a buffer serializing values, exactly belonging to current page
+   *           (nonAligned writer)holds a buffer serializing timestamps
+   *
+   *
+   * </pre>
+   */
+
   public boolean writeAligned(TSRecord record) throws IOException, WriteProcessException {
     checkIsTimeseriesExist(record, true);
     recordCount += groupWriters.get(record.deviceId).write(record.time, record.dataPointList);
@@ -514,11 +533,14 @@ public class TsFileWriter implements AutoCloseable {
   }
 
   public boolean writeAligned(Tablet tablet) throws IOException, WriteProcessException {
+    long thisDataTime = System.nanoTime();
     // make sure the ChunkGroupWriter for this Tablet exist
     checkIsTimeseriesExist(tablet, true);
     // get corresponding ChunkGroupWriter and write this Tablet
     recordCount += groupWriters.get(tablet.deviceId).write(tablet);
-    return checkMemorySizeAndMayFlushChunks();
+    boolean res = checkMemorySizeAndMayFlushChunks();
+    flushDataTime += System.nanoTime() - thisDataTime;
+    return res;
   }
 
   /**
@@ -542,6 +564,19 @@ public class TsFileWriter implements AutoCloseable {
    * @throws IOException exception in IO
    */
   private boolean checkMemorySizeAndMayFlushChunks() throws IOException {
+    /**
+     * NOTE A key method flush buffers to FS
+     * <pre>
+     *   CALLED on every write method, including write/writeAligned with record/tablet
+     *
+     *   calculate current memory overhead and expectation countdown to recalculate next time
+     *   if current memory overhead oversizes:
+     *     flush all chunk groups, each representing sensor data from a specific device
+     *
+     * </pre>
+     *
+     */
+
     if (recordCount >= recordCountForNextMemCheck) {
       long memSize = calculateMemSizeForAllGroup();
       assert memSize > 0;
@@ -572,6 +607,8 @@ public class TsFileWriter implements AutoCloseable {
         IChunkGroupWriter groupWriter = entry.getValue();
         fileWriter.startChunkGroup(deviceId);
         long pos = fileWriter.getPos();
+        // NOTE the fileWriter is the actual serializer to write objects into disk blocks
+        // NOTE all chunk metadata are inside this fileWriter
         long dataSize = groupWriter.flushToFileWriter(fileWriter);
         if (fileWriter.getPos() - pos != dataSize) {
           throw new IOException(
@@ -615,6 +652,8 @@ public class TsFileWriter implements AutoCloseable {
     recordCount = 0;
   }
 
+  long flushDataTime, flushIndexTime, dataPosition, totalPosition;
+
   /**
    * calling this method to write the last data remaining in memory and close the normal and error
    * OutputStream.
@@ -625,7 +664,18 @@ public class TsFileWriter implements AutoCloseable {
   public void close() throws IOException {
     LOG.info("start close file");
     flushAllChunkGroups();
+
+    dataPosition = fileWriter.getIOWriterOut().getPosition();
     fileWriter.endFile();
+    flushDataTime += fileWriter.reportLastForceData();
+    flushIndexTime = fileWriter.reportForceIndex();
+
+    totalPosition = fileWriter.getIOWriterOut().getPosition();
+  }
+
+  public void report(BufferedWriter bw) throws IOException {
+    bw.write(String.format("DataFlushTime: %d, IndexFlushTIme: %d\n", flushDataTime/1000000, flushIndexTime/1000000));
+    bw.write(String.format("DataSize: %d, IndexSize: %d\n", dataPosition, totalPosition - dataPosition));
   }
 
   /**

@@ -285,6 +285,7 @@ public class ChunkWriterImpl implements IChunkWriter {
         this.sizeWithoutStatistic = pageWriter.writePageHeaderAndDataIntoBuff(pageBuffer, true);
       } else if (numOfPages == 1) { // put the firstPageStatistics into pageBuffer
         byte[] b = pageBuffer.toByteArray();
+        // NOTE previous buffered page had no stats before its header and this reset inserts the stats
         pageBuffer.reset();
         pageBuffer.write(b, 0, this.sizeWithoutStatistic);
         firstPageStatistics.serialize(pageBuffer);

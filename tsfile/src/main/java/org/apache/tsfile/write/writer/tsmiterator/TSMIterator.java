@@ -95,6 +95,7 @@ public class TSMIterator {
       seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
     }
 
+    // NOTE TSM instance holds a buffer of Sered chunk metadata
     TimeseriesMetadata timeseriesMetadata =
         new TimeseriesMetadata(
             (byte)
@@ -111,19 +112,28 @@ public class TSMIterator {
       List<ChunkGroupMetadata> chunkGroupMetadataList,
       String currentDevice,
       List<ChunkMetadata> chunkMetadataList) {
+
+    // NOTE content: <devicePath, <fullPath, ChunkMetadata>>
     Map<String, Map<Path, List<IChunkMetadata>>> chunkMetadataMap = new TreeMap<>();
+
+    // NOTE sorted result
     List<Pair<Path, List<IChunkMetadata>>> sortedChunkMetadataList = new LinkedList<>();
+
+    // merge elements with identical deviceID in chunkGroupMetadataList(cGML)
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
+      // construct outer collection(Map) if absent
       chunkMetadataMap.computeIfAbsent(chunkGroupMetadata.getDevice(), x -> new TreeMap<>());
       for (IChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
         chunkMetadataMap
             .get(chunkGroupMetadata.getDevice())
+            // construct inner collection(List) if absent
             .computeIfAbsent(
                 new Path(chunkGroupMetadata.getDevice(), chunkMetadata.getMeasurementUid(), false),
                 x -> new ArrayList<>())
             .add(chunkMetadata);
       }
     }
+
     if (currentDevice != null) {
       for (IChunkMetadata chunkMetadata : chunkMetadataList) {
         chunkMetadataMap
@@ -135,6 +145,7 @@ public class TSMIterator {
       }
     }
 
+    // NOTE how the sequence be determined?
     for (Map.Entry<String, Map<Path, List<IChunkMetadata>>> entry : chunkMetadataMap.entrySet()) {
       Map<Path, List<IChunkMetadata>> seriesChunkMetadataMap = entry.getValue();
       for (Map.Entry<Path, List<IChunkMetadata>> seriesChunkMetadataEntry :
