@@ -8,6 +8,7 @@ public enum DataSets { // and its sensors
   TDrive(new ArrayList<>(Arrays.asList("lat", "lon"))),
   GeoLife(new ArrayList<>(Arrays.asList("lat", "lon", "alt"))),
   REDD(new ArrayList<>(Arrays.asList("elec"))),
+  TSBS2(new ArrayList<>(Arrays.asList("lat", "lon", "ele", "vel"))),
   TSBS(new ArrayList<>(Arrays.asList("lat", "lon", "ele", "vel")));
 
   public List<String> sensors;
@@ -19,13 +20,13 @@ public enum DataSets { // and its sensors
   public String getConditionBinPath() {
     switch (this) {
       case TDrive:
-        return "F:\\0006DataSets\\Conditions\\TDrive-lat-10.bin";
+        return "F:\\0006DataSets\\Conditions\\TDrive-v2-100.bin";
       case GeoLife:
-        return "F:\\0006DataSets\\Conditions\\GeoLife-lat-10.bin";
+        return "F:\\0006DataSets\\Conditions\\GeoLife-v2-100.bin";
       case REDD:
-        return "F:\\0006DataSets\\Conditions\\REDD-elec-10.bin";
+        return "F:\\0006DataSets\\Conditions\\REDD-v2-100.bin";
       case TSBS:
-        return "F:\\0006DataSets\\Conditions\\TSBS-vel-10.bin";
+        return "F:\\0006DataSets\\Conditions\\TSBS-v2-100.bin";
       default:
     }
     return null;
@@ -34,7 +35,7 @@ public enum DataSets { // and its sensors
   public String getTargetFile() {
     switch (this) {
       case GeoLife:
-        return "TS_FILE_GeoLife_20240312231208_UNCOMPRESSED.tsfile";
+        return "TS_FILE_GeoLife_20240315163543_PLAIN_UNCOMPRESSED.tsfile";
       case TDrive:
         return "TS_FILE_TDrive_20240312231153_UNCOMPRESSED.tsfile";
       case REDD:
@@ -56,6 +57,8 @@ public enum DataSets { // and its sensors
         return "REDD.bin";
       case TSBS:
         return "TSBS.bin";
+      case TSBS2:
+        return "TSBS2.bin";
       default:
     }
     return null;

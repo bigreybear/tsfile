@@ -329,9 +329,9 @@ public class TsFileIOWriter implements AutoCloseable {
     // write magic string
     out.write(MAGIC_STRING_BYTES);
 
-    // flush page cache data to disk
-    out.force();
-    forceIndex = System.nanoTime() - forceIndex;
+    // flush page cache data to disk NOTE not here, BF included
+    // out.force();
+    // forceIndex = System.nanoTime() - forceIndex;
     // close file
     out.close();
 
@@ -420,6 +420,7 @@ public class TsFileIOWriter implements AutoCloseable {
       }
 
       if (seriesIdxForCurrDevice % TS_FILE_CONFIG.getMaxDegreeOfIndexNode() == 0) {
+      // if (seriesIdxForCurrDevice % 2 == 0) {
         if (currentIndexNode.isFull()) {
           addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
           currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
@@ -448,6 +449,7 @@ public class TsFileIOWriter implements AutoCloseable {
               measurementMetadataIndexQueue, out, MetadataIndexNodeType.INTERNAL_MEASUREMENT));
     }
 
+    tsmEndPos = out.getPosition();
     MetadataIndexNode metadataIndex = checkAndBuildLevelIndex(deviceMetadataIndexMap, out);
 
     TsFileMetadata tsFileMetadata = new TsFileMetadata();
@@ -455,13 +457,20 @@ public class TsFileIOWriter implements AutoCloseable {
     tsFileMetadata.setMetaOffset(metaOffset);
 
     int size = tsFileMetadata.serializeTo(out.wrapAsStream());
+    // NOTE here all index except BF has been serialized
+    out.force();
+    forceIndex = System.nanoTime() - forceIndex;
+    indexEndPosition = out.getPosition();
+
     size += tsFileMetadata.serializeBloomFilter(out.wrapAsStream(), filter);
 
     // write TsFileMetaData size
     ReadWriteIOUtils.write(size, out.wrapAsStream());
   }
 
-  long lastForceData, forceIndex;
+  public long lastForceData, forceIndex, indexEndPosition, tsmEndPos;
+
+  public long getIndexEndPosition() {return indexEndPosition;}
 
   public long reportLastForceData() {
     return lastForceData;

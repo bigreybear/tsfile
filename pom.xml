@@ -39,11 +39,39 @@
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-        <argLine />
+        <argLine/>
         <spotless.skip>false</spotless.skip>
     </properties>
+    <repositories>
+        <repository>
+            <id>scijava.public</id>
+            <url>https://maven.scijava.org/content/repositories/public/</url>
+        </repository>
+    </repositories>
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>org.apache.iotdb</groupId>
+                <artifactId>iotdb-server</artifactId>
+                <scope>system</scope>
+                <systemPath>F:\0006DataSets\0000JarLib\iotdb-server-1.3.1-SNAPSHOT-jar-with-dependencies.jar</systemPath>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.arrow</groupId>
+                <artifactId>arrow-memory-netty</artifactId>
+                <version>15.0.0</version>
+                <scope>runtime</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.arrow</groupId>
+                <artifactId>arrow-vector</artifactId>
+                <version>15.0.0</version>
+            </dependency>
+            <dependency>
+                <groupId>cisd</groupId>
+                <artifactId>jhdf5</artifactId>
+                <version>14.12.6</version>
+            </dependency>
             <dependency>
                 <groupId>com.github.luben</groupId>
                 <artifactId>zstd-jni</artifactId>
@@ -202,7 +230,7 @@
                             <importOrder>
                                 <order>org.apache.tsfile,,javax,java,\#</order>
                             </importOrder>
-                            <removeUnusedImports />
+                            <removeUnusedImports/>
                         </java>
                         <lineEndings>UNIX</lineEndings>
                     </configuration>
@@ -301,7 +329,7 @@
                         <phase>validate</phase>
                         <configuration>
                             <rules>
-                                <dependencyConvergence />
+                                <dependencyConvergence/>
                             </rules>
                         </configuration>
                     </execution>

@@ -525,11 +525,14 @@ public class TsFileWriter implements AutoCloseable {
    * @throws WriteProcessException exception in write process
    */
   public boolean write(Tablet tablet) throws IOException, WriteProcessException {
+    long thisDataTime = System.nanoTime();
     // make sure the ChunkGroupWriter for this Tablet exist
     checkIsTimeseriesExist(tablet, false);
     // get corresponding ChunkGroupWriter and write this Tablet
     recordCount += groupWriters.get(tablet.deviceId).write(tablet);
-    return checkMemorySizeAndMayFlushChunks();
+    boolean res = checkMemorySizeAndMayFlushChunks();
+    flushDataTime += System.nanoTime() - thisDataTime;
+    return res;
   }
 
   public boolean writeAligned(Tablet tablet) throws IOException, WriteProcessException {
@@ -669,13 +672,15 @@ public class TsFileWriter implements AutoCloseable {
     fileWriter.endFile();
     flushDataTime += fileWriter.reportLastForceData();
     flushIndexTime = fileWriter.reportForceIndex();
-
-    totalPosition = fileWriter.getIOWriterOut().getPosition();
   }
 
   public void report(BufferedWriter bw) throws IOException {
     bw.write(String.format("DataFlushTime: %d, IndexFlushTIme: %d\n", flushDataTime/1000000, flushIndexTime/1000000));
-    bw.write(String.format("DataSize: %d, IndexSize: %d\n", dataPosition, totalPosition - dataPosition));
+    bw.write(String.format("DataSize: %d, IndexSize: %d\n",
+        dataPosition,
+        fileWriter.getIndexEndPosition() - dataPosition));
+    bw.write(String.format("ChunkIndex: %d, SereisIndex: %d\n",
+        fileWriter.tsmEndPos - dataPosition, fileWriter.indexEndPosition - fileWriter.tsmEndPos));
   }
 
   /**

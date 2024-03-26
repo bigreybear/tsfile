@@ -5,6 +5,7 @@ import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.BigIntVector;
 import org.apache.arrow.vector.Float8Vector;
 import org.apache.arrow.vector.IntVector;
+import org.apache.arrow.vector.LargeVarCharVector;
 import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.ipc.ArrowFileReader;
@@ -43,7 +44,7 @@ public class TDriveLoader {
 
   private final BufferAllocator allocator;
   private VectorSchemaRoot root;
-  public VarCharVector idVector;
+  public LargeVarCharVector idVector;
   public BigIntVector timestampVector;
   public Float8Vector latitudeVector;
   public Float8Vector longitudeVector;
@@ -57,7 +58,7 @@ public class TDriveLoader {
 
     // 定义 Schema
     org.apache.arrow.vector.types.pojo.Schema schema = new Schema(Arrays.asList(
-        Field.nullable("id", FieldType.nullable(Types.MinorType.VARCHAR.getType()).getType()),
+        Field.nullable("id", FieldType.nullable(Types.MinorType.LARGEVARCHAR.getType()).getType()),
         Field.nullable("timestamp", FieldType.nullable(Types.MinorType.BIGINT.getType()).getType()),
         Field.nullable("latitude", FieldType.nullable(Types.MinorType.FLOAT8.getType()).getType()),
         Field.nullable("longitude", FieldType.nullable(Types.MinorType.FLOAT8.getType()).getType())
@@ -65,7 +66,7 @@ public class TDriveLoader {
 
     this.root = VectorSchemaRoot.create(schema, allocator);
 
-    this.idVector = (VarCharVector) root.getVector("id");
+    this.idVector = (LargeVarCharVector) root.getVector("id");
     this.timestampVector = (BigIntVector) root.getVector("timestamp");
     this.latitudeVector = (Float8Vector) root.getVector("latitude");
     this.longitudeVector = (Float8Vector) root.getVector("longitude");

@@ -6,7 +6,6 @@ import org.apache.arrow.vector.BigIntVector;
 import org.apache.arrow.vector.FieldVector;
 import org.apache.arrow.vector.Float8Vector;
 import org.apache.arrow.vector.LargeVarCharVector;
-import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.ipc.ArrowFileReader;
 import org.apache.arrow.vector.ipc.ArrowFileWriter;
@@ -19,7 +18,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
@@ -31,14 +29,12 @@ import java.text.SimpleDateFormat;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Stream;
 
-public class TSBSLoader {
-  private static final Logger logger = LoggerFactory.getLogger(TSBSLoader.class);
+public class TSBSLoaderForMultiples {
+  private static final Logger logger = LoggerFactory.getLogger(TSBSLoaderForMultiples.class);
   public static final boolean DEBUG = false;
 
   private final BufferAllocator allocator;
@@ -54,7 +50,7 @@ public class TSBSLoader {
 
   final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
-  public TSBSLoader() {
+  public TSBSLoaderForMultiples() {
     this.allocator = new RootAllocator(16 * 1024 * 1024 * 1024L);
 
     // 定义 Schema
@@ -82,22 +78,28 @@ public class TSBSLoader {
   public void load(long limit) throws IOException {
     Files.walk(Paths.get(DIR))
         .filter(Files::isRegularFile)
+        .filter(path -> !path.toString().endsWith(".gz"))
         .limit(limit)
-        .forEach(p -> processDataFile(p, limit));
+        .forEach(p -> {
+          try {
+            processDataFile(p, limit);
+          } catch (IOException e) {
+            throw new RuntimeException(e);
+          }
+        });
   }
 
   String[] p1,p2,p3;
   private static long fileCount = 0, collectedPoints = 0L;
   private static final DateTimeFormatter GEOLIFE_DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd,HH:mm:ss");
-  public void processDataFile(Path path, long limit) {
+  public void processDataFile(Path path, long limit) throws IOException {
     if (DEBUG) {
       System.out.println(path.toAbsolutePath());
     }
 
     fileCount++;
-    if (fileCount % 16 == 0) {
-      System.out.println(path.toAbsolutePath());
-    }
+    System.out.println(path.toAbsolutePath());
+
 
     try (Stream<String> lines = Files.lines(path).skip(4)) {
       lines.limit(limit).forEach(line -> {
@@ -151,6 +153,16 @@ public class TSBSLoader {
       e.printStackTrace();
     }
 
+    // every file serialize into 1 bin
+    serializeTo(path.getFileName().toString());
+    idVector.clear();
+    latVec.clear();
+    lonVec.clear();
+    eleVec.clear();
+    velVec.clear();
+    timestampVector.clear();
+    collectedPoints = 0;
+    orderedPoints.clear();
   }
 
   public static double parseDoubleWithNull(String str) {
@@ -240,9 +252,9 @@ public class TSBSLoader {
     }
   }
 
-  public static TSBSLoader deserialize(String path, String fileName) throws IOException {
-    String filePath = path + fileName;
-    TSBSLoader loader = new TSBSLoader();
+  public static TSBSLoaderForMultiples deserialize(String fileName) throws IOException{
+    String filePath = ARROW_DIR + fileName;
+    TSBSLoaderForMultiples loader = new TSBSLoaderForMultiples();
     RootAllocator allocator = new RootAllocator(16 * 1024 * 1024 * 1024L);
     try (FileInputStream fis = new FileInputStream(filePath);
          FileChannel channel = fis.getChannel();
@@ -277,10 +289,6 @@ public class TSBSLoader {
     }
   }
 
-  public static TSBSLoader deserialize(String fileName) throws IOException{
-    return deserialize(ARROW_DIR, fileName);
-  }
-
   public static void setWithNull(Float8Vector src, Float8Vector dst, int index) {
     if (src.isNull(index)) {
       dst.setNull(index);
@@ -289,15 +297,15 @@ public class TSBSLoader {
     }
   }
 
-  public static String DIR = "F:\\0006DataSets\\TSBS2";
+  public static String DIR = "F:\\0006DataSets\\TSBS-5-3";
   public static String ARROW_DIR = "F:\\0006DataSets\\Arrows\\";
 
   public static void main(String[] args) throws IOException {
-    TSBSLoader loader = new TSBSLoader();
+    TSBSLoaderForMultiples loader = new TSBSLoaderForMultiples();
     // loader.load(1000);
     loader.load(Long.MAX_VALUE);
     // loader.check(2000);
-    loader.serializeTo(DataSets.TSBS.getArrowFile());
+    // loader.serializeTo(DataSets.TSBS.getArrowFile());
     // TSBSLoader loader1 = TSBSLoader.deserialize(DataSets.TSBS.getArrowFile());
     // loader1.check(100);
     // loader1.close();

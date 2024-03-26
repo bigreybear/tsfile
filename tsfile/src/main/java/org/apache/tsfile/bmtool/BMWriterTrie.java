@@ -11,28 +11,20 @@ import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.expression.IExpression;
 import org.apache.tsfile.read.expression.QueryExpression;
-import org.apache.tsfile.read.expression.impl.BinaryExpression;
-import org.apache.tsfile.read.expression.impl.GlobalTimeExpression;
-import org.apache.tsfile.read.filter.factory.TimeFilterApi;
-import org.apache.tsfile.read.filter.factory.ValueFilterApi;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
-import javax.swing.plaf.basic.BasicTextAreaUI;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
-public class BMWriter {
+public class BMWriterTrie {
 
   public static class DataSetsProfile {
     public static int deviceNum = 0;
@@ -50,7 +42,7 @@ public class BMWriter {
 
   public static String DST_DIR = "F:\\0006DataSets\\Results\\";
   public static String DATE_STR = java.time.format.DateTimeFormatter
-      .ofPattern("yyyyMMddHHmmss")
+      .ofPattern("ddHHmmss")
       .format(java.time.LocalDateTime.now());
 
   public static String NAME_COMMENT = "_NO_SPEC_";
@@ -77,8 +69,9 @@ public class BMWriter {
     writer.close();
     logger.write(String.format("Load: %s, Comment:%s, File:%s", CUR_DATA, NAME_COMMENT, tsFile.getName()));
     logger.newLine();
-    logger.write(String.format("Pts: %d, Series: %d, Devs: %d\n",
-        DataSetsProfile.ptsNum, DataSetsProfile.seriesNum, DataSetsProfile.deviceNum));
+    logger.write(String.format("Pts: %d, Series: %d, Devs: %d, Arity: %d\n",
+        DataSetsProfile.ptsNum, DataSetsProfile.seriesNum, DataSetsProfile.deviceNum,
+        TSFileConfig.maxDegreeOfIndexNode));
     writer.report(logger);
     logger.write("==========================================");
     logger.newLine();
@@ -412,7 +405,7 @@ public class BMWriter {
   }
 
 
-  public static DataSets CUR_DATA = DataSets.GeoLife;
+  public static DataSets CUR_DATA = DataSets.TDrive;
   public static String FILE_PATH = DST_DIR + "TS_FILE_" + CUR_DATA + "_" + DATE_STR + ".tsfile";
   public static String LOG_PATH = DST_DIR + "TS_FILE_Write_Results.log";
   public static void main(String[] args) throws IOException, WriteProcessException {
@@ -420,12 +413,16 @@ public class BMWriter {
     compressionType = CompressionType.SNAPPY;
     encoding = TSEncoding.GORILLA;
 
-    // assign from args, args: [dataset]
-    if (args.length >= 1) {
+    // assign from args, args: [dataset, arity]
+    if (args.length >= 2) {
       CUR_DATA = DataSets.valueOf(args[0]);
+      TSFileConfig.maxDegreeOfIndexNode = Integer.parseInt(args[1]);
+    } else {
+      TSFileConfig.maxDegreeOfIndexNode = 1024;
+      System.out.println("Not Enough Arguments");
     }
 
-    commentOnName(encoding.name() + "_" + compressionType.name());
+    commentOnName(encoding.name() + "_" + compressionType.name() + "_arity" + TSFileConfig.maxDegreeOfIndexNode);
     init();
 
     long record = System.currentTimeMillis();

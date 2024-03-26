@@ -1,6 +1,14 @@
 package org.apache.tsfile.bmtool;
 
 import org.apache.arrow.vector.Float8Vector;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
+import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -11,28 +19,28 @@ import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.expression.IExpression;
 import org.apache.tsfile.read.expression.QueryExpression;
-import org.apache.tsfile.read.expression.impl.BinaryExpression;
-import org.apache.tsfile.read.expression.impl.GlobalTimeExpression;
-import org.apache.tsfile.read.filter.factory.TimeFilterApi;
-import org.apache.tsfile.read.filter.factory.ValueFilterApi;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
+import org.apache.tsfile.write.writer.TsFileIOWriter;
 
-import javax.swing.plaf.basic.BasicTextAreaUI;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-public class BMWriter {
+import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+import static org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator.getTsFileName;
+
+public class BMWriterCompaction {
 
   public static class DataSetsProfile {
     public static int deviceNum = 0;
@@ -50,7 +58,7 @@ public class BMWriter {
 
   public static String DST_DIR = "F:\\0006DataSets\\Results\\";
   public static String DATE_STR = java.time.format.DateTimeFormatter
-      .ofPattern("yyyyMMddHHmmss")
+      .ofPattern("ddHHmmss")
       .format(java.time.LocalDateTime.now());
 
   public static String NAME_COMMENT = "_NO_SPEC_";
@@ -66,10 +74,10 @@ public class BMWriter {
   public static TSEncoding encoding;
 
   public static void init() throws IOException {
-    tsFile = new File(FILE_PATH);
+    // tsFile = new File(FILE_PATH);
     logFile = new File(LOG_PATH);
 
-    writer = new TsFileWriter(tsFile);
+    // writer = new TsFileWriter(tsFile);
     logger = new BufferedWriter(new FileWriter(logFile, true));
   }
 
@@ -77,8 +85,9 @@ public class BMWriter {
     writer.close();
     logger.write(String.format("Load: %s, Comment:%s, File:%s", CUR_DATA, NAME_COMMENT, tsFile.getName()));
     logger.newLine();
-    logger.write(String.format("Pts: %d, Series: %d, Devs: %d\n",
-        DataSetsProfile.ptsNum, DataSetsProfile.seriesNum, DataSetsProfile.deviceNum));
+    logger.write(String.format("Pts: %d, Series: %d, Devs: %d, Arity: %d\n",
+        DataSetsProfile.ptsNum, DataSetsProfile.seriesNum, DataSetsProfile.deviceNum,
+        TSFileConfig.maxDegreeOfIndexNode));
     writer.report(logger);
     logger.write("==========================================");
     logger.newLine();
@@ -313,6 +322,7 @@ public class BMWriter {
   }
 
   public static TDriveLoader bmTDrive() throws IOException, WriteProcessException {
+
     TDriveLoader loader = TDriveLoader.deserialize(CUR_DATA.getArrowFile());
     // loader.load(Long.MAX_VALUE);
     List<MeasurementSchema> schemaList = new ArrayList<>();
@@ -330,12 +340,31 @@ public class BMWriter {
     tablet.setDeviceId(preDev);
     writer.registerAlignedTimeseries(new Path(preDev), schemaList);
 
+    startDevTime.put(preDev, loader.timestampVector.get(0));
+
     int totalRows = loader.idVector.getValueCount();
     int rowInTablet = 0;
     long lastTS = -1L; // filter out-of-order data
     for (int cnt = 0; cnt < totalRows; cnt++) {
       curDev = new String(loader.idVector.get(cnt), TSFileConfig.STRING_CHARSET);
+      if (cnt == totalRows/2) {
+        writer.close();
+
+        lastDevTime.put(preDev, loader.timestampVector.get(cnt));
+        resources.get(0).updateEndTime(lastDevTime);
+        updateAllStartTime(resources.get(0), startDevTime);
+        lastDevTime.clear();
+        startDevTime.clear();
+        resources.get(0).close();
+        resources.get(0).serialize();
+
+        writer = getWriterFromResource(1);
+        writer.registerAlignedTimeseries(new Path(curDev), schemaList);
+      }
+
       if (!preDev.equals(curDev)) {
+        lastDevTime.put(preDev, loader.timestampVector.get(cnt-1));
+
         tablet.rowSize = rowInTablet;
         writer.writeAligned(tablet);
         tablet.reset();
@@ -345,6 +374,8 @@ public class BMWriter {
         tablet.setDeviceId(curDev);
         writer.registerAlignedTimeseries(new Path(curDev), schemaList);
         rowInTablet = 0;
+
+        startDevTime.put(curDev, loader.timestampVector.get(cnt));
 
         if (TO_PROFILE) {
           DataSetsProfile.deviceNum++;
@@ -381,27 +412,44 @@ public class BMWriter {
     }
     tablet.rowSize = rowInTablet;
     writer.writeAligned(tablet);
+
+    lastDevTime.put(preDev, loader.timestampVector.get(totalRows - 1));
+    resources.get(1).updateEndTime(lastDevTime);
+    updateAllStartTime(resources.get(1), startDevTime);
+
     return loader;
   }
 
-  public static void checker() throws IOException {
-    TsFileReader reader = new TsFileReader(new TsFileSequenceReader(FILE_PATH));
-    ArrayList<Path> paths = new ArrayList<>();
-    paths.add(new Path("root.010_100", "lat", false));
-    paths.add(new Path("root.010_100", "lon", false));
-
-    queryAndPrint(paths, reader, null);
-  }
-
-  private static void queryAndPrint(ArrayList<Path> paths, TsFileReader readTsFile, IExpression statement)
-      throws IOException {
-    QueryExpression queryExpression = QueryExpression.create(paths, statement);
-    QueryDataSet queryDataSet = readTsFile.query(queryExpression);
-    while (queryDataSet.hasNext()) {
-      System.out.println(queryDataSet.next());
+  public static void updateAllStartTime(TsFileResource resource, Map<String, Long> m) {
+    for (Map.Entry<String, Long> entry : m.entrySet()) {
+      resource.updateStartTime(entry.getKey(), 0);
     }
-    System.out.println("------------");
   }
+
+  private static final ICompactionPerformer performer = new FastCompactionPerformer(false);
+  public static void compactUtilTDrive() throws Exception {
+    TsFileResource targetResource =
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(resources, true);
+    performer.setSourceFiles(resources);
+    performer.setTargetFiles(Collections.singletonList(targetResource));
+    performer.setSummary(new FastCompactionTaskSummary());
+    performer.perform();
+  }
+
+  public static void compactUtilTSBS() {
+
+  }
+
+  public static void compactUtilGeoLife() {
+
+  }
+
+  public static void compactUtilREDD() {
+
+  }
+
+  static Map<String, Long> lastDevTime = new HashMap<>();
+  static Map<String, Long> startDevTime = new HashMap<>();
 
   private static void commentOnName(String comment) {
     if (comment != null) {
@@ -411,45 +459,100 @@ public class BMWriter {
     }
   }
 
+  public static void buildResources() {
+    dataDirectory = new File(
+        SRC_DIR
+            + "0".concat(File.separator)
+            + "0".concat(File.separator));
+    for (int i = 1; i < 3; i++) {
+      TsFileResource resource = new TsFileResource(
+          new File(dataDirectory, String.format("%d-%d-0-0.tsfile", i, i)));
+      resources.add(resource);
+    }
+  }
 
-  public static DataSets CUR_DATA = DataSets.GeoLife;
+  public static TsFileWriter getWriterFromResource(int i) throws IOException {
+    tsFile = resources.get(i).getTsFile();
+    return new TsFileWriter(new TsFileIOWriter(resources.get(i).getTsFile()));
+  }
+
+  private static File dataDirectory;
+
+  public static List<TsFileResource> resources = new ArrayList<>();
+  public static DataSets CUR_DATA = DataSets.TDrive;
+  public static String SRC_DIR = "F:\\0006DataSets\\ForCompact\\";
   public static String FILE_PATH = DST_DIR + "TS_FILE_" + CUR_DATA + "_" + DATE_STR + ".tsfile";
-  public static String LOG_PATH = DST_DIR + "TS_FILE_Write_Results.log";
-  public static void main(String[] args) throws IOException, WriteProcessException {
+  public static String LOG_PATH = DST_DIR + "TS_FILE_Compaction_Results.log";
+  public static void main(String[] args) throws Exception {
     // assign default
     compressionType = CompressionType.SNAPPY;
     encoding = TSEncoding.GORILLA;
+    boolean makeComponents = true;
+    boolean compactWithUtil = true;
+    boolean compactNative = false;
 
-    // assign from args, args: [dataset]
-    if (args.length >= 1) {
+    // assign from args, args: [dataset, arity]
+    if (args.length >= 2) {
       CUR_DATA = DataSets.valueOf(args[0]);
+      TSFileConfig.maxDegreeOfIndexNode = Integer.parseInt(args[1]);
+    } else {
+      TSFileConfig.maxDegreeOfIndexNode = 1024;
+      System.out.println("Not Enough Arguments");
     }
+    SRC_DIR = SRC_DIR + CUR_DATA.toString() + "\\";
 
-    commentOnName(encoding.name() + "_" + compressionType.name());
+    buildResources();
     init();
 
     long record = System.currentTimeMillis();
-    // write as needed
-    switch (CUR_DATA) {
-      case TDrive:
-        bmTDrive();
-        // bmTDrive(200);
-        break;
-      case GeoLife:
-        bmGeoLife();
-        break;
-      case REDD:
-        bmREDD();
-        break;
-      case TSBS:
-        bmTSBS();
-        break;
-      default:
+    // build components
+    if (makeComponents) {
+      writer = getWriterFromResource(0);
+      switch (CUR_DATA) {
+        case TDrive:
+          bmTDrive();
+          // bmTDrive(200);
+          break;
+        case GeoLife:
+          bmGeoLife();
+          break;
+        case REDD:
+          bmREDD();
+          break;
+        case TSBS:
+          bmTSBS();
+          break;
+        default:
+      }
+      writer.close();
+      resources.get(1).close();
+      resources.get(1).serialize();
     }
+
+    if (compactWithUtil) {
+      switch (CUR_DATA) {
+        case TDrive:
+          compactUtilTDrive();
+          // bmTDrive(200);
+          break;
+        case GeoLife:
+          compactUtilGeoLife();
+          break;
+        case REDD:
+          compactUtilREDD();
+          break;
+        case TSBS:
+          compactUtilTSBS();
+          break;
+        default:
+      }
+    }
+
+    // stopwatch for compacting
 
     record = System.currentTimeMillis() - record;
     System.out.println(String.format("Load and write for %d ms.", record));
-    closeAndSummary();
+    // closeAndSummary();
     // checker();
     logger.close();
   }

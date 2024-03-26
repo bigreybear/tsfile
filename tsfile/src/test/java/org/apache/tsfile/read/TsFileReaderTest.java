@@ -144,6 +144,7 @@ public class TsFileReaderTest {
     Filter filter3 =
         FilterFactory.and(TimeFilterApi.gtEq(1480562618000L), TimeFilterApi.ltEq(1480562618100L));
 
+    float a = 1.1f;
     IExpression IExpression =
         BinaryExpression.or(
             BinaryExpression.and(
