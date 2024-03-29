@@ -1,14 +1,14 @@
 package org.apache.tsfile.bmtool;
 
 import org.apache.arrow.vector.Float8Vector;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
-import org.apache.iotdb.db.utils.constant.TestConstant;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+// import org.apache.iotdb.commons.conf.IoTDBConstant;
+// import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
+// import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
+// import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+// import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+// import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
+// import org.apache.iotdb.db.utils.constant.TestConstant;
+// import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -24,7 +24,7 @@ import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
+// import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.BufferedWriter;
@@ -37,8 +37,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator.getTsFileName;
+// import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+// import static org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator.getTsFileName;
 
 public class BMWriterCompaction {
 
@@ -351,12 +351,12 @@ public class BMWriterCompaction {
         writer.close();
 
         lastDevTime.put(preDev, loader.timestampVector.get(cnt));
-        resources.get(0).updateEndTime(lastDevTime);
-        updateAllStartTime(resources.get(0), startDevTime);
+        // resources.get(0).updateEndTime(lastDevTime);
+        // updateAllStartTime(resources.get(0), startDevTime);
         lastDevTime.clear();
         startDevTime.clear();
-        resources.get(0).close();
-        resources.get(0).serialize();
+        // resources.get(0).close();
+        // resources.get(0).serialize();
 
         writer = getWriterFromResource(1);
         writer.registerAlignedTimeseries(new Path(curDev), schemaList);
@@ -414,27 +414,27 @@ public class BMWriterCompaction {
     writer.writeAligned(tablet);
 
     lastDevTime.put(preDev, loader.timestampVector.get(totalRows - 1));
-    resources.get(1).updateEndTime(lastDevTime);
-    updateAllStartTime(resources.get(1), startDevTime);
+    // resources.get(1).updateEndTime(lastDevTime);
+    // updateAllStartTime(resources.get(1), startDevTime);
 
     return loader;
   }
 
-  public static void updateAllStartTime(TsFileResource resource, Map<String, Long> m) {
-    for (Map.Entry<String, Long> entry : m.entrySet()) {
-      resource.updateStartTime(entry.getKey(), 0);
-    }
-  }
+  // public static void updateAllStartTime(TsFileResource resource, Map<String, Long> m) {
+  //   for (Map.Entry<String, Long> entry : m.entrySet()) {
+  //     resource.updateStartTime(entry.getKey(), 0);
+  //   }
+  // }
 
-  private static final ICompactionPerformer performer = new FastCompactionPerformer(false);
-  public static void compactUtilTDrive() throws Exception {
-    TsFileResource targetResource =
-        TsFileNameGenerator.getInnerCompactionTargetFileResource(resources, true);
-    performer.setSourceFiles(resources);
-    performer.setTargetFiles(Collections.singletonList(targetResource));
-    performer.setSummary(new FastCompactionTaskSummary());
-    performer.perform();
-  }
+  // private static final ICompactionPerformer performer = new FastCompactionPerformer(false);
+  // public static void compactUtilTDrive() throws Exception {
+  //   TsFileResource targetResource =
+  //       TsFileNameGenerator.getInnerCompactionTargetFileResource(resources, true);
+  //   performer.setSourceFiles(resources);
+  //   performer.setTargetFiles(Collections.singletonList(targetResource));
+  //   performer.setSummary(new FastCompactionTaskSummary());
+  //   performer.perform();
+  // }
 
   public static void compactUtilTSBS() {
 
@@ -465,20 +465,21 @@ public class BMWriterCompaction {
             + "0".concat(File.separator)
             + "0".concat(File.separator));
     for (int i = 1; i < 3; i++) {
-      TsFileResource resource = new TsFileResource(
-          new File(dataDirectory, String.format("%d-%d-0-0.tsfile", i, i)));
-      resources.add(resource);
+      // TsFileResource resource = new TsFileResource(
+      //     new File(dataDirectory, String.format("%d-%d-0-0.tsfile", i, i)));
+      // resources.add(resource);
     }
   }
 
   public static TsFileWriter getWriterFromResource(int i) throws IOException {
-    tsFile = resources.get(i).getTsFile();
-    return new TsFileWriter(new TsFileIOWriter(resources.get(i).getTsFile()));
+    // tsFile = resources.get(i).getTsFile();
+    // return new TsFileWriter(new TsFileIOWriter(resources.get(i).getTsFile()));
+    return null;
   }
 
   private static File dataDirectory;
 
-  public static List<TsFileResource> resources = new ArrayList<>();
+  // public static List<TsFileResource> resources = new ArrayList<>();
   public static DataSets CUR_DATA = DataSets.TDrive;
   public static String SRC_DIR = "F:\\0006DataSets\\ForCompact\\";
   public static String FILE_PATH = DST_DIR + "TS_FILE_" + CUR_DATA + "_" + DATE_STR + ".tsfile";
@@ -525,14 +526,14 @@ public class BMWriterCompaction {
         default:
       }
       writer.close();
-      resources.get(1).close();
-      resources.get(1).serialize();
+      // resources.get(1).close();
+      // resources.get(1).serialize();
     }
 
     if (compactWithUtil) {
       switch (CUR_DATA) {
         case TDrive:
-          compactUtilTDrive();
+          // compactUtilTDrive();
           // bmTDrive(200);
           break;
         case GeoLife:
