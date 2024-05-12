@@ -10,4 +10,9 @@ public class Observer {
     long laps = System.nanoTime() - timeRecord;
     System.out.println(String.format("%s for %d nano seconds", mark, laps));
   }
+
+  public static void main(String[] args) throws Exception{
+    // verify accessibility of BMWriter in Parquet
+    org.apache.parquet.bmtool.BMWriter.main(args);
+  }
 }

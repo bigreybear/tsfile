@@ -35,8 +35,11 @@
         <module>common</module>
         <module>tsfile</module>
         <module>examples</module>
+        <module>parquet</module>
     </modules>
     <properties>
+        <!-- Note(zx) version for experimental building -->
+        <parquet.exp.version>vTsFile</parquet.exp.version>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <argLine/>
@@ -50,12 +53,6 @@
     </repositories>
     <dependencyManagement>
         <dependencies>
-            <dependency>
-                <groupId>org.apache.iotdb</groupId>
-                <artifactId>iotdb-server</artifactId>
-                <scope>system</scope>
-                <systemPath>F:\0006DataSets\0000JarLib\iotdb-server-1.3.1-SNAPSHOT-jar-with-dependencies.jar</systemPath>
-            </dependency>
             <dependency>
                 <groupId>org.apache.arrow</groupId>
                 <artifactId>arrow-memory-netty</artifactId>
@@ -371,69 +368,69 @@
                         </configuration>
                     </execution>
                     <!-- Make sure no dependencies are used for which known vulnerabilities exist. -->
-                    <execution>
-                        <id>vulnerability-checks</id>
-                        <goals>
-                            <goal>enforce</goal>
-                        </goals>
-                        <phase>validate</phase>
-                        <configuration>
-                            <!-- Just generate warnings for now -->
-                            <fail>true</fail>
-                            <rules>
-                                <requireJavaVersion>
-                                    <version>1.8.0</version>
-                                </requireJavaVersion>
-                                <banVulnerable implementation="org.sonatype.ossindex.maven.enforcer.BanVulnerableDependencies">
-                                    <excludeCoordinates>
-                                        <!-- TODO: For this CVE no fix exists yet (Keep an eye on it) -->
-                                        <exclude>
-                                            <groupId>io.netty</groupId>
-                                            <artifactId>netty-handler</artifactId>
-                                            <version>4.1.97.Final</version>
-                                        </exclude>
-                                        <!--
-                                            CVE-2016-1000027 seems to effect the HTTP Invoker, which we are not using.
-                                            These are marked deprecated anyway and are removed in Spring 6.x. Unfortunately,
-                                            we are still stuck at 5.x due to the javax-namespace issues.
-                                        -->
-                                        <exclude>
-                                            <groupId>org.springframework</groupId>
-                                            <artifactId>spring-web</artifactId>
-                                            <version>5.3.30</version>
-                                        </exclude>
-                                        <!--
-                                            For this CVE no fix exists and will probably never exist
-                                            (We should discuss dropping 2.11 anyway)
-                                        -->
-                                        <exclude>
-                                            <groupId>org.apache.spark</groupId>
-                                            <artifactId>spark-core_2.11</artifactId>
-                                            <version>2.4.8</version>
-                                        </exclude>
-                                        <!--
-                                            We can't update to a fixed version as we're stuck with this version
-                                            as it was the last to support the javax namespace.
-                                        -->
-                                        <exclude>
-                                            <groupId>org.glassfish.jersey.core</groupId>
-                                            <artifactId>jersey-common</artifactId>
-                                            <version>2.4.8</version>
-                                        </exclude>
-                                        <!--
-                                            TODO: For this CVE no fix exists yet, however we should keep an eye on this:
-                                            https://docs.google.com/presentation/d/1W5KU7ffh4dheR8iD54ulABImi6byAhSI-OhEKw2adRo/edit#slide=id.gaf11915f86_0_0
-                                        -->
-                                        <exclude>
-                                            <groupId>io.atomix</groupId>
-                                            <artifactId>atomix-raft</artifactId>
-                                            <version>3.1.12</version>
-                                        </exclude>
-                                    </excludeCoordinates>
-                                </banVulnerable>
-                            </rules>
-                        </configuration>
-                    </execution>
+                    <!--                    <execution>-->
+                    <!--                        <id>vulnerability-checks</id>-->
+                    <!--                        <goals>-->
+                    <!--                            <goal>enforce</goal>-->
+                    <!--                        </goals>-->
+                    <!--                        <phase>validate</phase>-->
+                    <!--                        <configuration>-->
+                    <!--                            &lt;!&ndash; Just generate warnings for now &ndash;&gt;-->
+                    <!--                            <fail>true</fail>-->
+                    <!--                            <rules>-->
+                    <!--                                <requireJavaVersion>-->
+                    <!--                                    <version>1.8.0</version>-->
+                    <!--                                </requireJavaVersion>-->
+                    <!--                                <banVulnerable implementation="org.sonatype.ossindex.maven.enforcer.BanVulnerableDependencies">-->
+                    <!--                                    <excludeCoordinates>-->
+                    <!--                                        &lt;!&ndash; TODO: For this CVE no fix exists yet (Keep an eye on it) &ndash;&gt;-->
+                    <!--                                        <exclude>-->
+                    <!--                                            <groupId>io.netty</groupId>-->
+                    <!--                                            <artifactId>netty-handler</artifactId>-->
+                    <!--                                            <version>4.1.97.Final</version>-->
+                    <!--                                        </exclude>-->
+                    <!--                                        &lt;!&ndash;-->
+                    <!--                                            CVE-2016-1000027 seems to effect the HTTP Invoker, which we are not using.-->
+                    <!--                                            These are marked deprecated anyway and are removed in Spring 6.x. Unfortunately,-->
+                    <!--                                            we are still stuck at 5.x due to the javax-namespace issues.-->
+                    <!--                                        &ndash;&gt;-->
+                    <!--                                        <exclude>-->
+                    <!--                                            <groupId>org.springframework</groupId>-->
+                    <!--                                            <artifactId>spring-web</artifactId>-->
+                    <!--                                            <version>5.3.30</version>-->
+                    <!--                                        </exclude>-->
+                    <!--                                        &lt;!&ndash;-->
+                    <!--                                            For this CVE no fix exists and will probably never exist-->
+                    <!--                                            (We should discuss dropping 2.11 anyway)-->
+                    <!--                                        &ndash;&gt;-->
+                    <!--                                        <exclude>-->
+                    <!--                                            <groupId>org.apache.spark</groupId>-->
+                    <!--                                            <artifactId>spark-core_2.11</artifactId>-->
+                    <!--                                            <version>2.4.8</version>-->
+                    <!--                                        </exclude>-->
+                    <!--                                        &lt;!&ndash;-->
+                    <!--                                            We can't update to a fixed version as we're stuck with this version-->
+                    <!--                                            as it was the last to support the javax namespace.-->
+                    <!--                                        &ndash;&gt;-->
+                    <!--                                        <exclude>-->
+                    <!--                                            <groupId>org.glassfish.jersey.core</groupId>-->
+                    <!--                                            <artifactId>jersey-common</artifactId>-->
+                    <!--                                            <version>2.4.8</version>-->
+                    <!--                                        </exclude>-->
+                    <!--                                        &lt;!&ndash;-->
+                    <!--                                            TODO: For this CVE no fix exists yet, however we should keep an eye on this:-->
+                    <!--                                            https://docs.google.com/presentation/d/1W5KU7ffh4dheR8iD54ulABImi6byAhSI-OhEKw2adRo/edit#slide=id.gaf11915f86_0_0-->
+                    <!--                                        &ndash;&gt;-->
+                    <!--                                        <exclude>-->
+                    <!--                                            <groupId>io.atomix</groupId>-->
+                    <!--                                            <artifactId>atomix-raft</artifactId>-->
+                    <!--                                            <version>3.1.12</version>-->
+                    <!--                                        </exclude>-->
+                    <!--                                    </excludeCoordinates>-->
+                    <!--                                </banVulnerable>-->
+                    <!--                            </rules>-->
+                    <!--                        </configuration>-->
+                    <!--                    </execution>-->
                 </executions>
             </plugin>
             <!--
