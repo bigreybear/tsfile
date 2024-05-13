@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Diagram>
+  <ID>JAVA</ID>
+  <OriginalElement>org.apache.parquet.io.api.RecordConsumer</OriginalElement>
+  <nodes>
+    <node x="402.5" y="106.0">org.apache.parquet.io.api.RecordConsumer</node>
+    <node x="417.0" y="26.0">org.apache.parquet.example.data.simple.SimpleGroup</node>
+    <node x="613.5" y="266.0">org.apache.parquet.column.ColumnWriter</node>
+    <node x="-152.0" y="246.0">org.apache.parquet.hadoop.InternalParquetRecordWriter</node>
+    <node x="509.0" y="186.0">org.apache.parquet.io.MessageColumnIO.MessageColumnIORecordConsumer</node>
+    <node x="926.5" y="-14.0">org.apache.parquet.example.data.GroupWriter</node>
+    <node x="160.0" y="106.0">org.apache.parquet.hadoop.api.WriteSupport</node>
+    <node x="597.5" y="346.0">org.apache.parquet.column.impl.ColumnWriterBase</node>
+    <node x="604.0" y="426.0">org.apache.parquet.column.impl.ColumnWriterV2</node>
+    <node x="159.0" y="186.0">org.apache.parquet.hadoop.ParquetWriter</node>
+    <node x="614.0" y="-14.0">org.apache.parquet.hadoop.example.GroupWriteSupport</node>
+  </nodes>
+  <notes />
+  <edges>
+    <edge source="org.apache.parquet.hadoop.example.GroupWriteSupport" target="org.apache.parquet.example.data.GroupWriter" relationship="CREATE">
+      <point x="94.0" y="0.0" />
+      <point x="-68.5" y="0.0" />
+    </edge>
+    <edge source="org.apache.parquet.example.data.GroupWriter" target="org.apache.parquet.io.api.RecordConsumer" relationship="TO_ONE">
+      <point x="-0.0" y="14.0" />
+      <point x="995.0" y="124.66666666666669" />
+      <point x="85.5" y="4.666666666666686" />
+    </edge>
+    <edge source="org.apache.parquet.hadoop.example.GroupWriteSupport" target="org.apache.parquet.example.data.GroupWriter" relationship="TO_ONE">
+      <point x="0.0" y="-14.0" />
+      <point x="764.25" y="-14.0" />
+      <point x="764.25" y="-78.0" />
+      <point x="959.25" y="-78.0" />
+      <point x="959.25" y="-14.0" />
+      <point x="0.0" y="-14.0" />
+    </edge>
+    <edge source="org.apache.parquet.hadoop.example.GroupWriteSupport" target="org.apache.parquet.io.api.RecordConsumer" relationship="DEPENDENCY">
+      <point x="-0.0" y="14.0" />
+      <point x="708.0" y="115.33333333333331" />
+      <point x="85.5" y="-4.666666666666686" />
+    </edge>
+    <edge source="org.apache.parquet.hadoop.ParquetWriter" target="org.apache.parquet.hadoop.api.WriteSupport" relationship="DEPENDENCY">
+      <point x="0.0" y="-14.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.parquet.column.impl.ColumnWriterBase" target="org.apache.parquet.column.ColumnWriter" relationship="REALIZATION">
+      <point x="0.0" y="-14.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.parquet.hadoop.api.WriteSupport" target="org.apache.parquet.io.api.RecordConsumer" relationship="DEPENDENCY">
+      <point x="88.0" y="0.0" />
+      <point x="-85.5" y="0.0" />
+    </edge>
+    <edge source="org.apache.parquet.hadoop.example.GroupWriteSupport" target="org.apache.parquet.hadoop.api.WriteSupport" relationship="GENERALIZATION">
+      <point x="-94.0" y="0.0" />
+      <point x="248.0" y="0.0" />
+      <point x="0.0" y="-14.0" />
+    </edge>
+    <edge source="org.apache.parquet.hadoop.InternalParquetRecordWriter" target="org.apache.parquet.io.api.RecordConsumer" relationship="TO_ONE">
+      <point x="0.0" y="14.0" />
+      <point x="-12.0" y="296.0" />
+      <point x="488.0" y="296.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.parquet.hadoop.ParquetWriter" target="org.apache.parquet.hadoop.InternalParquetRecordWriter" relationship="CREATE">
+      <point x="-89.0" y="0.0" />
+      <point x="-12.0" y="200.0" />
+      <point x="0.0" y="-14.0" />
+    </edge>
+    <edge source="org.apache.parquet.hadoop.InternalParquetRecordWriter" target="org.apache.parquet.hadoop.api.WriteSupport" relationship="TO_ONE">
+      <point x="-140.0" y="0.0" />
+      <point x="-154.0" y="260.0" />
+      <point x="-154.0" y="120.0" />
+      <point x="-88.0" y="0.0" />
+    </edge>
+    <edge source="org.apache.parquet.hadoop.ParquetWriter" target="org.apache.parquet.hadoop.InternalParquetRecordWriter" relationship="TO_ONE">
+      <point x="-0.0" y="14.0" />
+      <point x="248.0" y="255.33333333333337" />
+      <point x="140.0" y="-4.666666666666629" />
+    </edge>
+    <edge source="org.apache.parquet.io.MessageColumnIO.MessageColumnIORecordConsumer" target="org.apache.parquet.column.ColumnWriter" relationship="CREATE">
+      <point x="0.0" y="14.0" />
+      <point x="661.0" y="240.0" />
+      <point x="688.0" y="240.0" />
+      <point x="0.0" y="-14.0" />
+    </edge>
+    <edge source="org.apache.parquet.hadoop.InternalParquetRecordWriter" target="org.apache.parquet.hadoop.ParquetWriter" relationship="DEPENDENCY">
+      <point x="140.0" y="4.666666666666629" />
+      <point x="404.5" y="264.66666666666663" />
+      <point x="404.5" y="200.0" />
+      <point x="89.0" y="0.0" />
+    </edge>
+    <edge source="org.apache.parquet.io.MessageColumnIO.MessageColumnIORecordConsumer" target="org.apache.parquet.column.ColumnWriter" relationship="TO_MANY">
+      <point x="-152.0" y="0.0" />
+      <point x="534.0" y="200.0" />
+      <point x="534.0" y="280.0" />
+      <point x="-74.5" y="0.0" />
+    </edge>
+    <edge source="org.apache.parquet.io.MessageColumnIO.MessageColumnIORecordConsumer" target="org.apache.parquet.io.api.RecordConsumer" relationship="GENERALIZATION">
+      <point x="-90.5" y="-4.0" />
+      <point x="570.5" y="160.0" />
+      <point x="538.0" y="160.0" />
+      <point x="50.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.parquet.example.data.simple.SimpleGroup" target="org.apache.parquet.io.api.RecordConsumer" relationship="DEPENDENCY">
+      <point x="0.0" y="14.0" />
+      <point x="0.0" y="-14.0" />
+    </edge>
+    <edge source="org.apache.parquet.column.impl.ColumnWriterV2" target="org.apache.parquet.column.impl.ColumnWriterBase" relationship="GENERALIZATION">
+      <point x="0.0" y="-14.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+  </edges>
+  <settings layout="Compact" zoom="1.0" showDependencies="true" x="521.5" y="138.0" />
+  <SelectedNodes />
+  <Categories>
+    <Category>Inner Classes</Category>
+  </Categories>
+  <SCOPE>All</SCOPE>
+  <VISIBILITY>private</VISIBILITY>
+</Diagram>
+

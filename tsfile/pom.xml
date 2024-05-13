@@ -36,38 +36,6 @@
     </properties>
     <dependencies>
         <!-- https://mvnrepository.com/artifact/ch.qos.logback/logback-classic -->
-        <!--        <dependency>-->
-        <!--            <groupId>org.apache.iotdb</groupId>-->
-        <!--            <artifactId>iotdb-server</artifactId>-->
-        <!--            <scope>system</scope>-->
-        <!--            <version>1.3.1-SNAPSHOT</version>-->
-        <!--            <systemPath>F:\0006DataSets\0000JarLib\iotdb-server-1.3.1-SNAPSHOT-jar-with-dependencies.jar</systemPath>-->
-        <!--        </dependency>-->
-        <dependency>
-            <groupId>org.apache.parquet</groupId>
-            <artifactId>parquet-paper</artifactId>
-            <version>1.0.0</version>
-        </dependency>
-
-        <!-- Parquet deps -->
-
-        <dependency>
-            <groupId>org.apache.hadoop</groupId>
-            <artifactId>hadoop-client</artifactId>
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.hadoop</groupId>
-            <artifactId>hadoop-common</artifactId>
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.hadoop</groupId>
-            <artifactId>hadoop-mapreduce-client-core</artifactId>
-        </dependency>
-
-        <!-- Parquet deps end -->
-
         <dependency>
             <groupId>org.apache.arrow</groupId>
             <artifactId>arrow-memory-netty</artifactId>
@@ -78,11 +46,6 @@
             <groupId>org.apache.arrow</groupId>
             <artifactId>arrow-vector</artifactId>
             <version>15.0.0</version>
-        </dependency>
-        <dependency>
-            <groupId>cisd</groupId>
-            <artifactId>jhdf5</artifactId>
-            <version>14.12.6</version>
         </dependency>
         <dependency>
             <groupId>org.apache.tsfile</groupId>
@@ -144,6 +107,14 @@
     </dependencies>
     <build>
         <plugins>
+            <!-- Note(zx) to overwrite enforcer in TsFile-Parent -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.antlr</groupId>
                 <artifactId>antlr4-maven-plugin</artifactId>

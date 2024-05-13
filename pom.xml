@@ -35,8 +35,12 @@
         <module>common</module>
         <module>tsfile</module>
         <module>examples</module>
+        <module>parquet</module>
+        <module>comparison</module>
     </modules>
     <properties>
+        <!-- Note(zx) version for experimental building -->
+        <parquet.exp.version>vTsFile</parquet.exp.version>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <argLine/>
@@ -63,65 +67,8 @@
             <!--                <scope>system</scope>-->
             <!--                <systemPath>F:\0006DataSets\0000JarLib\iotdb-server-1.3.1-SNAPSHOT-jar-with-dependencies.jar</systemPath>-->
             <!--            </dependency>-->
-
             <!-- To include tailored Parquet, install jar built from parquet-mr/r/zx as follows: -->
             <!-- mvn install:install-file -Dfile=/path/to/parquet.jar -DgroupId=org.apache.parquet -DartifactId=parquet-paper -Dversion=1.0.0 -Dpackaging=jar -DgeneratePom=true  -->
-            <dependency>
-                <groupId>org.apache.paquet</groupId>
-                <artifactId>parquet-paper</artifactId>
-                <version>1.0.0</version>
-            </dependency>
-
-            <!-- parquet dependencies -->
-
-            <dependency>
-                <groupId>org.apache.hadoop</groupId>
-                <artifactId>hadoop-mapreduce-client-core</artifactId>
-                <version>${hadoop.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>org.slf4j</groupId>
-                        <artifactId>*</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>ch.qos.reload4j</groupId>
-                        <artifactId>*</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.hadoop</groupId>
-                <artifactId>hadoop-client</artifactId>
-                <version>${hadoop.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>org.slf4j</groupId>
-                        <artifactId>*</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>ch.qos.reload4j</groupId>
-                        <artifactId>*</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.hadoop</groupId>
-                <artifactId>hadoop-common</artifactId>
-                <version>${hadoop.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>org.slf4j</groupId>
-                        <artifactId>*</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>ch.qos.reload4j</groupId>
-                        <artifactId>*</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-
-            <!-- all deps above are for hacked parquet -->
-
             <dependency>
                 <groupId>org.apache.arrow</groupId>
                 <artifactId>arrow-memory-netty</artifactId>

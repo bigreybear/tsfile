@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Diagram>
+  <ID>JAVA</ID>
+  <OriginalElement>org.apache.parquet.io.ColumnIO</OriginalElement>
+  <nodes>
+    <node x="61.0" y="726.0">org.apache.parquet.io.MessageColumnIO.MessageColumnIORecordConsumer</node>
+    <node x="261.0" y="306.0">org.apache.parquet.io.PrimitiveColumnIO</node>
+    <node x="68.5" y="546.0">org.apache.parquet.schema.TypeVisitor</node>
+    <node x="181.0" y="486.0">org.apache.parquet.io.MessageColumnIO</node>
+    <node x="546.0" y="546.0">org.apache.parquet.io.ColumnIOFactory</node>
+    <node x="112.0" y="166.0">org.apache.parquet.io.ColumnIO</node>
+    <node x="344.0" y="666.0">org.apache.parquet.io.ColumnIOFactory.ColumnIOCreatorVisitor</node>
+    <node x="489.0" y="166.0">org.apache.parquet.schema.GroupType</node>
+    <node x="600.0" y="106.0">org.apache.parquet.schema.PrimitiveType</node>
+    <node x="451.0" y="-14.0">org.apache.parquet.schema.Type</node>
+    <node x="500.0" y="366.0">org.apache.parquet.schema.MessageType</node>
+    <node x="90.0" y="366.0">org.apache.parquet.io.GroupColumnIO</node>
+  </nodes>
+  <notes />
+  <edges>
+    <edge source="org.apache.parquet.io.ColumnIOFactory.ColumnIOCreatorVisitor" target="org.apache.parquet.schema.MessageType" relationship="TO_ONE">
+      <point x="0.0" y="-14.0" />
+      <point x="453.0" y="640.0" />
+      <point x="433.0" y="640.0" />
+      <point x="433.0" y="580.0" />
+      <point x="513.0" y="580.0" />
+      <point x="513.0" y="520.0" />
+      <point x="573.0" y="520.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.parquet.io.ColumnIOFactory.ColumnIOCreatorVisitor" target="org.apache.parquet.io.ColumnIOFactory" relationship="INNER_CLASS">
+      <point x="72.66666666666666" y="-14.0" />
+      <point x="525.6666666666666" y="640.0" />
+      <point x="633.0" y="640.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.parquet.io.MessageColumnIO" target="org.apache.parquet.io.PrimitiveColumnIO" relationship="TO_MANY">
+      <point x="46.0" y="-14.0" />
+      <point x="319.0" y="460.0" />
+      <point x="353.0" y="460.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.parquet.io.MessageColumnIO.MessageColumnIORecordConsumer" target="org.apache.parquet.io.ColumnIO" relationship="TO_ONE">
+      <point x="-101.33333333333334" y="-14.0" />
+      <point x="111.66666666666666" y="700.0" />
+      <point x="13.0" y="700.0" />
+      <point x="13.0" y="280.0" />
+      <point x="173.0" y="280.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.parquet.io.MessageColumnIO.MessageColumnIORecordConsumer" target="org.apache.parquet.io.GroupColumnIO" relationship="DEPENDENCY">
+      <point x="0.0" y="-14.0" />
+      <point x="213.0" y="680.0" />
+      <point x="53.0" y="680.0" />
+      <point x="53.0" y="520.0" />
+      <point x="117.66666666666667" y="520.0" />
+      <point x="-55.33333333333333" y="14.0" />
+    </edge>
+    <edge source="org.apache.parquet.io.MessageColumnIO" target="org.apache.parquet.io.GroupColumnIO" relationship="GENERALIZATION">
+      <point x="-46.0" y="-14.0" />
+      <point x="227.0" y="460.0" />
+      <point x="173.0" y="460.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.parquet.io.PrimitiveColumnIO" target="org.apache.parquet.io.ColumnIO" relationship="GENERALIZATION">
+      <point x="46.0" y="-14.0" />
+      <point x="399.0" y="260.0" />
+      <point x="233.0" y="260.0" />
+      <point x="233.0" y="220.0" />
+      <point x="213.66666666666669" y="220.0" />
+      <point x="40.66666666666667" y="14.0" />
+    </edge>
+    <edge source="org.apache.parquet.io.ColumnIO" target="org.apache.parquet.io.GroupColumnIO" relationship="TO_ONE">
+      <point x="-40.66666666666667" y="14.0" />
+      <point x="132.33333333333331" y="260.0" />
+      <point x="117.66666666666669" y="260.0" />
+      <point x="-55.333333333333314" y="-14.0" />
+    </edge>
+    <edge source="org.apache.parquet.io.MessageColumnIO.MessageColumnIORecordConsumer" target="org.apache.parquet.io.MessageColumnIO" relationship="INNER_CLASS">
+      <point x="101.33333333333334" y="-14.0" />
+      <point x="314.33333333333337" y="620.0" />
+      <point x="227.0" y="620.0" />
+      <point x="-46.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.parquet.io.GroupColumnIO" target="org.apache.parquet.io.ColumnIO" relationship="GENERALIZATION">
+      <point x="55.33333333333333" y="-14.0" />
+      <point x="228.33333333333331" y="260.0" />
+      <point x="233.0" y="260.0" />
+      <point x="233.0" y="220.0" />
+      <point x="213.66666666666669" y="220.0" />
+      <point x="40.66666666666667" y="14.0" />
+    </edge>
+    <edge source="org.apache.parquet.schema.GroupType" target="org.apache.parquet.schema.Type" relationship="TO_MANY">
+      <point x="-32.0" y="-14.0" />
+      <point x="521.0" y="140.0" />
+      <point x="473.0" y="140.0" />
+      <point x="473.0" y="40.0" />
+      <point x="472.0" y="40.0" />
+      <point x="-21.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.parquet.io.ColumnIOFactory.ColumnIOCreatorVisitor" target="org.apache.parquet.io.MessageColumnIO" relationship="TO_ONE">
+      <point x="0.0" y="-14.0" />
+      <point x="453.0" y="640.0" />
+      <point x="433.0" y="640.0" />
+      <point x="433.0" y="580.0" />
+      <point x="319.0" y="580.0" />
+      <point x="46.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.parquet.schema.GroupType" target="org.apache.parquet.schema.Type" relationship="GENERALIZATION">
+      <point x="32.0" y="-14.0" />
+      <point x="585.0" y="80.0" />
+      <point x="593.0" y="80.0" />
+      <point x="593.0" y="40.0" />
+      <point x="514.0" y="40.0" />
+      <point x="21.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.parquet.io.GroupColumnIO" target="org.apache.parquet.io.ColumnIO" relationship="TO_MANY">
+      <point x="0.0" y="-14.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.parquet.io.ColumnIOFactory.ColumnIOCreatorVisitor" target="org.apache.parquet.io.GroupColumnIO" relationship="TO_ONE">
+      <point x="0.0" y="-14.0" />
+      <point x="453.0" y="640.0" />
+      <point x="433.0" y="640.0" />
+      <point x="433.0" y="580.0" />
+      <point x="393.0" y="580.0" />
+      <point x="393.0" y="440.0" />
+      <point x="228.33333333333331" y="440.0" />
+      <point x="55.333333333333314" y="14.0" />
+    </edge>
+    <edge source="org.apache.parquet.io.ColumnIO" target="org.apache.parquet.schema.Type" relationship="TO_ONE">
+      <point x="0.0" y="-14.0" />
+      <point x="173.0" y="140.0" />
+      <point x="473.0" y="140.0" />
+      <point x="473.0" y="40.0" />
+      <point x="472.0" y="40.0" />
+      <point x="-21.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.parquet.schema.PrimitiveType" target="org.apache.parquet.schema.Type" relationship="GENERALIZATION">
+      <point x="0.0" y="-14.0" />
+      <point x="673.0" y="80.0" />
+      <point x="593.0" y="80.0" />
+      <point x="593.0" y="40.0" />
+      <point x="514.0" y="40.0" />
+      <point x="21.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.parquet.io.PrimitiveColumnIO" target="org.apache.parquet.io.ColumnIO" relationship="TO_MANY">
+      <point x="-46.0" y="-14.0" />
+      <point x="307.0" y="280.0" />
+      <point x="173.0" y="280.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.parquet.io.ColumnIOFactory.ColumnIOCreatorVisitor" target="org.apache.parquet.schema.Type" relationship="TO_ONE">
+      <point x="0.0" y="-14.0" />
+      <point x="453.0" y="640.0" />
+      <point x="433.0" y="640.0" />
+      <point x="433.0" y="580.0" />
+      <point x="473.0" y="580.0" />
+      <point x="473.0" y="40.0" />
+      <point x="472.0" y="40.0" />
+      <point x="-21.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.parquet.io.ColumnIOFactory.ColumnIOCreatorVisitor" target="org.apache.parquet.io.PrimitiveColumnIO" relationship="TO_MANY">
+      <point x="0.0" y="-14.0" />
+      <point x="453.0" y="640.0" />
+      <point x="433.0" y="640.0" />
+      <point x="433.0" y="460.0" />
+      <point x="353.0" y="460.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.parquet.io.ColumnIOFactory.ColumnIOCreatorVisitor" target="org.apache.parquet.schema.TypeVisitor" relationship="REALIZATION">
+      <point x="-72.66666666666666" y="-14.0" />
+      <point x="380.33333333333337" y="600.0" />
+      <point x="133.0" y="600.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.parquet.schema.MessageType" target="org.apache.parquet.schema.GroupType" relationship="GENERALIZATION">
+      <point x="0.0" y="-14.0" />
+      <point x="573.0" y="340.0" />
+      <point x="553.0" y="340.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+  </edges>
+  <settings layout="Hierarchic Compact" zoom="1.5" showDependencies="true" x="389.5" y="380.0" />
+  <SelectedNodes />
+  <Categories>
+    <Category>Inner Classes</Category>
+  </Categories>
+  <SCOPE>All</SCOPE>
+  <VISIBILITY>private</VISIBILITY>
+</Diagram>
+

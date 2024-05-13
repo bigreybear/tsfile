@@ -25,9 +25,39 @@ ___________    ___________.__.__
 \__    ___/____\_   _____/|__|  |   ____  
   |    | /  ___/|    __)  |  |  | _/ __ \ 
   |    | \___ \ |     \   |  |  |_\  ___/ 
-  |____|/____  >\___  /   |__|____/\___  >  version 1.0.0
+  |____|/____  >\___  /   |__|____/\___  >  version 1.0.0-zx/research
              \/     \/                 \/  
 </pre>
+
+## Preface
+
+For fast comparison, necessary files from Parquet-MR are 
+included directly into the submodule `parquet`.
+
+There could be dependency issues due to the rough inclusion, 
+it is suggested that you should try building before actually executing any experiments.
+
+The [Parquet-MR](https://github.com/apache/parquet-mr/tree/d8396086b3e3fefc6829f8640917c3bbde0fa9c4) 
+are copied from Feb 19 2024.
+
+To validate dependency about Parquet, you can run as follows:
+```bash
+mvn clean package -pl parquet/parquet-hadoop -am -Dmaven.test.skip=true -Drat.skip=true -Dspotless.check.skip=true -Dcheckstyle.skip=true
+```
+
+To build TsFile, you can run:
+```bash
+mvn clean package -pl tsfile -am -Dmaven.test.skip=true -Drat.skip=true -Dspotless.check.skip=true -Dcheckstyle.skip=true
+```
+
+To build a fat jar to reproduce the comparisons, run as follows:
+```bash
+mvn clean package -pl comparison -am -Dmaven.test.skip=true -Drat.skip=true -Dspotless.check.skip=true -Dcheckstyle.skip=true -Pget-jar-with-dependencies
+```
+
+Note:
+There are implicit conflicts like dependency version convergence problems, class duplications, etc.
+They are included from Parquet-MR and is currently tolerated by enforcer.skip.
 
 ## Abstract
 

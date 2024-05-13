@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Diagram>
+  <ID>JAVA</ID>
+  <OriginalElement>org.apache.parquet.hadoop.InternalParquetRecordWriter</OriginalElement>
+  <nodes>
+    <node x="652.8333333333335" y="404.33333333333337">org.apache.parquet.io.api.RecordConsumer</node>
+    <node x="518.6939182452643" y="25.629112662013938">org.apache.parquet.hadoop.ColumnChunkPageWriteStore</node>
+    <node x="289.0" y="-79.98903290129613">org.apache.parquet.hadoop.InternalParquetRecordWriter</node>
+    <node x="560.5" y="221.0">org.apache.parquet.example.data.GroupWriter</node>
+    <node x="429.3135593220339" y="124.37288135593224">org.apache.parquet.hadoop.api.WriteSupport</node>
+    <node x="716.0" y="124.37288135593224">org.apache.parquet.hadoop.ParquetRecordWriter</node>
+    <node x="200.0" y="101.0">org.apache.parquet.hadoop.ParquetWriter</node>
+    <node x="755.0" y="221.0">org.apache.parquet.hadoop.example.GroupWriteSupport</node>
+    <node x="980.1666666666667" y="115.66666666666669">org.apache.parquet.hadoop.ParquetFileWriter</node>
+  </nodes>
+  <notes />
+  <edges>
+    <edge source="org.apache.parquet.hadoop.example.GroupWriteSupport" target="org.apache.parquet.example.data.GroupWriter" relationship="CREATE">
+      <point x="15.0" y="14.0" />
+      <point x="864.0" y="296.5" />
+      <point x="660.3333333333335" y="296.5" />
+      <point x="31.333333333333485" y="14.0" />
+    </edge>
+    <edge source="org.apache.parquet.hadoop.example.GroupWriteSupport" target="org.apache.parquet.example.data.GroupWriter" relationship="TO_ONE">
+      <point x="-94.0" y="0.0" />
+      <point x="68.5" y="0.0" />
+    </edge>
+    <edge source="org.apache.parquet.example.data.GroupWriter" target="org.apache.parquet.io.api.RecordConsumer" relationship="TO_ONE">
+      <point x="0.0" y="14.0" />
+      <point x="629.0" y="363.5" />
+      <point x="592.0" y="363.5" />
+      <point x="592.0" y="418.333" />
+      <point x="-85.50033333333351" y="-3.3333333334439885E-4" />
+    </edge>
+    <edge source="org.apache.parquet.hadoop.ColumnChunkPageWriteStore" target="org.apache.parquet.hadoop.ParquetFileWriter" relationship="DEPENDENCY">
+      <point x="130.00008175473567" y="-1.1266201394022346E-4" />
+      <point x="962.0" y="39.629" />
+      <point x="962.0" y="129.667" />
+      <point x="-85.49966666666671" y="3.3333333331597714E-4" />
+    </edge>
+    <edge source="org.apache.parquet.hadoop.ParquetWriter" target="org.apache.parquet.hadoop.api.WriteSupport" relationship="DEPENDENCY">
+      <point x="89.0" y="0.0" />
+      <point x="396.0" y="115.0" />
+      <point x="396.0" y="138.373" />
+      <point x="-87.9995593220338" y="1.1864406775430325E-4" />
+    </edge>
+    <edge source="org.apache.parquet.hadoop.example.GroupWriteSupport" target="org.apache.parquet.io.api.RecordConsumer" relationship="DEPENDENCY">
+      <point x="0.0" y="-14.0" />
+      <point x="849.0" y="196.0" />
+      <point x="960.5" y="196.0" />
+      <point x="960.5" y="418.333" />
+      <point x="85.49966666666649" y="-3.3333333334439885E-4" />
+    </edge>
+    <edge source="org.apache.parquet.hadoop.ParquetRecordWriter" target="org.apache.parquet.hadoop.InternalParquetRecordWriter" relationship="TO_ONE">
+      <point x="-15.0" y="-13.999881355932231" />
+      <point x="814.5" y="-32.0" />
+      <point x="414.0" y="-32.0" />
+      <point x="-15.0" y="14.00003290129613" />
+    </edge>
+    <edge source="org.apache.parquet.hadoop.api.WriteSupport" target="org.apache.parquet.io.api.RecordConsumer" relationship="DEPENDENCY">
+      <point x="4.4067796613944665E-4" y="14.000118644067754" />
+      <point x="517.314" y="196.0" />
+      <point x="960.5" y="196.0" />
+      <point x="960.5" y="418.333" />
+      <point x="85.49966666666649" y="-3.3333333334439885E-4" />
+    </edge>
+    <edge source="org.apache.parquet.hadoop.example.GroupWriteSupport" target="org.apache.parquet.hadoop.api.WriteSupport" relationship="GENERALIZATION">
+      <point x="30.0" y="14.0" />
+      <point x="879.0" y="311.5" />
+      <point x="502.31399999999996" y="311.5" />
+      <point x="-14.99955932203386" y="14.0" />
+    </edge>
+    <edge source="org.apache.parquet.hadoop.InternalParquetRecordWriter" target="org.apache.parquet.hadoop.ColumnChunkPageWriteStore" relationship="CREATE">
+      <point x="97.19391824526429" y="14.0" />
+      <point x="-122.5" y="-14.0" />
+    </edge>
+    <edge source="org.apache.parquet.hadoop.InternalParquetRecordWriter" target="org.apache.parquet.io.api.RecordConsumer" relationship="TO_ONE">
+      <point x="0.0" y="-14.0" />
+      <point x="429.0" y="-112.48903290129613" />
+      <point x="152.5" y="-112.48903290129613" />
+      <point x="152.5" y="449.83333333333337" />
+      <point x="738.3333333333335" y="449.83333333333337" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.parquet.hadoop.ParquetWriter" target="org.apache.parquet.hadoop.InternalParquetRecordWriter" relationship="CREATE">
+      <point x="23.000000000001137" y="-12.333333333332973" />
+      <point x="308.6666666666679" y="102.66666666666703" />
+      <point x="-120.33333333333212" y="15.322366234629811" />
+    </edge>
+    <edge source="org.apache.parquet.hadoop.ParquetRecordWriter" target="org.apache.parquet.hadoop.ParquetFileWriter" relationship="DEPENDENCY">
+      <point x="113.5" y="1.1864406775430325E-4" />
+      <point x="962.0" y="138.373" />
+      <point x="962.0" y="129.667" />
+      <point x="-85.49966666666671" y="3.3333333331597714E-4" />
+    </edge>
+    <edge source="org.apache.parquet.hadoop.InternalParquetRecordWriter" target="org.apache.parquet.hadoop.api.WriteSupport" relationship="TO_ONE">
+      <point x="15.0" y="14.0" />
+      <point x="-73.31355932203383" y="-14.0" />
+    </edge>
+    <edge source="org.apache.parquet.hadoop.ParquetWriter" target="org.apache.parquet.hadoop.InternalParquetRecordWriter" relationship="TO_ONE">
+      <point x="75.0000000000012" y="-10.333333333332973" />
+      <point x="361.3333333333345" y="104.66666666666703" />
+      <point x="361.3333333333345" y="-51.99999999999966" />
+      <point x="-67.66666666666549" y="13.989032901296468" />
+    </edge>
+    <edge source="org.apache.parquet.hadoop.InternalParquetRecordWriter" target="org.apache.parquet.hadoop.ParquetFileWriter" relationship="TO_ONE">
+      <point x="140.0" y="0.0" />
+      <point x="1065.6666666666667" y="-65.98903290129613" />
+      <point x="0.0" y="-14.0" />
+    </edge>
+    <edge source="org.apache.parquet.hadoop.InternalParquetRecordWriter" target="org.apache.parquet.hadoop.ColumnChunkPageWriteStore" relationship="TO_ONE">
+      <point x="132.5" y="14.0" />
+      <point x="-87.19391824526429" y="-14.0" />
+    </edge>
+    <edge source="org.apache.parquet.hadoop.ParquetWriter" target="org.apache.parquet.hadoop.ParquetFileWriter" relationship="CREATE">
+      <point x="-89.0" y="0.0" />
+      <point x="167.5" y="115.0" />
+      <point x="167.5" y="-97.48903290129613" />
+      <point x="1080.6666666666667" y="-97.48903290129613" />
+      <point x="15.0" y="-14.0" />
+    </edge>
+    <edge source="org.apache.parquet.hadoop.InternalParquetRecordWriter" target="org.apache.parquet.hadoop.ParquetWriter" relationship="DEPENDENCY">
+      <point x="-140.0" y="0.0" />
+      <point x="259.0" y="-65.98903290129613" />
+      <point x="-30.0" y="-14.0" />
+    </edge>
+    <edge source="org.apache.parquet.hadoop.ParquetRecordWriter" target="org.apache.parquet.hadoop.InternalParquetRecordWriter" relationship="CREATE">
+      <point x="0.0" y="-13.999881355932231" />
+      <point x="829.5" y="-13.0" />
+      <point x="429.0" y="-13.0" />
+      <point x="0.0" y="14.00003290129613" />
+    </edge>
+    <edge source="org.apache.parquet.hadoop.ParquetRecordWriter" target="org.apache.parquet.hadoop.api.WriteSupport" relationship="DEPENDENCY">
+      <point x="-92.0" y="14.000118644067754" />
+      <point x="737.5" y="266.5" />
+      <point x="274.0" y="266.5" />
+      <point x="274.0" y="146.5" />
+      <point x="396.0" y="146.5" />
+      <point x="396.0" y="138.373" />
+      <point x="-87.9995593220338" y="1.1864406775430325E-4" />
+    </edge>
+  </edges>
+  <settings layout="Hierarchic" zoom="1.5" showDependencies="true" x="743.3333333333345" y="195.33333333333366" />
+  <SelectedNodes />
+  <Categories />
+  <SCOPE>All</SCOPE>
+  <VISIBILITY>private</VISIBILITY>
+</Diagram>
+
