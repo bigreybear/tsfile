@@ -13,12 +13,12 @@
     <url>http://maven.apache.org</url>
     <packaging>pom</packaging>
     <repositories>
-        <!--        <repository>-->
-        <!--            <id>jitpack.io</id>-->
-        <!--            <url>https://jitpack.io</url>-->
-        <!--            <name>Jitpack.io repository</name>-->
-        <!--            &lt;!&ndash; needed for brotli-codec &ndash;&gt;-->
-        <!--        </repository>-->
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+            <name>Jitpack.io repository</name>
+            <!-- needed for brotli-codec -->
+        </repository>
     </repositories>
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
