@@ -28,6 +28,16 @@
             <artifactId>parquet-hadoop</artifactId>
             <version>vTsFile</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-csv</artifactId>
+            <version>1.8</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.arrow</groupId>
+            <artifactId>arrow-compression</artifactId>
+            <version>15.0.0</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

@@ -44,9 +44,10 @@ import org.slf4j.LoggerFactory;
 /**
  * NOTE From UML, it holds many crucial class instance.
  * NOTE directly controlled/called by {@link ParquetWriter}
+ * Note(zx): Change from default to public.
  * @param <T>
  */
-class InternalParquetRecordWriter<T> {
+public class InternalParquetRecordWriter<T> {
   private static final Logger LOG = LoggerFactory.getLogger(InternalParquetRecordWriter.class);
 
   private final ParquetFileWriter parquetFileWriter;

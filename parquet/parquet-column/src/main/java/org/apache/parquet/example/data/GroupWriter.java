@@ -22,6 +22,7 @@ import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.Type;
 
+
 public class GroupWriter {
 
   private final RecordConsumer recordConsumer;
@@ -60,5 +61,15 @@ public class GroupWriter {
         recordConsumer.endField(fieldName, field);
       }
     }
+  }
+
+  /**
+   * Note(zx) ingest data with batch, only shallow/primitive types permitted.
+   * Notice that this method may delay the size checker {@link InternalParquetRecordWriter#write},
+   * but that would be aligned with that of TsFile.
+   * @param groups array for groups, which is the data structure for insertion
+   */
+  private void writeGroupBatch(Group[] groups, GroupType type) {
+
   }
 }
