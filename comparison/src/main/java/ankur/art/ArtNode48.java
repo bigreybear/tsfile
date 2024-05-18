@@ -18,6 +18,7 @@
  */
 package ankur.art;
 
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.ByteArrayOutputStream;
@@ -30,10 +31,25 @@ import java.util.List;
 class ArtNode48 extends ArtNode {
   public static int count;
   // NOTE initial value of keys is zero, so handle it as an exception
+  // Note(zx) [elem of keys] is [index of children]
   public byte[] keys = new byte[256];
   public Node[] children = new Node[48];
 
   // region Mod Methods
+
+
+  @Override
+  public int compactedSize() {
+    // prefix + key_maps + pointers
+    int totalSize = this.compactedPartialLen() + 256 + 48 * 8;
+    Iterator<Node> nodeIterator = this.getChildren();
+    for (Iterator<Node> it = nodeIterator; it.hasNext(); ) {
+      Node n = it.next();
+      totalSize += n.compactedSize();
+    }
+    return totalSize;
+  }
+
   @Override
   public byte getType() {
     return 3;
@@ -181,6 +197,7 @@ class ArtNode48 extends ArtNode {
   @Override
   public ChildPtr find_child(byte c) {
     int idx = to_uint(keys[to_uint(c)]);
+    // Note(zx) this line indicates that 0 is illegal for indexing children
     if (idx != 0) return new ArrayChildPtr(children, idx - 1);
     return null;
   }

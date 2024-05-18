@@ -40,6 +40,9 @@ public class XYZTreeTagLoader {
     // initArrowBin(srcFile, dstFile);
     ArtTree tree = buildARTFromArrow(dstFile);
     ArtTree.traverse((ArtNode) tree.root, "");
+    tree.calculateDepth();
+    tree.collectStatistics();
+    System.out.println("Hello");
   }
 
   public static void initArrowBin(String csvFilePath, String arrowFilePath) {

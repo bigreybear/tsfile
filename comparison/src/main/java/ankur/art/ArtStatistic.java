@@ -38,4 +38,8 @@ public class ArtStatistic {
     return partialKeyEffects.entrySet().stream().mapToInt(e -> e.getKey().length() * e.getValue()).sum();
   }
 
+  public void showPartialKeyDistribute() {
+
+  }
+
 }

@@ -34,6 +34,11 @@ public class Leaf extends Node {
 
 
   @Override
+  public boolean isLeaf() {
+    return true;
+  }
+
+  @Override
   public int compactedSize() {
     // value_pointer + prefix_len + prefix
     return 8 + 1 + remain;

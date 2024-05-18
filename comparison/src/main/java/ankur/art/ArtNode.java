@@ -28,6 +28,23 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
+/**
+ * Note(zx) Let us define the most important concepts
+ *
+ * Key is the dividing byte that holds a corresponding pointer, either to a node or the value.
+ *
+ * Partial (key) in this class represents the prefix in ART paper, which is concatenated by single-child keys up the
+ *  holding node.
+ * The most space-efficient is to allocate exact same bytes as needed, however this may incur more allocation when
+ *  the partial key changes.
+ * There are two more alternative approaches as follows:
+ *  1) allocate fixed length bytes, with a valid length indicator, i.e., an extra byte;
+ *  2) keep a pointer in nodes, pointing to the actual partial key.
+ *
+ * Compacted size for sequentially piling up nodes, as serialization or bytes array size, may suffer false share.
+ * Aligned size for each node aligns with cache line, and then piles up.
+ *
+ */
 public abstract class ArtNode extends Node {
   public int num_children = 0;
   public int partial_len = 0;
@@ -35,11 +52,8 @@ public abstract class ArtNode extends Node {
 
   // region Mod Methods
 
-
-  @Override
-  public int compactedSize() {
-    // prefix length indicator + prefix
-    return 1 + partial_len;
+  protected int compactedPartialLen() {
+    return partial_len + 1;
   }
 
   public abstract Iterator<Node> getChildren();

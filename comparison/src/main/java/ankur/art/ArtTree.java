@@ -22,6 +22,7 @@ import ankur.art.util.MockARTFileOutputStream;
 import art.res.util.BoxPlotData;
 import art.res.util.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.checkerframework.checker.units.qual.A;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -85,6 +86,34 @@ public class ArtTree extends ChildPtr implements Serializable {
 
   public int computeDescendentLeaf() {
     return this.root.computeDescentLeaf();
+  }
+
+  public void computeSiblingOverlapPartialKey() {
+
+  }
+
+  private static class BroadFirstTraveler {
+    Node root;
+    Deque<Node> nodes = new ArrayDeque<>();
+    public BroadFirstTraveler(Node root) {
+      this.root = root;
+      nodes.add(root);
+    }
+
+    public Node getNext() {
+      if (nodes.isEmpty()) {
+        return null;
+      }
+
+      Node n = nodes.pop();
+      if (!n.isLeaf()) {
+        ArtNode an = (ArtNode) n;
+        for (Iterator<Node> it = an.getChildren(); it.hasNext(); ) {
+          nodes.add(it.next());
+        }
+      }
+      return n;
+    }
   }
 
   public void collectStatistics() {

@@ -36,7 +36,13 @@ class ArtNode256 extends ArtNode {
   @Override
   public int compactedSize() {
     // prefix + 256 pointers
-    return 256 * 8;
+    int totalSize = this.compactedPartialLen() + 256 * 8;
+    Iterator<Node> nodeIterator = this.getChildren();
+    for (Iterator<Node> it = nodeIterator; it.hasNext(); ) {
+      Node n = it.next();
+      totalSize += n.compactedSize();
+    }
+    return totalSize;
   }
 
   @Override

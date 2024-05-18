@@ -34,6 +34,10 @@ public abstract class Node implements Serializable {
 
   // region Mod Methods
 
+  public boolean isLeaf() {
+    return false;
+  }
+
   /** Serialize to ByteArrayOutputStream for measuring size. */
   public abstract void serialize(OutputStream out) throws IOException;
 

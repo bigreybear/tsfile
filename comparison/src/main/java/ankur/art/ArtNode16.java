@@ -27,6 +27,20 @@ class ArtNode16 extends ArtNode {
   public Node[] children = new Node[16];
 
   // region Mod Methods
+
+
+  @Override
+  public int compactedSize() {
+    // prefix + key_array + pointers
+    int totalSize = this.compactedPartialLen() + 16 + 16 * 8;
+    Iterator<Node> nodeIterator = this.getChildren();
+    for (Iterator<Node> it = nodeIterator; it.hasNext(); ) {
+      Node n = it.next();
+      totalSize += n.compactedSize();
+    }
+    return totalSize;
+  }
+
   @Override
   public byte getType() {
     return 2;
