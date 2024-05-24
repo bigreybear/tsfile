@@ -14,6 +14,8 @@ import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.FieldType;
 import org.apache.arrow.vector.types.pojo.Schema;
 import org.apache.arrow.vector.util.Text;
+import org.apache.tsfile.exps.conf.MergedDataSets;
+import org.apache.tsfile.exps.updated.LoaderBase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,14 +35,14 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Stream;
 
-public class TSBSLoader {
+public class TSBSLoader extends LoaderBase {
   private static final Logger logger = LoggerFactory.getLogger(TSBSLoader.class);
   public static final boolean DEBUG = false;
 
   private final BufferAllocator allocator;
   private VectorSchemaRoot root;
-  public LargeVarCharVector idVector;
-  public BigIntVector timestampVector;
+  // public LargeVarCharVector idVector;
+  // public BigIntVector timestampVector;
   public Float8Vector latVec;
   public Float8Vector lonVec;
   public Float8Vector eleVec;
@@ -287,6 +289,43 @@ public class TSBSLoader {
 
   public static String DIR = "F:\\0006DataSets\\TSBS2";
   public static String ARROW_DIR = "F:\\0006DataSets\\Arrows\\";
+
+  public static LoaderBase deser(MergedDataSets mergedDataSets) throws IOException {
+    String filePath = mergedDataSets.getArrowFile();
+    TSBSLoader loader = new TSBSLoader();
+    RootAllocator allocator = new RootAllocator(16 * 1024 * 1024 * 1024L);
+    try (FileInputStream fis = new FileInputStream(filePath);
+         FileChannel channel = fis.getChannel();
+         ArrowFileReader reader = new ArrowFileReader(channel, allocator)) {
+      VectorSchemaRoot readRoot = reader.getVectorSchemaRoot();
+
+      LargeVarCharVector idVector = (LargeVarCharVector) readRoot.getVector("id");
+      BigIntVector timestampVector = (BigIntVector) readRoot.getVector("timestamp");
+      Float8Vector latVec = (Float8Vector) readRoot.getVector("lat");
+      Float8Vector lonVec = (Float8Vector) readRoot.getVector("lon");
+      Float8Vector eleVec = (Float8Vector) readRoot.getVector("ele");
+      Float8Vector velVec = (Float8Vector) readRoot.getVector("vel");
+
+      while (reader.loadNextBatch()) {
+        for (int i = 0; i < readRoot.getRowCount(); i++) {
+          loader.idVector.setValueCount(i + 1);
+          loader.timestampVector.setValueCount(i + 1);
+          loader.latVec.setValueCount(i + 1);
+          loader.lonVec.setValueCount(i + 1);
+          loader.eleVec.setValueCount(i + 1);
+          loader.velVec.setValueCount(i + 1);
+
+          loader.idVector.setSafe(i, new Text(idVector.get(i)));
+          loader.timestampVector.setSafe(i, timestampVector.get(i));
+          setWithNull(latVec, loader.latVec, i);
+          setWithNull(lonVec, loader.lonVec, i);
+          setWithNull(eleVec, loader.eleVec, i);
+          setWithNull(velVec, loader.velVec, i);
+        }
+      }
+      return loader;
+    }
+  }
 
   public static void main(String[] args) throws IOException {
     TSBSLoader loader = new TSBSLoader();

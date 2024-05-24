@@ -14,6 +14,8 @@ import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.FieldType;
 import org.apache.arrow.vector.types.pojo.Schema;
 import org.apache.arrow.vector.util.Text;
+import org.apache.tsfile.exps.conf.MergedDataSets;
+import org.apache.tsfile.exps.updated.LoaderBase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,21 +34,25 @@ import java.util.stream.Stream;
 
 import static org.apache.tsfile.exps.GeoLifeLoader.ARROW_DIR;
 
-public class TDriveLoader {
+public class TDriveLoader extends LoaderBase {
   private static final Logger logger = LoggerFactory.getLogger(TDriveLoader.class);
 
   public static String DIR = "F:\\0006DataSets\\TDrive\\";
 
   private final BufferAllocator allocator;
   private VectorSchemaRoot root;
-  public LargeVarCharVector idVector;
-  public BigIntVector timestampVector;
+  // public LargeVarCharVector idVector;
+  // public BigIntVector timestampVector;
   public Float8Vector latitudeVector;
   public Float8Vector longitudeVector;
 
   public static String tsFilePrefix = "root";
 
   final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
+  public TDriveLoader(int i) {
+    this.allocator = new RootAllocator(0);
+  }
 
   public TDriveLoader() {
     this.allocator = new RootAllocator(2 * 1024 * 1024 * 1024L);
@@ -137,6 +143,37 @@ public class TDriveLoader {
 
   public static TDriveLoader deserialize(String fileName) throws IOException{
     String filePath = ARROW_DIR + fileName;
+    TDriveLoader loader = new TDriveLoader();
+    RootAllocator allocator = new RootAllocator(4 * 1024 * 1024 * 1024L);
+    try (FileInputStream fis = new FileInputStream(filePath);
+         FileChannel channel = fis.getChannel();
+         ArrowFileReader reader = new ArrowFileReader(channel, allocator)) {
+      VectorSchemaRoot readRoot = reader.getVectorSchemaRoot();
+
+      VarCharVector idVector = (VarCharVector) readRoot.getVector("id");
+      BigIntVector timestampVector = (BigIntVector) readRoot.getVector("timestamp");
+      Float8Vector latitudeVector = (Float8Vector) readRoot.getVector("latitude");
+      Float8Vector longitudeVector = (Float8Vector) readRoot.getVector("longitude");
+
+      while (reader.loadNextBatch()) {
+        for (int i = 0; i < readRoot.getRowCount(); i++) {
+          loader.idVector.setValueCount(i + 1);
+          loader.timestampVector.setValueCount(i + 1);
+          loader.latitudeVector.setValueCount(i + 1);
+          loader.longitudeVector.setValueCount(i + 1);
+
+          loader.idVector.setSafe(i, new Text(idVector.get(i)));
+          loader.timestampVector.setSafe(i, timestampVector.get(i));
+          loader.latitudeVector.setSafe(i, latitudeVector.get(i));
+          loader.longitudeVector.setSafe(i, longitudeVector.get(i));
+        }
+      }
+      return loader;
+    }
+  }
+
+  public static LoaderBase deser(MergedDataSets mergedDataSets) throws IOException{
+    String filePath = mergedDataSets.getArrowFile();
     TDriveLoader loader = new TDriveLoader();
     RootAllocator allocator = new RootAllocator(4 * 1024 * 1024 * 1024L);
     try (FileInputStream fis = new FileInputStream(filePath);

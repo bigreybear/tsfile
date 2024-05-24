@@ -14,10 +14,13 @@ import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.FieldType;
 import org.apache.arrow.vector.types.pojo.Schema;
 import org.apache.arrow.vector.util.Text;
+import org.apache.tsfile.exps.conf.MergedDataSets;
+import org.apache.tsfile.exps.updated.LoaderBase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
@@ -30,7 +33,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.stream.Stream;
 
-public class REDDLoader {
+public class REDDLoader extends LoaderBase {
   private static final Logger logger = LoggerFactory.getLogger(REDDLoader.class);
   public static final boolean DEBUG = false;
 
@@ -39,8 +42,8 @@ public class REDDLoader {
 
   private final BufferAllocator allocator;
   private VectorSchemaRoot root;
-  public LargeVarCharVector idVector;
-  public BigIntVector timestampVector;
+  // public LargeVarCharVector idVector;
+  // public BigIntVector timestampVector;
   public Float8Vector elecVector;
   public Float8Vector longitudeVector;
   public Float8Vector altitudeVector;
@@ -48,6 +51,10 @@ public class REDDLoader {
   public static String tsFilePrefix = "root";
 
   final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
+  public REDDLoader(int i) {
+    this.allocator = new RootAllocator(0);
+  }
 
   public REDDLoader() {
     this.allocator = new RootAllocator(16 * 1024 * 1024 * 1024L);
@@ -147,6 +154,34 @@ public class REDDLoader {
 
   public static REDDLoader deserialize(String fileName) throws IOException{
     String filePath = ARROW_DIR + fileName;
+    REDDLoader loader = new REDDLoader();
+    RootAllocator allocator = new RootAllocator(4 * 1024 * 1024 * 1024L);
+    try (FileInputStream fis = new FileInputStream(filePath);
+         FileChannel channel = fis.getChannel();
+         ArrowFileReader reader = new ArrowFileReader(channel, allocator)) {
+      VectorSchemaRoot readRoot = reader.getVectorSchemaRoot();
+
+      VarCharVector idVector = (VarCharVector) readRoot.getVector("id");
+      BigIntVector timestampVector = (BigIntVector) readRoot.getVector("timestamp");
+      Float8Vector latitudeVector = (Float8Vector) readRoot.getVector("elec");
+
+      while (reader.loadNextBatch()) {
+        for (int i = 0; i < readRoot.getRowCount(); i++) {
+          loader.idVector.setValueCount(i + 1);
+          loader.timestampVector.setValueCount(i + 1);
+          loader.elecVector.setValueCount(i + 1);
+
+          loader.idVector.setSafe(i, new Text(idVector.get(i)));
+          loader.timestampVector.setSafe(i, timestampVector.get(i));
+          loader.elecVector.setSafe(i, latitudeVector.get(i));
+        }
+      }
+      return loader;
+    }
+  }
+
+  public static LoaderBase deser(MergedDataSets mergedDataSets) throws IOException {
+    String filePath = mergedDataSets.getArrowFile();
     REDDLoader loader = new REDDLoader();
     RootAllocator allocator = new RootAllocator(4 * 1024 * 1024 * 1024L);
     try (FileInputStream fis = new FileInputStream(filePath);
