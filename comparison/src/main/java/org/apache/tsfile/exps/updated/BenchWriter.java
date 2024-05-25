@@ -1,5 +1,8 @@
 package org.apache.tsfile.exps.updated;
 
+import com.google.flatbuffers.Table;
+import javafx.scene.control.Tab;
+import org.apache.hadoop.yarn.webapp.hamlet2.Hamlet;
 import org.apache.parquet.conf.PlainParquetConfiguration;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
@@ -7,7 +10,7 @@ import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.io.LocalOutputFile;
-import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.exps.conf.MergedDataSets;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -33,11 +36,24 @@ public class BenchWriter {
     public static int rowNum = 0;
   }
 
-  public static void reportParquetProfile(ParquetWriter<?> writer) throws IOException {
-    writer.report(logger);
+  // configure alignment of the tablet
+  static void writeTablet(TsFileWriter writer, Tablet tablet) throws IOException, WriteProcessException {
+    if (_tsfileAlignedTablet) {
+      writer.writeAligned(tablet);
+    } else {
+      writer.write(tablet);
+    }
   }
 
-  public static void writeTsFile() throws IOException {
+  static void registerTablet(TsFileWriter writer, String curDev, List<MeasurementSchema> msl) throws WriteProcessException {
+    if (_tsfileAlignedTablet) {
+      writer.registerAlignedTimeseries(new Path(curDev), msl);
+    } else {
+      writer.registerTimeseries(new Path(curDev), msl);
+    }
+  }
+
+  public static void writeTsFile() throws IOException, WriteProcessException {
     File tsFile = new File(_file_name + _tsfile_sf);
     TsFileWriter writer = new TsFileWriter(tsFile);
 
@@ -52,8 +68,60 @@ public class BenchWriter {
     String curDev;
     tablet.setDeviceId(preDev);
     // Note(zx)
-    // writer.registerTimeseries(new Path(preDev), );
+    writer.registerTimeseries(new Path(preDev), schemaList);
 
+    int totalRows = loaderBase.idVector.getValueCount();
+    int rowInTablet = 0;
+    long lastTS = -1L;
+
+    DataSetsProfile.deviceNum = 1;
+    for (int cnt = 0; cnt < totalRows; cnt++) {
+      curDev = new String(loaderBase.idVector.get(cnt), StandardCharsets.UTF_8);
+      if (!preDev.equals(curDev)) {
+        tablet.rowSize = rowInTablet;
+        writeTablet(writer, tablet);
+        tablet.reset();
+        timestamps = tablet.timestamps;
+        TsFileTabletFiller.refreshArray(tablet);
+
+        tablet.setDeviceId(curDev);
+        registerTablet(writer, curDev, schemaList);
+        rowInTablet = 0;
+
+        if (TO_PROFILE) {
+          DataSetsProfile.deviceNum ++;
+        }
+
+        preDev = curDev;
+        lastTS = -1L;
+      }
+
+      if (rowInTablet >= BATCH) {
+        tablet.rowSize = BATCH;
+        writeTablet(writer, tablet);
+        tablet.reset();
+        tablet.setDeviceId(curDev);
+        TsFileTabletFiller.refreshArray(tablet);
+        rowInTablet = 0;
+      }
+
+      timestamps[rowInTablet] = loaderBase.timestampVector.get(cnt);
+      if (timestamps[rowInTablet] <= lastTS) {
+        continue;
+      }
+
+      lastTS = timestamps[rowInTablet];
+      TsFileTabletFiller.fill(rowInTablet, cnt);
+      rowInTablet ++;
+
+      if (TO_PROFILE) {
+        DataSetsProfile.rowNum ++;
+      }
+    }
+    tablet.rowSize = rowInTablet;
+    writeTablet(writer, tablet);
+    writer.close();
+    writer.report(logger);
   }
 
   public static void writeParquet() throws IOException {
@@ -118,7 +186,7 @@ public class BenchWriter {
     }
 
     writer.close();
-    reportParquetProfile(writer);
+    writer.report(logger);
   }
 
 
@@ -130,6 +198,7 @@ public class BenchWriter {
   public static CompressionCodecName compressorParquet;
   public static CompressionType compressorTsFile;
   public static TSEncoding encodingTsFile = TSEncoding.GORILLA;
+  public static boolean _tsfileAlignedTablet = true;
 
   public static BufferedWriter logger;
 
