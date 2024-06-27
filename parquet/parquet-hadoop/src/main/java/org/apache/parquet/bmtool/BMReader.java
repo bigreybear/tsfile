@@ -160,22 +160,23 @@ public class BMReader {
     long time = System.nanoTime();
     ParquetReader<Group> reader;
     Group record;
-    Stopwatch.zero();
+    Stopwatch stopwatch = new Stopwatch();
+    stopwatch.zero();
     for (FilterCompat.Filter e : exps) {
       int s20 = 20;
       builder.withFilter(e);
       reader = builder.build();
-      Stopwatch.start();
+      stopwatch.start();
       while ((record = reader.read()) != null && s20 > 0) {
         cnt++;
         s20--;
       }
-      Stopwatch.stop();
+      stopwatch.stop();
       reader.close();
     }
     time = System.nanoTime() - time;
     System.out.println("Result count:" + cnt);
-    return new ExecuteResult(Stopwatch.report()/exps.size(), cnt);
+    return new ExecuteResult(stopwatch.report()/exps.size(), cnt);
   }
 
 
