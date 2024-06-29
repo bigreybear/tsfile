@@ -1,4 +1,4 @@
-package org.apache.tsfile.exps.conf;
+package org.apache.tsfile.exps.utils;
 
 public class Stopwatch {
   long acc, temp;

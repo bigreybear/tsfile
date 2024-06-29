@@ -453,6 +453,10 @@ public class ParquetWriter<T> implements Closeable {
     }
   }
 
+  public float[] report() {
+    return writer.report();
+  }
+
   public void report(BufferedWriter bw) throws IOException {
     writer.report(bw);
   }

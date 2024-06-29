@@ -8,6 +8,9 @@ import org.apache.parquet.schema.MessageType;
 
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 
+/**
+ * Latest class to provide datasets services. 6/28/24
+ */
 public enum MergedDataSets {
   TDrive("lat", "lon"),
   GeoLife("lat", "lon"),
@@ -29,9 +32,12 @@ public enum MergedDataSets {
   // to be retrieved while not filtered
   public String crossColumn;
 
-  public static String ARROW_BINS = "F:\\0006DataSets\\Arrows\\";
-  public static String CONDITION_DIR = "F:\\0006DataSets\\Conditions\\";
-  public static String TARGET_DIR = "F:\\0006DataSets\\Results\\";
+  // static final String PRJ_DIR = "F:\\0006DataSets\\"; // @lab
+  static final String PRJ_DIR = "E:\\ExpDataSets\\";  // @home
+
+  public static String ARROW_BINS = PRJ_DIR + "Arrows\\";
+  public static String CONDITION_DIR = PRJ_DIR + "Conditions\\";
+  public static String TARGET_DIR = PRJ_DIR + "Results\\";
 
   public String getArrowFile() {
     switch (this) {
@@ -40,11 +46,9 @@ public enum MergedDataSets {
       case GeoLife:
         return ARROW_BINS + "GeoLife.bin";
       case REDD:
-      case REDD_A:
         // whatever schema is, the source stay the same
         return ARROW_BINS + "REDD.bin";
       case TSBS:
-      case TSBS_A:
         return ARROW_BINS + "TSBS.bin";
       default:
     }
@@ -58,10 +62,8 @@ public enum MergedDataSets {
       case GeoLife:
         return CONDITION_DIR + "GeoLife-lat-10.bin";
       case REDD:
-      case REDD_A:
         return CONDITION_DIR + "REDD-elec-10.bin";
       case TSBS:
-      case TSBS_A:
         return CONDITION_DIR + "TSBS-vel-10.bin";
       default:
     }
@@ -153,69 +155,5 @@ public enum MergedDataSets {
   }
 
   // endregion
-
-  //  to build switch quickly
-  //     case TSBS:
-  //     case REDD:
-  //     case GeoLife:
-  //     case TDrive:
-  //     case REDD_A:
-  //     case TSBS_A:
-  //     default:
-
-  public MessageType getSchema() {
-    switch (this) {
-      case TSBS:
-        return parseMessageType("message TSBS { "
-            + "required binary name;"
-            + "required binary fleet;"
-            + "required binary driver;"
-            + "required int64 timestamp;"
-            + "optional double lat;"
-            + "optional double lon;"
-            + "optional double ele;"
-            + "optional double vel;"
-            + "} ");
-      case REDD:
-        return parseMessageType("message REDD { "
-            + "required binary building;"
-            + "required binary meter;"
-            + "required int64 timestamp;"
-            + "required double elec;"
-            + "} ");
-      case GeoLife:
-        return parseMessageType("message GeoLife { "
-            + "required binary deviceID;"
-            + "required int64 timestamp;"
-            + "required double lon;"
-            + "required double lat;"
-            + "required double alt;"
-            + "} ");
-      case TDrive:
-        return parseMessageType("message TDrive { "
-            + "required binary deviceID;"
-            + "required int64 timestamp;"
-            + "required double lon;"
-            + "required double lat; "
-            + "} ");
-      case REDD_A:
-        return parseMessageType("message REDD { "
-            + "required binary deviceID;"
-            + "required int64 timestamp;"
-            + "required double elec;"
-            + "} ");
-      case TSBS_A:
-        return parseMessageType("message TSBS { "
-            + "required binary deviceID;"
-            + "required int64 timestamp;"
-            + "optional double lat;"
-            + "optional double lon;"
-            + "optional double ele;"
-            + "optional double vel;"
-            + "} ");
-      default:
-        return null;
-    }
-  }
 
 }

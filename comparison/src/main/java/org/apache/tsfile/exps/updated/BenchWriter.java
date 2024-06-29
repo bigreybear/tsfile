@@ -11,7 +11,9 @@ import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.io.LocalOutputFile;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.exps.conf.FileScheme;
 import org.apache.tsfile.exps.conf.MergedDataSets;
+import org.apache.tsfile.exps.utils.ResultPrinter;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.Path;
@@ -19,6 +21,7 @@ import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
+import javax.management.OperationsException;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -54,10 +57,13 @@ public class BenchWriter {
   }
 
   public static void writeTsFile() throws IOException, WriteProcessException {
+    currentScheme = FileScheme.TsFile;
     File tsFile = new File(_file_name + _tsfile_sf);
+    tsFile.delete();
+
     TsFileWriter writer = new TsFileWriter(tsFile);
 
-    LoaderBase loaderBase = LoaderBase.getLoader(mergedDataSets);
+    // LoaderBase loaderBase = LoaderBase.getLoader(mergedDataSets);
     List<MeasurementSchema> schemaList = TsFileTabletFiller.getSchema();
     Tablet tablet = new Tablet("", schemaList);
     tablet.initBitMaps();
@@ -68,7 +74,7 @@ public class BenchWriter {
     String curDev;
     tablet.setDeviceId(preDev);
     // Note(zx)
-    writer.registerTimeseries(new Path(preDev), schemaList);
+    registerTablet(writer, preDev, schemaList);
 
     int totalRows = loaderBase.idVector.getValueCount();
     int rowInTablet = 0;
@@ -121,20 +127,26 @@ public class BenchWriter {
     tablet.rowSize = rowInTablet;
     writeTablet(writer, tablet);
     writer.close();
-    writer.report(logger);
+    logger.setStatus(currentScheme, mergedDataSets);
+    logger.writeResult(writer.report());
+    logger.log(writer.verboseReport());
+    // writer.report(logger);
   }
 
-  public static void writeParquet() throws IOException {
-    File parFile = new File(_file_name + _parquet_sf);
+  private static void writeParquetInternal() throws IOException {
+    File parFile = currentScheme.equals(FileScheme.Parquet)
+        ?  new File(_file_name + _parquet_sf)
+        :  new File(_file_name + _parquetas_sf);
+    parFile.delete();
+
     ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(parFile.toPath()))
         .withConf(new PlainParquetConfiguration())
-        .withType(mergedDataSets.getSchema())
+        .withType(currentScheme.getParquetSchema(mergedDataSets))
         .withCompressionCodec(compressorParquet)
         .build();
 
-    LoaderBase loaderBase = LoaderBase.getLoader(mergedDataSets);
     ParquetGroupFiller.setLoader(loaderBase);
-    SimpleGroupFactory f= new SimpleGroupFactory(mergedDataSets.getSchema());
+    SimpleGroupFactory f= new SimpleGroupFactory(currentScheme.getParquetSchema(mergedDataSets));
 
     String preDev = new String(loaderBase.idVector.get(0), StandardCharsets.UTF_8);
     ParquetGroupFiller.updateDeviceID(preDev);
@@ -186,7 +198,37 @@ public class BenchWriter {
     }
 
     writer.close();
-    writer.report(logger);
+    logger.setStatus(currentScheme, mergedDataSets);
+    logger.writeResult(writer.report());
+    // writer.report(logger);
+  }
+
+  public static void writeParquet() throws IOException {
+    currentScheme = FileScheme.Parquet;
+    writeParquetInternal();
+  }
+
+  // AS for alternated-schema
+  public static void writeParquetAS() throws IOException {
+    currentScheme = FileScheme.ParquetAS;
+    switch (mergedDataSets) {
+      case REDD:
+        // mergedDataSets = MergedDataSets.REDD_A;
+        break;
+      case TSBS:
+        // mergedDataSets = MergedDataSets.TSBS_A;
+        break;
+      case GeoLife:
+      case TDrive:
+      default:
+        return;
+    }
+    writeParquetInternal();
+  }
+
+  public static void writeArrowIPC() throws IOException {
+    currentScheme = FileScheme.ArrowIPC;
+    System.out.println("NOT WORK NOW");
   }
 
 
@@ -195,12 +237,15 @@ public class BenchWriter {
 
 
   public static MergedDataSets mergedDataSets;
+  // one run write all schemes as this records
+  public static FileScheme currentScheme;
+
   public static CompressionCodecName compressorParquet;
   public static CompressionType compressorTsFile;
   public static TSEncoding encodingTsFile = TSEncoding.GORILLA;
   public static boolean _tsfileAlignedTablet = true;
 
-  public static BufferedWriter logger;
+  public static ResultPrinter logger;
 
   static String _date_time = java.time.format.DateTimeFormatter
       .ofPattern("yyyyMMddHHmmss")
@@ -209,10 +254,15 @@ public class BenchWriter {
   static String _file_name = "";
 
   static String _parquet_sf = ".parquet";
+  static String _parquetas_sf = ".parquetas";
+  static String _arrowipc = ".arrow";
   static String _tsfile_sf = ".tsfile";
 
-  static String[] _args = {"TDrive", "SNAPPY"};  // pseudo input args
-  public static void main(String[] args) throws IOException {
+  static LoaderBase loaderBase;
+
+
+  static String[] _args = {"TSBS", "SNAPPY"};  // pseudo input args
+  public static void main(String[] args) throws IOException, WriteProcessException {
     if (args.length != 2) {
       args = _args;
     }
@@ -221,11 +271,21 @@ public class BenchWriter {
     compressorParquet = CompressionCodecName.valueOf(args[1]);
     compressorTsFile = CompressionType.valueOf(args[1]);
     _log_name = MergedDataSets.TARGET_DIR + _log_name;
-    logger = new BufferedWriter(new FileWriter(_log_name, true));
-    _file_name = MergedDataSets.TARGET_DIR + mergedDataSets.name() + "_" + _date_time;
+    // logger = new BufferedWriter(new FileWriter(_log_name, true));
+    logger = new ResultPrinter(_log_name, true);
 
+    // _file_name = MergedDataSets.TARGET_DIR + mergedDataSets.name() + "_" + _date_time; // name with date
+    _file_name = MergedDataSets.TARGET_DIR + mergedDataSets.name();
+
+    // load once, use always
+    loaderBase = LoaderBase.getLoader(mergedDataSets);
+
+    writeArrowIPC();
     // writeTsFile();
     writeParquet();
+    // alternated-schema Parquet is available IF deviceID consists of more than one fields
+    writeParquetAS();
+
     closeAndSummary();
     logger.close();
   }

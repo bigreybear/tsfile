@@ -166,8 +166,12 @@ public class InternalParquetRecordWriter<T> {
     bw.write(String.format("DataSize: %d, IndexSize: %d\n", dataSize, indexSize));
   }
 
+  public float[] report() {
+    return new float[] {dataSize, indexSize, (float) flushDataTime /1000000, (float) flushIndexTime /1000000};
+  }
+
   public void write(T value) throws IOException, InterruptedException {
-    // NOTE directly called by ParquetWriter
+    // Note(zx) directly called by ParquetWriter
     long flushData = System.nanoTime();
     writeSupport.write(value);
     ++recordCount;
@@ -183,7 +187,7 @@ public class InternalParquetRecordWriter<T> {
   }
 
   private void checkBlockSizeReached() throws IOException {
-    // NOTE just isomorphic to size check as TsFile write process
+    // Note(zx) just isomorphic to size check as TsFile write process
     if (recordCount
         >= recordCountForNextMemCheck) { // checking the memory size is relatively expensive, so let's not do it
       // for every record.

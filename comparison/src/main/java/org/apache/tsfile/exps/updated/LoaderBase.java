@@ -17,10 +17,8 @@ public abstract class LoaderBase {
   public static LoaderBase getLoader(MergedDataSets mds) throws IOException {
     // following constructor with integer parameter is to create an empty object
     switch (mds) {
-      case TSBS_A:
       case TSBS:
         return TSBSLoader.deser(mds);
-      case REDD_A:
       case REDD:
         return REDDLoader.deser(mds);
       case TDrive:

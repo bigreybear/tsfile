@@ -674,6 +674,23 @@ public class TsFileWriter implements AutoCloseable {
     flushIndexTime = fileWriter.reportForceIndex();
   }
 
+  public float[] report() {
+    return new float[] {
+        dataPosition,
+        fileWriter.getIndexEndPosition() - dataPosition,
+        (float) flushDataTime /1000000,
+        (float) flushIndexTime /1000000};
+  }
+
+  public String verboseReport() {
+    StringBuilder stringBuilder = new StringBuilder("verbose chunk_index and series_index");
+    stringBuilder.append(
+        String.format("ChunkIndex: %d, SereisIndex: %d\n",
+            fileWriter.tsmEndPos - dataPosition, fileWriter.indexEndPosition - fileWriter.tsmEndPos)
+    );
+    return stringBuilder.toString();
+  }
+
   public void report(BufferedWriter bw) throws IOException {
     bw.write(String.format("DataFlushTime: %d, IndexFlushTIme: %d\n", flushDataTime/1000000, flushIndexTime/1000000));
     bw.write(String.format("DataSize: %d, IndexSize: %d\n",

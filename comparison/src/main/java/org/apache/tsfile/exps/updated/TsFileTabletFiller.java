@@ -29,14 +29,12 @@ public class TsFileTabletFiller {
     _tablet = tablet;
     switch (BenchWriter.mergedDataSets) {
       case TSBS:
-      case TSBS_A:
         tsbsLoader = (TSBSLoader) loader;
         lats = (double[]) tablet.values[0];
         lons = (double[]) tablet.values[1];
         eles = (double[]) tablet.values[2];
         vels = (double[]) tablet.values[3];
         return;
-      case REDD_A:
       case REDD:
         reddLoader = (REDDLoader) loader;
         elecs = (double[]) tablet.values[0];
@@ -59,13 +57,11 @@ public class TsFileTabletFiller {
   public static void refreshArray(Tablet tablet) {
     switch (mergedDataSets) {
       case TSBS:
-      case TSBS_A:
         lats = (double[]) tablet.values[0];
         lons = (double[]) tablet.values[1];
         eles = (double[]) tablet.values[2];
         vels = (double[]) tablet.values[3];
         return;
-      case REDD_A:
       case REDD:
         elecs = (double[]) tablet.values[0];
         return;
@@ -94,11 +90,9 @@ public class TsFileTabletFiller {
         alts[rowInTablet] = geoLifeLoader.altitudeVector.get(cnt);
         return;
       case REDD:
-      case REDD_A:
         elecs[rowInTablet] = reddLoader.elecVector.get(cnt);
         return;
       case TSBS:
-      case TSBS_A:
         setValueWithNull(lats, _tablet.bitMaps[0], cnt, rowInTablet, tsbsLoader.latVec);
         setValueWithNull(lons, _tablet.bitMaps[1], cnt, rowInTablet, tsbsLoader.lonVec);
         setValueWithNull(eles, _tablet.bitMaps[2], cnt, rowInTablet, tsbsLoader.eleVec);
@@ -119,7 +113,6 @@ public class TsFileTabletFiller {
   public static List<MeasurementSchema> getSchema() {
     List<MeasurementSchema> schemas = new ArrayList<>();
     switch (BenchWriter.mergedDataSets) {
-      case TSBS_A:
       case TSBS:
         schemas.add(new MeasurementSchema("lat", TSDataType.DOUBLE, encodingTsFile, compressorTsFile));
         schemas.add(new MeasurementSchema("lon", TSDataType.DOUBLE, encodingTsFile, compressorTsFile));
@@ -135,7 +128,6 @@ public class TsFileTabletFiller {
         schemas.add(new MeasurementSchema("lon", TSDataType.DOUBLE, encodingTsFile, compressorTsFile));
         schemas.add(new MeasurementSchema("alt", TSDataType.DOUBLE, encodingTsFile, compressorTsFile));
         return schemas;
-      case REDD_A:
       case REDD:
         schemas.add(new MeasurementSchema("elec", TSDataType.DOUBLE, encodingTsFile, compressorTsFile));
         return schemas;

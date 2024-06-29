@@ -7,6 +7,7 @@ import org.apache.tsfile.exps.GeoLifeLoader;
 import org.apache.tsfile.exps.REDDLoader;
 import org.apache.tsfile.exps.TDriveLoader;
 import org.apache.tsfile.exps.TSBSLoader;
+import org.apache.tsfile.exps.conf.FileScheme;
 
 /**
  * Serves as a helper to init and update group, which is the unit to write parquet
@@ -31,11 +32,9 @@ public class ParquetGroupFiller {
   public static void setLoader(LoaderBase loader) {
     switch (BenchWriter.mergedDataSets) {
       case TSBS:
-      case TSBS_A:
         tsbsLoader = (TSBSLoader) loader;
         return;
       case REDD:
-      case REDD_A:
         reddLoader = (REDDLoader) loader;
         return;
       case TDrive:
@@ -50,26 +49,28 @@ public class ParquetGroupFiller {
   }
 
   public static void updateDeviceID(String idFromVector) {
-    switch (BenchWriter.mergedDataSets) {
-      case REDD_A:
-      case TSBS_A:
-      case GeoLife:
-      case TDrive:
-        deviceID = idFromVector;
-        return;
-      case TSBS:
-        String[] nodes = idFromVector.split("\\.");
-        fleet = nodes[0];
-        name = nodes[1];
-        driver = nodes[2];
-        return;
-      case REDD:
-        String[] nodes2 = idFromVector.split("\\.");
-        building = nodes2[0];
-        meter = nodes2[1];
-        return;
-      default:
+    if (BenchWriter.currentScheme == FileScheme.Parquet) {
+      // for influx-iox, deviceID consists of multiple datums
+      switch (BenchWriter.mergedDataSets) {
+        case TSBS:
+          String[] nodes = idFromVector.split("\\.");
+          fleet = nodes[0];
+          name = nodes[1];
+          driver = nodes[2];
+          return;
+        case REDD:
+          String[] nodes2 = idFromVector.split("\\.");
+          building = nodes2[0];
+          meter = nodes2[1];
+          return;
+        case TDrive:
+        case GeoLife:
+        default:
+          deviceID = idFromVector;
+      }
+      return;
     }
+    deviceID = idFromVector;
   }
 
   public static Group fill(SimpleGroupFactory factory, Object loader, int cnt) {
@@ -88,34 +89,42 @@ public class ParquetGroupFiller {
             .append("lon", tDriveLoader.longitudeVector.get(cnt))
             .append("lat", tDriveLoader.latitudeVector.get(cnt));
       case REDD:
-        return factory.newGroup()
-            .append("building", building)
-            .append("meter", meter)
-            .append("timestamp", reddLoader.timestampVector.get(cnt))
-            .append("elec", reddLoader.elecVector.get(cnt));
-      case REDD_A:
-        return factory.newGroup()
-            .append("deviceID", deviceID)
-            .append("timestamp", reddLoader.timestampVector.get(cnt))
-            .append("elec", reddLoader.elecVector.get(cnt));
+        if (BenchWriter.currentScheme == FileScheme.Parquet) {
+          return factory.newGroup()
+              .append("building", building)
+              .append("meter", meter)
+              .append("timestamp", reddLoader.timestampVector.get(cnt))
+              .append("elec", reddLoader.elecVector.get(cnt));
+        } else if (BenchWriter.currentScheme == FileScheme.ParquetAS) {
+          return factory.newGroup()
+              .append("deviceID", deviceID)
+              .append("timestamp", reddLoader.timestampVector.get(cnt))
+              .append("elec", reddLoader.elecVector.get(cnt));
+        } else {
+          return null;
+        }
       case TSBS:
-        return appendIfNotNull(
-            factory.newGroup()
-                .append("fleet", fleet)
-                .append("name", name)
-                .append("driver", driver)
-                .append("timestamp", tsbsLoader.timestampVector.get(cnt)),
-            tsbsLoader,
-            cnt
-        );
-      case TSBS_A:
-        return appendIfNotNull(
-            factory.newGroup()
-                .append("deviceID", deviceID)
-                .append("timestamp", tsbsLoader.timestampVector.get(cnt)),
-            tsbsLoader,
-            cnt
-        );
+        if (BenchWriter.currentScheme == FileScheme.Parquet) {
+          return appendIfNotNull(
+              factory.newGroup()
+                  .append("fleet", fleet)
+                  .append("name", name)
+                  .append("driver", driver)
+                  .append("timestamp", tsbsLoader.timestampVector.get(cnt)),
+              tsbsLoader,
+              cnt
+          );
+        } else if (BenchWriter.currentScheme == FileScheme.ParquetAS) {
+          return appendIfNotNull(
+              factory.newGroup()
+                  .append("deviceID", deviceID)
+                  .append("timestamp", tsbsLoader.timestampVector.get(cnt)),
+              tsbsLoader,
+              cnt
+          );
+        } else {
+          return null;
+        }
     }
     return null;
   }
