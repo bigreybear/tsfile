@@ -50,9 +50,10 @@ import static org.apache.tsfile.utils.Preconditions.checkArgument;
 
 public class PageReader implements IPageReader {
 
-  private final PageHeader pageHeader;
+  // Note(zx) modified to support unaligned chunk compactor
+  public final PageHeader pageHeader;
 
-  private final TSDataType dataType;
+  public final TSDataType dataType;
 
   /** decoder for value column */
   private final Decoder valueDecoder;

@@ -12,7 +12,7 @@ import java.util.List;
 public class ZYLoader {
 
   public void processTsFile() throws IOException {
-    String path = "E:\\ExpDataSets\\ZY.tsfile";
+    String path = "E:\\0006DataSets\\ZY.tsfile";
     TsFileSequenceReader sequenceReader = new TsFileSequenceReader(path);
     TsFileReader reader = new TsFileReader(sequenceReader);
     List<Path> paths =  sequenceReader.getAllPaths();

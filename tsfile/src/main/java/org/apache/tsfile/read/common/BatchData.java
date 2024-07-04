@@ -74,9 +74,9 @@ public class BatchData {
   protected int writeCurArrayIndex;
 
   // the insert timestamp number of timeRet
-  protected int count;
+  public int count;
 
-  protected List<long[]> timeRet;
+  public List<long[]> timeRet;
   protected List<boolean[]> booleanRet;
   protected List<int[]> intRet;
   protected List<long[]> longRet;

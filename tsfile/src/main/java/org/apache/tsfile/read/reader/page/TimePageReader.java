@@ -31,7 +31,7 @@ import java.util.List;
 
 public class TimePageReader {
 
-  private final PageHeader pageHeader;
+  public final PageHeader pageHeader;
 
   /** decoder for time column */
   protected Decoder timeDecoder;

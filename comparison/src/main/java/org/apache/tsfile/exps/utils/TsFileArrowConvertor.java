@@ -106,21 +106,26 @@ public class TsFileArrowConvertor {
     QueryDataSet res;
     RowRecord row;
     int dataPoints = 0, devNum = 0;
+    Stopwatch sw1 = new Stopwatch(), sw2 = new Stopwatch();
     for (Map.Entry<String, List<String>> dev : nonAlignedDevs.entrySet()) {
       series.clear();
       devNum++;
-      if (devNum % 50 == 0) {
-        System.out.println(String.format("%d %d %d", devNum, rowCount, dataPoints));
+      if (devNum % 10 == 0) {
+        System.out.println(String.format("%d %d %d\n", devNum, rowCount, dataPoints));
+        System.out.println(String.format("time distribution: %d %d\n", sw1.report(), sw2.report()));
       }
       if (dataPoints > 123459876) {
         return root;
       }
- 
+
+      sw1.start();
       for (String s : dev.getValue()) {
         series.add(new Path(dev.getKey(), s, false));
       }
+      sw1.stop();
       expression = QueryExpression.create(series, null);
       res = reader.query(expression);
+      sw2.start();
       while (res.hasNext()) {
         row = res.next();
         timestampVector.setSafe(rowCount, row.getTimestamp());
@@ -131,6 +136,7 @@ public class TsFileArrowConvertor {
               res.getDataTypes().get(i),
               row, i);
         }
+        sw2.stop();
         dataPoints += dev.getValue().size();
         rowCount++;
         row.getFields();
@@ -185,7 +191,7 @@ public class TsFileArrowConvertor {
   }
 
   public void serialize() throws IOException {
-    String path = "E:\\ExpDataSets\\Arrows\\ZY.bin";
+    String path = "F:\\0006DataSets\\Arrows\\ZY.bin";
     try (FileOutputStream fos = new FileOutputStream(path);
          FileChannel channel = fos.getChannel();
          ArrowFileWriter writer = new ArrowFileWriter(root, null, channel)) {
@@ -198,7 +204,7 @@ public class TsFileArrowConvertor {
 
   public static void main(String[] args) throws IOException {
     TsFileArrowConvertor convertor = new TsFileArrowConvertor();
-    convertor.preprocess("E:\\ExpDataSets\\ZY.tsfile");
+    convertor.preprocess("F:\\0006DataSets\\ZY.tsfile");
     convertor.processNonAligned();
     convertor.serialize();
   }

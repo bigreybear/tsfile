@@ -48,7 +48,7 @@ import java.util.Map;
 // @authored by Zhou Peichen
 public class TsFileSequenceRead {
   // if you wanna print detailed datas in pages, then turn it true.
-  private static boolean printDetail = false;
+  private static boolean printDetail = true;
   public static final String POINT_IN_PAGE = "\t\tpoints in the page: ";
 
   @SuppressWarnings({
@@ -56,7 +56,7 @@ public class TsFileSequenceRead {
     "squid:S106"
   }) // Suppress high Cognitive Complexity and Standard outputs warning
   public static void main(String[] args) throws IOException {
-    String filename = "F:\\0006DataSets\\Results\\TS_FILE_TSBS_20240314170452_RLE_SNAPPY.tsfile";
+    String filename = "F:\\0006DataSets\\ZY.tsfile";
     if (args.length >= 1) {
       filename = args[0];
     }
