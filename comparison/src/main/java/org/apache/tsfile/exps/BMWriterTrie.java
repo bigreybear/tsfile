@@ -4,6 +4,10 @@ import org.apache.arrow.vector.Float8Vector;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.exps.loader.GeoLifeLoader;
+import org.apache.tsfile.exps.loader.REDDLoader;
+import org.apache.tsfile.exps.loader.TDriveLoader;
+import org.apache.tsfile.exps.loader.TSBSLoader;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileReader;
@@ -78,7 +82,7 @@ public class BMWriterTrie {
   }
 
   public static void bmTSBS() throws IOException, WriteProcessException {
-    org.apache.tsfile.exps.TSBSLoader loader = TSBSLoader.deserialize(CUR_DATA.getArrowFile());
+    TSBSLoader loader = TSBSLoader.deserialize(CUR_DATA.getArrowFile());
     List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("lat", TSDataType.DOUBLE, encoding, compressionType));
     schemaList.add(new MeasurementSchema("lon", TSDataType.DOUBLE, encoding, compressionType));
@@ -168,7 +172,7 @@ public class BMWriterTrie {
   }
 
   public static void bmREDD() throws IOException, WriteProcessException {
-    org.apache.tsfile.exps.REDDLoader loader = REDDLoader.deserialize(CUR_DATA.getArrowFile());
+    REDDLoader loader = REDDLoader.deserialize(CUR_DATA.getArrowFile());
     List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("elec", TSDataType.DOUBLE, encoding, compressionType));
 
@@ -232,7 +236,7 @@ public class BMWriterTrie {
   }
 
   public static void bmGeoLife() throws IOException, WriteProcessException {
-    org.apache.tsfile.exps.GeoLifeLoader loader = GeoLifeLoader.deserialize(CUR_DATA.getArrowFile());
+    GeoLifeLoader loader = GeoLifeLoader.deserialize(CUR_DATA.getArrowFile());
     List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("lat", TSDataType.DOUBLE, encoding, compressionType));
     schemaList.add(new MeasurementSchema("lon", TSDataType.DOUBLE, encoding, compressionType));
@@ -305,8 +309,8 @@ public class BMWriterTrie {
     writer.write(tablet);
   }
 
-  public static org.apache.tsfile.exps.TDriveLoader bmTDrive() throws IOException, WriteProcessException {
-    org.apache.tsfile.exps.TDriveLoader loader = TDriveLoader.deserialize(CUR_DATA.getArrowFile());
+  public static TDriveLoader bmTDrive() throws IOException, WriteProcessException {
+    TDriveLoader loader = TDriveLoader.deserialize(CUR_DATA.getArrowFile());
     // loader.load(Long.MAX_VALUE);
     List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("lat", TSDataType.DOUBLE, encoding, compressionType));

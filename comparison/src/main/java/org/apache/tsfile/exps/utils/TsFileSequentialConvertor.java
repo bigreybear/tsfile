@@ -35,17 +35,15 @@ import org.apache.arrow.vector.dictionary.DictionaryEncoder;
 import org.apache.arrow.vector.dictionary.DictionaryProvider;
 import org.apache.arrow.vector.ipc.ArrowFileReader;
 import org.apache.arrow.vector.ipc.ArrowFileWriter;
-import org.apache.arrow.vector.ipc.ArrowStreamReader;
+import org.apache.arrow.vector.ipc.message.ArrowBlock;
 import org.apache.arrow.vector.types.Types;
 import org.apache.arrow.vector.types.pojo.DictionaryEncoding;
 import org.apache.arrow.vector.types.pojo.Field;
-import org.apache.arrow.vector.util.ByteArrayReadableSeekableByteChannel;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.exps.ConditionGenerator;
 import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.header.ChunkGroupHeader;
 import org.apache.tsfile.file.header.ChunkHeader;
@@ -53,27 +51,19 @@ import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.BatchData;
-import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.reader.page.PageReader;
 import org.apache.tsfile.read.reader.page.TimePageReader;
 import org.apache.tsfile.read.reader.page.ValuePageReader;
 import org.apache.tsfile.utils.TsPrimitiveType;
+import org.apache.tsfile.write.record.Tablet;
 
-import java.io.BufferedWriter;
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -117,13 +107,17 @@ import java.util.concurrent.atomic.AtomicInteger;
  * */
 public class TsFileSequentialConvertor {
   // configurations.
-  public static final String srcPath = "F:\\0006DataSets\\ZY.tsfile"; // path to read TsFile
-  public static final String dstPath = "F:\\0006DataSets\\ZY.arrow"; // path to write ArrowIPC
-  public static final String supPath = "F:\\0006DataSets\\ZY.sup";  // path to supporting file
+  // public static final String prjPath = "F:\\0006DataSets\\";  // @ lab
+  public static final String prjPath = "E:\\ExpDataSets\\";  // @ home
+  public static final String srcPath = prjPath + "ZY.tsfile"; // path to read TsFile
+  public static final String dstPath = prjPath + "ZY.bin"; // path to write ArrowIPC
+  public static final String supPath = prjPath + "ZY.sup";  // path to supporting file
   private static final int BATCH_ROW = 100_000;
   private static final boolean ONLY_PART = true;
   private static final int PART_START = -1, PART_END = 240000000;
   // private static final boolean HIGH_FIDELITY = false;  // to develop
+
+  public static long DICT_ID = 1L;
 
   private static final long[] WORKING_RANGE = new long[] {-1, Long.MAX_VALUE};
 
@@ -134,7 +128,6 @@ public class TsFileSequentialConvertor {
   private final BufferAllocator allocator;
   private VectorSchemaRoot root;
   private int totalRowCount = 0, locRowIdx = 0;
-  private long ptsCount = 0;
 
   private final LargeVarCharVector idVector;
   private IntVector idVectorEncoded;
@@ -160,9 +153,11 @@ public class TsFileSequentialConvertor {
   private String processingDev = null;
   private final Set<String> devSets = new HashSet<>();
 
+  // statistics
+  private long ptsCount = 0;
 
   // collect deserialized chunk data for conversion before next chunk group
-  private class ChunkData {
+  class ChunkData {
     ChunkType type;
     TSDataType dataType;
     List<long[]> timeBatch;
@@ -196,79 +191,50 @@ public class TsFileSequentialConvertor {
       compBatch = new ArrayList<>();
       compBatch.add(bd);
     }
+  }
 
-    /**
-     * transfrom OverAllIndex into index of the batches by prefix sum array
-     * @param oai overall index
-     * @return [index of the batches within list, index within the batch]
-     */
-    int[] getBatchIndex(int oai) {
-      if (oai > psa[psa.length - 1] || oai < 0) {
-        throw new IndexOutOfBoundsException();
-      }
-
-      // only COMP now
-      if (type != ChunkType.COMP) {return null;}
-
-      if (oai < psa[0]) {
-        return new int[] {0, oai};
-      }
-      if (oai >= psa[psa.length - 2]) {
-        return new int[] {psa.length - 2, oai - psa[psa.length - 2]};
-      }
-
-      int left = 0, right = psa.length - 1, mid = 0;
-
-      // break when oai is between psa[mid-1] and psa[mid]
-      while (left < right) {
-        mid = (right + left) / 2;
-        if (psa[mid] == oai) {
-          return new int[] {mid, 0};
-        }
-
-        if (oai < psa[mid]) {
-          right = mid;
-        } else {
-          left = mid + 1;
-        }
-      }
-      return new int[] {mid, oai - psa[mid-1]};
+  /**
+   * transfrom OverAllIndex into index of the batches by prefix sum array
+   * @param oai overall index
+   * @return [index of the batches within list, index within the batch]
+   */
+  public static int[] getBatchIndex(int oai, int[] psa) {
+    if (oai > psa[psa.length - 1] || oai < 0) {
+      throw new IndexOutOfBoundsException();
     }
+
+    // only COMP now
+    // if (type != ChunkType.COMP) {return null;}
+
+    if (oai < psa[0]) {
+      return new int[] {0, oai};
+    }
+    if (oai >= psa[psa.length - 2]) {
+      return new int[] {psa.length - 2, oai - psa[psa.length - 2]};
+    }
+
+    int left = 0, right = psa.length - 1, mid = 0;
+
+    // break when oai is between psa[mid-1] and psa[mid]
+    while (left < right) {
+      mid = (right + left) / 2;
+      if (psa[mid] == oai) {
+        return new int[] {mid, 0};
+      }
+
+      if (oai < psa[mid]) {
+        right = mid;
+      } else {
+        left = mid + 1;
+      }
+    }
+    return new int[] {mid, oai - psa[mid-1]};
   }
 
   private enum ChunkType {
     TIME,
     VALUE,
     COMP;
-  }
-
-  /* Record mappings between devices and sensors for sparse tables. */
-  public static class DevSenSupport implements Serializable {
-    private static final long serialVersionUID = 6395645743397020735L;
-    public final Map<String, Set<String>> map = new HashMap<>();
-
-    private void add(String d, String s) {
-      if (!map.containsKey(d)) {
-        map.put(d, new HashSet<>());
-      }
-      map.get(d).add(s);
-    }
-
-    private void addByChunks(String d, List<ChunkData> chunkData) {
-      chunkData.forEach(c -> add(d, c.name));
-    }
-
-    public static void serialize(DevSenSupport dss, String path) throws IOException {
-      ObjectOutputStream oos = new ObjectOutputStream(Files.newOutputStream(Paths.get(path)));
-      oos.writeObject(dss);
-      oos.close();
-    }
-
-    public static DevSenSupport deserialize(String path) throws IOException, ClassNotFoundException{
-      try (ObjectInputStream ois = new ObjectInputStream(Files.newInputStream(Paths.get(path)))){
-        return (DevSenSupport) ois.readObject();
-      }
-    }
   }
 
   public TsFileSequentialConvertor(BufferAllocator all) {
@@ -394,6 +360,7 @@ public class TsFileSequentialConvertor {
   private long[] mergeTimestampArrays() {
     TreeSet<Long> mergedTimestamps = new TreeSet<>();
 
+    // merge all timestamp array by tree set
     for (ChunkData cdata : collectedChunks) {
       if (cdata.type != ChunkType.COMP) {
         throw new RuntimeException("Wrong chunk type.");
@@ -418,9 +385,9 @@ public class TsFileSequentialConvertor {
         }
       }
     }
-
     final long[] result = mergedTimestamps.stream().mapToLong(Long::longValue).toArray();
 
+    // mark absence on each ChunkData
     final int resLen = result.length;
     for (ChunkData cdata : collectedChunks) {
       // for each chunk, check batches with the result, mark absence on bitset
@@ -456,6 +423,7 @@ public class TsFileSequentialConvertor {
     return result;
   }
 
+  /** A reverse procedure to {@link org.apache.tsfile.exps.loader.ZYLoader#fillTablet} */
   private void buildVectors() {
     for (Map.Entry<String, TSDataType> entry : vectorNameType.entrySet()) {
       switch (entry.getValue()) {
@@ -559,8 +527,6 @@ public class TsFileSequentialConvertor {
    * @throws IOException
    */
   public void preprocess() throws IOException{
-    DevSenSupport support = new DevSenSupport();
-
     // adjust working range
     if (ONLY_PART) {
       WORKING_RANGE[0] = PART_START;
@@ -655,7 +621,6 @@ public class TsFileSequentialConvertor {
 
             // handle chunks from last ChunkGroup
             if (!collectedChunks.isEmpty() && inLegalRange(reader.position())) {
-              support.addByChunks(processingDev, collectedChunks);
               unifyChunkDataType();
             }
 
@@ -682,7 +647,6 @@ public class TsFileSequentialConvertor {
             MetaMarker.handleUnexpectedMarker(marker);
         }
       }
-      DevSenSupport.serialize(support, supPath);
       buildVectors();
     }
   }
@@ -696,6 +660,7 @@ public class TsFileSequentialConvertor {
    */
   public void processFile() throws Exception {
     collectedChunks.clear();
+    DevSenSupport support = new DevSenSupport();
 
     try (TsFileSequenceReader reader = new TsFileSequenceReader(srcPath)) {
 
@@ -804,7 +769,7 @@ public class TsFileSequentialConvertor {
           case MetaMarker.CHUNK_GROUP_HEADER:
             // handle chunks from last ChunkGroup
             if (!collectedChunks.isEmpty() && inLegalRange(reader.position())) {
-
+              support.addByChunks(processingDev, collectedChunks);
               // process last ChunkGroup
               if (collectedChunks.get(0).type == ChunkType.COMP) {
                 unalignedCG++;
@@ -834,6 +799,9 @@ public class TsFileSequentialConvertor {
                   totalRowCount, locRowIdx, ptsCount, time));
             }
 
+            // update dev-sen counting
+
+
             ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
             processingDev = truncateDeviceID(chunkGroupHeader.getDeviceID());
             // all chunks cleared
@@ -855,6 +823,11 @@ public class TsFileSequentialConvertor {
         }
       }
     }
+    DevSenSupport.serialize(support, supPath);
+    System.out.println(String.format("Valid Devces: %d, valid sensors: %d, points: %d",
+        support.map.size(),
+        support.map.values().stream().mapToLong(Set::size).sum(),
+        ptsCount));
   }
 
   // region Fill and Write
@@ -894,7 +867,7 @@ public class TsFileSequentialConvertor {
       idVector.setSafe(soi + i, devByt);
     }
 
-    ptsCount += 2 * rln;
+    // ptsCount += 2 * rln;
 
     for (ChunkData cdata : collectedChunks) {
       switch (vectorNameType.get(cdata.name)) {
@@ -1000,6 +973,10 @@ public class TsFileSequentialConvertor {
   }
 
   private void fillAlignedChunksIntoVectors() throws Exception{
+    if (this.locRowIdx >= BATCH_ROW) {
+      writeCurrentBatch();
+    }
+
     final int soi = this.locRowIdx;
 
     // set timestamps and calculate total length
@@ -1030,7 +1007,7 @@ public class TsFileSequentialConvertor {
       idVector.set(soi + i, devByt);
     }
 
-    ptsCount += 2 * offset;
+    // ptsCount += 2 * offset;
 
     for (ChunkData cdata : collectedChunks) {
       if (cdata.type == ChunkType.TIME) {
@@ -1128,7 +1105,7 @@ public class TsFileSequentialConvertor {
       cnt++;
     }
     dictVector.setValueCount(devSets.size());
-    idDict = new Dictionary(dictVector, new DictionaryEncoding(1L, false, null));
+    idDict = new Dictionary(dictVector, new DictionaryEncoding(DICT_ID, false, null));
     provider.put(idDict);
 
     idVectorEncoded = (IntVector) DictionaryEncoder.encode(idVector, idDict);
@@ -1218,6 +1195,25 @@ public class TsFileSequentialConvertor {
     }
 
     System.out.println("OK");
+  }
+
+  // to check data
+  public static void mainxx(String[] args) {
+    File file = new File(dstPath);
+    try(
+        BufferAllocator rootAllocator = new RootAllocator();
+        FileInputStream fileInputStream = new FileInputStream(file);
+        ArrowFileReader reader = new ArrowFileReader(fileInputStream.getChannel(), rootAllocator)
+    ){
+      System.out.println("Record batches in file: " + reader.getRecordBlocks().size());
+      for (ArrowBlock arrowBlock : reader.getRecordBlocks()) {
+        reader.loadRecordBatch(arrowBlock);
+        VectorSchemaRoot vectorSchemaRootRecover = reader.getVectorSchemaRoot();
+        System.out.print(vectorSchemaRootRecover.contentToTSVString());
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
 
   public static void main9(String[] args) {

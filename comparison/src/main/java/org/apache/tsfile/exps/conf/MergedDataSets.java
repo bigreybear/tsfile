@@ -20,7 +20,10 @@ public enum MergedDataSets {
   REDD_A("elec", "elec"),
 
   TSBS("vel", "lat"),
-  TSBS_A("vel", "lat");
+  TSBS_A("vel", "lat"),
+
+  ZY(null, null),
+  CCS(null, null);
 
   MergedDataSets(String fcolumn, String cColumn) {
     this.filteringColumn = fcolumn;
@@ -32,8 +35,8 @@ public enum MergedDataSets {
   // to be retrieved while not filtered
   public String crossColumn;
 
-  static final String PRJ_DIR = "F:\\0006DataSets\\"; // @lab
-  // static final String PRJ_DIR = "E:\\ExpDataSets\\";  // @home
+  // static final String PRJ_DIR = "F:\\0006DataSets\\"; // @lab
+  static final String PRJ_DIR = "E:\\ExpDataSets\\";  // @home
 
   public static String ARROW_BINS = PRJ_DIR + "Arrows\\";
   public static String CONDITION_DIR = PRJ_DIR + "Conditions\\";
@@ -50,6 +53,22 @@ public enum MergedDataSets {
         return ARROW_BINS + "REDD.bin";
       case TSBS:
         return ARROW_BINS + "TSBS.bin";
+      case ZY:
+        return ARROW_BINS + "ZY.bin";
+      default:
+    }
+    return null;
+  }
+
+  public String getSupportFile() {
+    switch (this) {
+      case TDrive:
+      case GeoLife:
+      case REDD:
+      case TSBS:
+        return null;
+      case ZY:
+        return ARROW_BINS + "ZY.sup";
       default:
     }
     return null;
@@ -69,7 +88,6 @@ public enum MergedDataSets {
     }
     return null;
   }
-
 
   // region Parquet-specific
 

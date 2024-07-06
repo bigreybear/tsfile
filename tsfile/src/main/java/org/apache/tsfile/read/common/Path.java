@@ -60,6 +60,15 @@ public class Path implements Serializable, Comparable<Path> {
     this(pathSc, false);
   }
 
+  // Note(zx) use this fro wrapping
+  public static Path wrapDevPath(String dev) {
+    Path p = new Path();
+    p.device = dev;
+    p.fullPath = dev;
+    p.measurement = null;
+    return p;
+  }
+
   /**
    * @param pathSc path
    * @param needSplit whether need to be split to device and measurement, doesn't support escape
@@ -72,6 +81,7 @@ public class Path implements Serializable, Comparable<Path> {
     if (!needSplit) {
       // no split, we don't use antlr to check here.
       fullPath = pathSc;
+      // Note(zx) modified for convenience but may introduce side effect (deprecated)
       String[] nodes = fullPath.split("\\.");
       if (nodes.length > 1) {
         device = transformNodesToString(nodes, nodes.length - 1);

@@ -4,6 +4,10 @@ import org.apache.arrow.vector.Float8Vector;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.exps.loader.GeoLifeLoader;
+import org.apache.tsfile.exps.loader.REDDLoader;
+import org.apache.tsfile.exps.loader.TDriveLoader;
+import org.apache.tsfile.exps.loader.TSBSLoader;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileReader;
@@ -167,7 +171,7 @@ public class BMWriter {
   }
 
   public static void bmREDD() throws IOException, WriteProcessException {
-    org.apache.tsfile.exps.REDDLoader loader = REDDLoader.deserialize(CUR_DATA.getArrowFile());
+    REDDLoader loader = REDDLoader.deserialize(CUR_DATA.getArrowFile());
     List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("elec", TSDataType.DOUBLE, encoding, compressionType));
 

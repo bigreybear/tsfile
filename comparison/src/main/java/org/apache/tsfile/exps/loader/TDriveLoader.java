@@ -1,6 +1,5 @@
-package org.apache.tsfile.exps;
+package org.apache.tsfile.exps.loader;
 
-import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.BigIntVector;
 import org.apache.arrow.vector.Float8Vector;
@@ -14,8 +13,12 @@ import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.FieldType;
 import org.apache.arrow.vector.types.pojo.Schema;
 import org.apache.arrow.vector.util.Text;
+import org.apache.parquet.example.data.Group;
+import org.apache.parquet.example.data.simple.SimpleGroupFactory;
+import org.apache.tsfile.exps.DataSets;
 import org.apache.tsfile.exps.conf.MergedDataSets;
 import org.apache.tsfile.exps.updated.LoaderBase;
+import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,17 +35,14 @@ import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.stream.Stream;
 
-import static org.apache.tsfile.exps.GeoLifeLoader.ARROW_DIR;
+import static org.apache.tsfile.exps.loader.GeoLifeLoader.ARROW_DIR;
 
 public class TDriveLoader extends LoaderBase {
   private static final Logger logger = LoggerFactory.getLogger(TDriveLoader.class);
 
   public static String DIR = "F:\\0006DataSets\\TDrive\\";
 
-  private final BufferAllocator allocator;
   private VectorSchemaRoot root;
-  // public LargeVarCharVector idVector;
-  // public BigIntVector timestampVector;
   public Float8Vector latitudeVector;
   public Float8Vector longitudeVector;
 
@@ -50,14 +50,8 @@ public class TDriveLoader extends LoaderBase {
 
   final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
-  public TDriveLoader(int i) {
-    this.allocator = new RootAllocator(0);
-  }
-
   public TDriveLoader() {
-    this.allocator = new RootAllocator(2 * 1024 * 1024 * 1024L);
-
-    // 定义 Schema
+    super();
     Schema schema = new Schema(Arrays.asList(
         Field.nullable("id", FieldType.nullable(Types.MinorType.LARGEVARCHAR.getType()).getType()),
         Field.nullable("timestamp", FieldType.nullable(Types.MinorType.BIGINT.getType()).getType()),
@@ -71,6 +65,37 @@ public class TDriveLoader extends LoaderBase {
     this.timestampVector = (BigIntVector) root.getVector("timestamp");
     this.latitudeVector = (Float8Vector) root.getVector("latitude");
     this.longitudeVector = (Float8Vector) root.getVector("longitude");
+  }
+
+  @Override
+  public void updateDeviceID(String fulDev) {
+    deviceID = fulDev;
+  }
+
+  @Override
+  public Group fillGroup(SimpleGroupFactory factory) {
+    return factory.newGroup()
+        .append("deviceID", deviceID)
+        .append("timestamp", timestampVector.get(iteIdx))
+        .append("lon", longitudeVector.get(iteIdx))
+        .append("lat", latitudeVector.get(iteIdx));
+  }
+
+  @Override
+  public void fillTablet(Tablet tablet, int rowInTablet) {
+    _lats[rowInTablet] = latitudeVector.get(iteIdx);
+    _lons[rowInTablet] = longitudeVector.get(iteIdx);
+  }
+
+  @Override
+  public void initArrays(Tablet tablet) {
+    refreshArrays(tablet);
+  }
+
+  @Override
+  public void refreshArrays(Tablet tablet) {
+    _lats = (double[]) tablet.values[0];
+    _lons = (double[]) tablet.values[1];
   }
 
   public void load(long limit) throws IOException {

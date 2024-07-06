@@ -1,6 +1,5 @@
-package org.apache.tsfile.exps;
+package org.apache.tsfile.exps.loader;
 
-import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.BigIntVector;
 import org.apache.arrow.vector.Float8Vector;
@@ -14,13 +13,19 @@ import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.FieldType;
 import org.apache.arrow.vector.types.pojo.Schema;
 import org.apache.arrow.vector.util.Text;
+import org.apache.parquet.example.data.Group;
+import org.apache.parquet.example.data.simple.SimpleGroupFactory;
+import org.apache.tsfile.exps.DataSets;
+import org.apache.tsfile.exps.conf.FileScheme;
 import org.apache.tsfile.exps.conf.MergedDataSets;
+import org.apache.tsfile.exps.updated.BenchWriter;
 import org.apache.tsfile.exps.updated.LoaderBase;
+import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
@@ -40,26 +45,17 @@ public class REDDLoader extends LoaderBase {
   public static String DIR = "F:\\0006DataSets\\REDD";
   public static String ARROW_DIR = "F:\\0006DataSets\\Arrows\\";
 
-  private final BufferAllocator allocator;
   private VectorSchemaRoot root;
-  // public LargeVarCharVector idVector;
-  // public BigIntVector timestampVector;
   public Float8Vector elecVector;
-  public Float8Vector longitudeVector;
-  public Float8Vector altitudeVector;
+
+  String building = null, meter = null;
 
   public static String tsFilePrefix = "root";
 
   final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
-  public REDDLoader(int i) {
-    this.allocator = new RootAllocator(0);
-  }
-
   public REDDLoader() {
-    this.allocator = new RootAllocator(16 * 1024 * 1024 * 1024L);
-
-    // 定义 Schema
+    super();
     Schema schema = new Schema(Arrays.asList(
         Field.nullable("id", FieldType.nullable(Types.MinorType.LARGEVARCHAR.getType()).getType()),
         Field.nullable("timestamp", FieldType.nullable(Types.MinorType.BIGINT.getType()).getType()),
@@ -73,6 +69,48 @@ public class REDDLoader extends LoaderBase {
     this.elecVector = (Float8Vector) root.getVector("elec");
   }
 
+  @Override
+  public void updateDeviceID(String fulDev) {
+    if (BenchWriter.currentScheme.toSplitDeviceID()) {
+      String[] nodes2 = fulDev.split("\\.");
+      building = nodes2[0];
+      meter = nodes2[1];
+    }
+    deviceID = fulDev;
+  }
+
+  @Override
+  public Group fillGroup(SimpleGroupFactory factory) {
+    if (BenchWriter.currentScheme == FileScheme.Parquet) {
+      return factory.newGroup()
+          .append("building", building)
+          .append("meter", meter)
+          .append("timestamp", timestampVector.get(iteIdx))
+          .append("elec", elecVector.get(iteIdx));
+    } else if (BenchWriter.currentScheme == FileScheme.ParquetAS){
+      return factory.newGroup()
+          .append("deviceID", deviceID)
+          .append("timestamp", timestampVector.get(iteIdx))
+          .append("elec", elecVector.get(iteIdx));
+    } else {
+      throw new RuntimeException("Not Parquet but called to fill group?");
+    }
+  }
+
+  @Override
+  public void fillTablet(Tablet _tablet, int rowInTablet) {
+    _elecs[rowInTablet] = elecVector.get(iteIdx);
+  }
+
+  @Override
+  public void initArrays(Tablet tablet) {
+    refreshArrays(tablet);
+  }
+
+  @Override
+  public void refreshArrays(Tablet tablet) {
+    _elecs = (double[]) tablet.values[0];
+  }
 
   public void load(long limit) throws IOException {
     Files.walk(Paths.get(DIR))

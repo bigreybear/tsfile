@@ -3,6 +3,10 @@ package org.apache.tsfile.exps;
 import org.apache.arrow.vector.BigIntVector;
 import org.apache.arrow.vector.Float8Vector;
 import org.apache.arrow.vector.LargeVarCharVector;
+import org.apache.tsfile.exps.loader.GeoLifeLoader;
+import org.apache.tsfile.exps.loader.REDDLoader;
+import org.apache.tsfile.exps.loader.TDriveLoader;
+import org.apache.tsfile.exps.loader.TSBSLoader;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -489,7 +493,7 @@ public class ConditionGenerator implements Serializable {
   }
 
   public static void generateREDDConditions() throws IOException {
-    org.apache.tsfile.exps.REDDLoader loader = REDDLoader.deserialize(DataSets.REDD.getArrowFile());
+    REDDLoader loader = REDDLoader.deserialize(DataSets.REDD.getArrowFile());
     ConditionGenerator cg = new ConditionGenerator();
 
     List<NamedVector> lnv = new ArrayList<>();

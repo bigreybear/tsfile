@@ -1,8 +1,5 @@
 package org.apache.tsfile.exps.updated;
 
-import com.google.flatbuffers.Table;
-import javafx.scene.control.Tab;
-import org.apache.hadoop.yarn.webapp.hamlet2.Hamlet;
 import org.apache.parquet.conf.PlainParquetConfiguration;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
@@ -10,6 +7,7 @@ import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.io.LocalOutputFile;
+import org.apache.parquet.schema.MessageType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.exps.conf.FileScheme;
 import org.apache.tsfile.exps.conf.MergedDataSets;
@@ -21,12 +19,10 @@ import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
-import javax.management.OperationsException;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -50,48 +46,52 @@ public class BenchWriter {
 
   static void registerTablet(TsFileWriter writer, String curDev, List<MeasurementSchema> msl) throws WriteProcessException {
     if (_tsfileAlignedTablet) {
-      writer.registerAlignedTimeseries(new Path(curDev), msl);
+      writer.registerAlignedTimeseries(Path.wrapDevPath(curDev), msl);
     } else {
-      writer.registerTimeseries(new Path(curDev), msl);
+      writer.registerTimeseries(Path.wrapDevPath(curDev), msl);
     }
   }
 
   public static void writeTsFile() throws IOException, WriteProcessException {
+    loaderBase.initIterator();
+    String preDev = new String(loaderBase.getID(0), StandardCharsets.UTF_8);
+
     currentScheme = FileScheme.TsFile;
     File tsFile = new File(_file_name + _tsfile_sf);
     tsFile.delete();
 
     TsFileWriter writer = new TsFileWriter(tsFile);
 
-    // LoaderBase loaderBase = LoaderBase.getLoader(mergedDataSets);
-    List<MeasurementSchema> schemaList = TsFileTabletFiller.getSchema();
-    Tablet tablet = new Tablet("", schemaList);
+    loaderBase.updateDeviceID(preDev);
+    List<MeasurementSchema> schemaList = loaderBase.getSchemaList();
+
+    Tablet tablet = new Tablet("", schemaList, BATCH);
     tablet.initBitMaps();
     long[] timestamps = tablet.timestamps;
-    TsFileTabletFiller.initFiller(tablet, loaderBase);
+    loaderBase.initArrays(tablet);
 
-    String preDev = new String(loaderBase.idVector.get(0), StandardCharsets.UTF_8);
     String curDev;
     tablet.setDeviceId(preDev);
     // Note(zx)
     registerTablet(writer, preDev, schemaList);
 
-    int totalRows = loaderBase.idVector.getValueCount();
     int rowInTablet = 0;
     long lastTS = -1L;
 
     DataSetsProfile.deviceNum = 1;
-    for (int cnt = 0; cnt < totalRows; cnt++) {
-      curDev = new String(loaderBase.idVector.get(cnt), StandardCharsets.UTF_8);
+    for (; loaderBase.hasNext(); loaderBase.next()) {
+      curDev = new String(loaderBase.getID(), StandardCharsets.UTF_8);
       if (!preDev.equals(curDev)) {
         tablet.rowSize = rowInTablet;
         writeTablet(writer, tablet);
         tablet.reset();
+        loaderBase.updateDeviceID(curDev);
+        tablet = loaderBase.refreshTablet(tablet);
         timestamps = tablet.timestamps;
-        TsFileTabletFiller.refreshArray(tablet);
+        loaderBase.refreshArrays(tablet);
 
         tablet.setDeviceId(curDev);
-        registerTablet(writer, curDev, schemaList);
+        registerTablet(writer, curDev, loaderBase.getSchemaList());
         rowInTablet = 0;
 
         if (TO_PROFILE) {
@@ -107,17 +107,17 @@ public class BenchWriter {
         writeTablet(writer, tablet);
         tablet.reset();
         tablet.setDeviceId(curDev);
-        TsFileTabletFiller.refreshArray(tablet);
+        loaderBase.refreshArrays(tablet);
         rowInTablet = 0;
       }
 
-      timestamps[rowInTablet] = loaderBase.timestampVector.get(cnt);
+      timestamps[rowInTablet] = loaderBase.getTS();
       if (timestamps[rowInTablet] <= lastTS) {
         continue;
       }
 
       lastTS = timestamps[rowInTablet];
-      TsFileTabletFiller.fill(rowInTablet, cnt);
+      loaderBase.fillTablet(tablet, rowInTablet);
       rowInTablet ++;
 
       if (TO_PROFILE) {
@@ -141,25 +141,28 @@ public class BenchWriter {
 
     ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(parFile.toPath()))
         .withConf(new PlainParquetConfiguration())
-        .withType(currentScheme.getParquetSchema(mergedDataSets))
+        .withType(loaderBase.getParquetSchema())
         .withCompressionCodec(compressorParquet)
+        // .enableDictionaryEncoding()  // should or not?
         .build();
 
-    ParquetGroupFiller.setLoader(loaderBase);
-    SimpleGroupFactory f= new SimpleGroupFactory(currentScheme.getParquetSchema(mergedDataSets));
+    // ParquetGroupFiller.setLoader(loaderBase);
+    SimpleGroupFactory f= new SimpleGroupFactory(loaderBase.getParquetSchema());
 
-    String preDev = new String(loaderBase.idVector.get(0), StandardCharsets.UTF_8);
-    ParquetGroupFiller.updateDeviceID(preDev);
+    loaderBase.initIterator();
+    String preDev = new String(loaderBase.getID(0), StandardCharsets.UTF_8);
+    // ParquetGroupFiller.updateDeviceID(preDev);
+    loaderBase.updateDeviceID(preDev);
     String curDev;
     // String[] nodes = preDev.split("\\.");
 
     List<Group> batchGroups = new ArrayList<>(BATCH);
     Group g;
-    int totalRows = loaderBase.idVector.getValueCount();
+    final int totalRows = loaderBase.getTotalRows();
     long lastTS = -1L, curTS; // filter out-of-order data
 
-    for (int cnt = 0; cnt < totalRows; cnt++) {
-      curDev = new String(loaderBase.idVector.get(cnt), StandardCharsets.UTF_8);
+    for (; loaderBase.hasNext(); loaderBase.next()) {
+      curDev = new String(loaderBase.getID(), StandardCharsets.UTF_8);
       if (!preDev.equals(curDev)) {
 
         if (TO_PROFILE) {
@@ -171,22 +174,24 @@ public class BenchWriter {
         }
         batchGroups.clear();
         preDev = curDev;
-        ParquetGroupFiller.updateDeviceID(curDev);
+        // ParquetGroupFiller.updateDeviceID(curDev);
+        loaderBase.updateDeviceID(curDev);
         lastTS = -1;
       }
 
 
-      curTS = loaderBase.timestampVector.get(cnt);
+      curTS = loaderBase.getTS();
       if (curTS <= lastTS) {
         // rowInTablet not modified, next write is fine
         continue;
       }
 
-      g = ParquetGroupFiller.fill(f, loaderBase, cnt);
+      // g = ParquetGroupFiller.fill(f, loaderBase, cnt);
+      g = loaderBase.fillGroup(f);
 
       batchGroups.add(g);
 
-      lastTS = loaderBase.timestampVector.get(cnt);
+      lastTS = curTS;
 
       if (TO_PROFILE) {
         DataSetsProfile.rowNum ++;
@@ -211,13 +216,12 @@ public class BenchWriter {
   // AS for alternated-schema
   public static void writeParquetAS() throws IOException {
     currentScheme = FileScheme.ParquetAS;
-    switch (mergedDataSets) {
+        switch (mergedDataSets) {
+      case ZY:
       case REDD:
-        // mergedDataSets = MergedDataSets.REDD_A;
-        break;
       case TSBS:
-        // mergedDataSets = MergedDataSets.TSBS_A;
         break;
+      // These are unavailable with alternated schema
       case GeoLife:
       case TDrive:
       default:
@@ -233,6 +237,7 @@ public class BenchWriter {
 
 
   public static void closeAndSummary() {
+    System.out.println(logger.builder.toString());
   }
 
 
@@ -248,7 +253,7 @@ public class BenchWriter {
   public static ResultPrinter logger;
 
   static String _date_time = java.time.format.DateTimeFormatter
-      .ofPattern("yyyyMMddHHmmss")
+      .ofPattern("HHmmss")
       .format(java.time.LocalDateTime.now());
   static String _log_name = "merged_write_results.log";
   static String _file_name = "";
@@ -261,7 +266,10 @@ public class BenchWriter {
   static LoaderBase loaderBase;
 
 
-  static String[] _args = {"TSBS", "SNAPPY"};  // pseudo input args
+  static String[] _args = {"ZY", "SNAPPY"};  // pseudo input args
+  /** Encoding is defined by {@link #encodingTsFile} for TsFile, and automated with Parquet.
+   *  Compressor is defined by above parameters.
+   *  Each run process a dataset. */
   public static void main(String[] args) throws IOException, WriteProcessException {
     if (args.length != 2) {
       args = _args;
@@ -274,19 +282,32 @@ public class BenchWriter {
     // logger = new BufferedWriter(new FileWriter(_log_name, true));
     logger = new ResultPrinter(_log_name, true);
 
-    // _file_name = MergedDataSets.TARGET_DIR + mergedDataSets.name() + "_" + _date_time; // name with date
-    _file_name = MergedDataSets.TARGET_DIR + mergedDataSets.name();
+    _file_name = "t-" + MergedDataSets.TARGET_DIR + mergedDataSets.name() + "_" + _date_time; // test at dev
+    // _file_name = MergedDataSets.TARGET_DIR + mergedDataSets.name();  // run at exp
 
     // load once, use always
     loaderBase = LoaderBase.getLoader(mergedDataSets);
 
-    writeArrowIPC();
-    // writeTsFile();
+    // writeArrowIPC();
+    // printProgress("Finish ArrowIPC");
+
+    writeTsFile();
+    printProgress("Finish TsFIle");
+
     writeParquet();
-    // alternated-schema Parquet is available IF deviceID consists of more than one fields
-    writeParquetAS();
+    printProgress("Finish Parquet");
+
+    writeParquetAS();  // alternated-schema Parquet available IFF deviceID consists of multiple fields
+    printProgress("Finish ParquetAS");
 
     closeAndSummary();
     logger.close();
+  }
+
+  public static void printProgress(String content) {
+    String time = DateTimeFormatter.ofPattern("HH:mm:ss").format(java.time.LocalDateTime.now());
+    System.out.println(String.format(
+        "%s, at time: %s",
+        content, time));
   }
 }

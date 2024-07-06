@@ -3,15 +3,17 @@ package org.apache.tsfile.exps.updated;
 import org.apache.arrow.vector.Float8Vector;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
-import org.apache.tsfile.exps.GeoLifeLoader;
-import org.apache.tsfile.exps.REDDLoader;
-import org.apache.tsfile.exps.TDriveLoader;
-import org.apache.tsfile.exps.TSBSLoader;
+import org.apache.tsfile.exps.loader.GeoLifeLoader;
+import org.apache.tsfile.exps.loader.REDDLoader;
+import org.apache.tsfile.exps.loader.TDriveLoader;
+import org.apache.tsfile.exps.loader.TSBSLoader;
 import org.apache.tsfile.exps.conf.FileScheme;
+import org.apache.tsfile.exps.loader.ZYLoader;
 
 /**
  * Serves as a helper to init and update group, which is the unit to write parquet
  */
+@Deprecated
 public class ParquetGroupFiller {
   // id components cache
   public static String deviceID;
@@ -24,6 +26,7 @@ public class ParquetGroupFiller {
   public static TSBSLoader tsbsLoader;
   public static REDDLoader reddLoader;
   public static TDriveLoader tDriveLoader;
+  public static ZYLoader zyLoader;
 
   public static void clear() {
     deviceID = meter = building = fleet = driver = name = null;
@@ -42,6 +45,9 @@ public class ParquetGroupFiller {
         return;
       case GeoLife:
         geoLifeLoader = (GeoLifeLoader) loader;
+        return;
+      case ZY:
+        zyLoader = (ZYLoader) loader;
         return;
       default:
         return;

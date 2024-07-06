@@ -1,6 +1,5 @@
-package org.apache.tsfile.exps;
+package org.apache.tsfile.exps.loader;
 
-import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.BigIntVector;
 import org.apache.arrow.vector.Float8Vector;
@@ -14,8 +13,11 @@ import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.FieldType;
 import org.apache.arrow.vector.types.pojo.Schema;
 import org.apache.arrow.vector.util.Text;
+import org.apache.parquet.example.data.Group;
+import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.tsfile.exps.conf.MergedDataSets;
 import org.apache.tsfile.exps.updated.LoaderBase;
+import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,10 +43,7 @@ public class GeoLifeLoader extends LoaderBase {
   public static String DIR = "F:\\0006DataSets\\GeolifeTrajectories1.3\\GeolifeTrajectories1.3\\Data";
   public static String ARROW_DIR = "F:\\0006DataSets\\Arrows\\";
 
-  private final BufferAllocator allocator;
   private VectorSchemaRoot root;
-  // public LargeVarCharVector idVector;
-  // public BigIntVector timestampVector;
   public Float8Vector latitudeVector;
   public Float8Vector longitudeVector;
   public Float8Vector altitudeVector;
@@ -53,13 +52,9 @@ public class GeoLifeLoader extends LoaderBase {
 
   final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
-  public GeoLifeLoader(int i) {
-    this.allocator = new RootAllocator(0);
-  }
 
   public GeoLifeLoader() {
-    this.allocator = new RootAllocator(4 * 1024 * 1024 * 1024L);
-
+    super();
     // 定义 Schema
     Schema schema = new Schema(Arrays.asList(
         Field.nullable("id", FieldType.nullable(Types.MinorType.LARGEVARCHAR.getType()).getType()),
@@ -78,14 +73,38 @@ public class GeoLifeLoader extends LoaderBase {
     this.altitudeVector = (Float8Vector) root.getVector("altitude");
   }
 
-  public GeoLifeLoader(RootAllocator ra, VectorSchemaRoot vsr) {
-    this.allocator = ra;
-    this.root = vsr;
-    this.idVector = (LargeVarCharVector) root.getVector("id");
-    this.timestampVector = (BigIntVector) root.getVector("timestamp");
-    this.latitudeVector = (Float8Vector) root.getVector("latitude");
-    this.longitudeVector = (Float8Vector) root.getVector("longitude");
-    this.altitudeVector = (Float8Vector) root.getVector("altitude");
+  @Override
+  public void updateDeviceID(String fulDev) {
+    deviceID = fulDev;
+  }
+
+  @Override
+  public Group fillGroup(SimpleGroupFactory factory) {
+    return factory.newGroup()
+        .append("deviceID", deviceID)
+        .append("timestamp", timestampVector.get(iteIdx))
+        .append("lon", longitudeVector.get(iteIdx))
+        .append("lat", latitudeVector.get(iteIdx))
+        .append("alt", altitudeVector.get(iteIdx));
+  }
+
+  @Override
+  public void fillTablet(Tablet tablet, int rowInTablet) {
+    _lats[rowInTablet] = latitudeVector.get(iteIdx);
+    _lons[rowInTablet] = longitudeVector.get(iteIdx);
+    _alts[rowInTablet] = altitudeVector.get(iteIdx);
+  }
+
+  @Override
+  public void initArrays(Tablet tablet) {
+    refreshArrays(tablet);
+  }
+
+  @Override
+  public void refreshArrays(Tablet tablet) {
+    _lats = (double[]) tablet.values[0];
+    _lons = (double[]) tablet.values[1];
+    _alts = (double[]) tablet.values[2];
   }
 
   public void load(long limit) throws IOException {

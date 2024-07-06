@@ -3,7 +3,7 @@
   <parent>
     <artifactId>parquet</artifactId>
     <groupId>org.apache.parquet</groupId>
-    <version>1.14.0-VTSFILE</version>
+    <version>vTsFile</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>parquet-format-structures</artifactId>

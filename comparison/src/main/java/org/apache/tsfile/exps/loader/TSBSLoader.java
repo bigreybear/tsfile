@@ -1,6 +1,5 @@
-package org.apache.tsfile.exps;
+package org.apache.tsfile.exps.loader;
 
-import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.BigIntVector;
 import org.apache.arrow.vector.FieldVector;
@@ -14,8 +13,15 @@ import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.FieldType;
 import org.apache.arrow.vector.types.pojo.Schema;
 import org.apache.arrow.vector.util.Text;
+import org.apache.parquet.example.data.Group;
+import org.apache.parquet.example.data.simple.SimpleGroupFactory;
+import org.apache.tsfile.exps.DataSets;
+import org.apache.tsfile.exps.conf.FileScheme;
 import org.apache.tsfile.exps.conf.MergedDataSets;
+import org.apache.tsfile.exps.updated.BenchWriter;
 import org.apache.tsfile.exps.updated.LoaderBase;
+import org.apache.tsfile.utils.BitMap;
+import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,11 +41,12 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Stream;
 
+import static org.apache.tsfile.exps.updated.ParquetGroupFiller.appendIfNotNull;
+
 public class TSBSLoader extends LoaderBase {
   private static final Logger logger = LoggerFactory.getLogger(TSBSLoader.class);
   public static final boolean DEBUG = false;
 
-  private final BufferAllocator allocator;
   private VectorSchemaRoot root;
   // public LargeVarCharVector idVector;
   // public BigIntVector timestampVector;
@@ -53,8 +60,7 @@ public class TSBSLoader extends LoaderBase {
   final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
   public TSBSLoader() {
-    this.allocator = new RootAllocator(16 * 1024 * 1024 * 1024L);
-
+    super();
     // 定义 Schema
     Schema schema = new Schema(Arrays.asList(
         // id: fleet.name.driver
@@ -76,6 +82,74 @@ public class TSBSLoader extends LoaderBase {
     this.velVec = (Float8Vector) root.getVector("vel");
   }
 
+  protected String name = null, fleet = null, driver = null;
+
+  @Override
+  public void updateDeviceID(String fulDev) {
+    if (BenchWriter.currentScheme.toSplitDeviceID()) {
+      String[] nodes = fulDev.split("\\.");
+      fleet = nodes[0];
+      name = nodes[1];
+      driver = nodes[2];
+      return;
+    }
+    deviceID = fulDev;
+  }
+
+  @Override
+  public Group fillGroup(SimpleGroupFactory factory) {
+    Group g = factory.newGroup();
+    if (BenchWriter.currentScheme == FileScheme.Parquet) {
+      g.append("fleet", fleet)
+          .append("name", name)
+          .append("driver", driver)
+          .append("timestamp", timestampVector.get(iteIdx));
+      g = appendIfNotNull(g, "lat", latVec, iteIdx);
+      g = appendIfNotNull(g, "lon", lonVec, iteIdx);
+      g = appendIfNotNull(g, "ele", eleVec, iteIdx);
+      g = appendIfNotNull(g, "vel", velVec, iteIdx);
+      return g;
+    } else if (BenchWriter.currentScheme == FileScheme.ParquetAS) {
+      g.append("deviceID", deviceID)
+          .append("timestamp", timestampVector.get(iteIdx));
+      g = appendIfNotNull(g, "lat", latVec, iteIdx);
+      g = appendIfNotNull(g, "lon", lonVec, iteIdx);
+      g = appendIfNotNull(g, "ele", eleVec, iteIdx);
+      g = appendIfNotNull(g, "vel", velVec, iteIdx);
+      return g;
+    } else {
+      throw new RuntimeException("Not Parquet but called to fill group?");
+    }
+  }
+
+  @Override
+  public void fillTablet(Tablet _tablet, int rowInTablet) {
+    setValueWithNull(_lats, _tablet.bitMaps[0], iteIdx, rowInTablet, latVec);
+    setValueWithNull(_lons, _tablet.bitMaps[1], iteIdx, rowInTablet, lonVec);
+    setValueWithNull(_eles, _tablet.bitMaps[2], iteIdx, rowInTablet, eleVec);
+    setValueWithNull(_vels, _tablet.bitMaps[3], iteIdx, rowInTablet, velVec);
+  }
+
+  private static void setValueWithNull(double[] dvs, BitMap bm, int vecIdx, int tabIdx, Float8Vector vec) {
+    if (vec.isNull(vecIdx)) {
+      bm.mark(tabIdx);
+    } else {
+      dvs[tabIdx] = vec.get(vecIdx);
+    }
+  }
+
+  @Override
+  public void initArrays(Tablet tablet) {
+    refreshArrays(tablet);
+  }
+
+  @Override
+  public void refreshArrays(Tablet tablet) {
+    _lats = (double[]) tablet.values[0];
+    _lons = (double[]) tablet.values[1];
+    _eles = (double[]) tablet.values[2];
+    _vels = (double[]) tablet.values[3];
+  }
 
   public void load(long limit) throws IOException {
     Files.walk(Paths.get(DIR))
