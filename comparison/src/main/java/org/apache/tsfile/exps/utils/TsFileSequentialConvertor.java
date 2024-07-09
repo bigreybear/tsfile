@@ -19,6 +19,7 @@
 
 package org.apache.tsfile.exps.utils;
 
+import org.apache.arrow.compression.CommonsCompressionFactory;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.BigIntVector;
@@ -28,14 +29,19 @@ import org.apache.arrow.vector.Float4Vector;
 import org.apache.arrow.vector.Float8Vector;
 import org.apache.arrow.vector.IntVector;
 import org.apache.arrow.vector.LargeVarCharVector;
+import org.apache.arrow.vector.TimeStampMicroVector;
+import org.apache.arrow.vector.TimeStampVector;
 import org.apache.arrow.vector.ValueVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.vector.compression.CompressionCodec;
+import org.apache.arrow.vector.compression.CompressionUtil;
 import org.apache.arrow.vector.dictionary.Dictionary;
 import org.apache.arrow.vector.dictionary.DictionaryEncoder;
 import org.apache.arrow.vector.dictionary.DictionaryProvider;
 import org.apache.arrow.vector.ipc.ArrowFileReader;
 import org.apache.arrow.vector.ipc.ArrowFileWriter;
 import org.apache.arrow.vector.ipc.message.ArrowBlock;
+import org.apache.arrow.vector.ipc.message.IpcOption;
 import org.apache.arrow.vector.types.Types;
 import org.apache.arrow.vector.types.pojo.DictionaryEncoding;
 import org.apache.arrow.vector.types.pojo.Field;
@@ -71,6 +77,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -107,22 +114,64 @@ import java.util.concurrent.atomic.AtomicInteger;
  * */
 public class TsFileSequentialConvertor {
   // configurations.
-  // public static final String prjPath = "F:\\0006DataSets\\";  // @ lab
-  public static final String prjPath = "E:\\ExpDataSets\\";  // @ home
+  public static final String prjPath = "F:\\0006DataSets\\";  // @ lab
+  // public static final String prjPath = "E:\\ExpDataSets\\";  // @ home
   public static final String srcPath = prjPath + "ZY.tsfile"; // path to read TsFile
   public static final String dstPath = prjPath + "ZY.bin"; // path to write ArrowIPC
   public static final String supPath = prjPath + "ZY.sup";  // path to supporting file
   private static final int BATCH_ROW = 100_000;
   private static final boolean ONLY_PART = true;
-  private static final int PART_START = -1, PART_END = 240000000;
+  private static final int PART_START = -1, PART_END = 540000000;
   // private static final boolean HIGH_FIDELITY = false;  // to develop
 
+  /* to convert */
+  public static void main(String[] args) throws Exception {
+    long[] a = new long[] {1,3,4,6,8};
+    long[] b = new long[] {2,5,7,9,10};
+    long[] c = new long[] {11,13,14,16,18};
+    long[] d = new long[] {1,23,34,46,58};
+
+    long maxMemory = Runtime.getRuntime().maxMemory();
+    long allocatedMemory = Runtime.getRuntime().totalMemory();
+    long freeMemory = Runtime.getRuntime().freeMemory();
+
+    System.out.println("Max Memory: " + maxMemory / 1024 / 1024 + " MB");
+    System.out.println("Allocated Memory: " + allocatedMemory / 1024 / 1024 + " MB");
+    System.out.println("Free Memory: " + freeMemory / 1024 / 1024 + " MB");
+
+    try (BufferAllocator all = new RootAllocator(32 * 1024 * 1024 * 1024L)) {
+      TsFileSequentialConvertor convertor = new TsFileSequentialConvertor(all);
+      convertor.preprocess();
+      convertor.reportChunkTypes();
+      convertor.initOutput();
+      convertor.processFile();
+      convertor.closeWithoutAllocator();
+    }
+
+    System.out.println("Conversion finished.");
+  }
+
+  // to check data
+  public static void mainReader(String[] args) {
+    File file = new File(dstPath);
+    try(
+        BufferAllocator rootAllocator = new RootAllocator();
+        FileInputStream fileInputStream = new FileInputStream(file);
+        ArrowFileReader reader = new ArrowFileReader(fileInputStream.getChannel(), rootAllocator)
+    ){
+      System.out.println("Record batches in file: " + reader.getRecordBlocks().size());
+      for (ArrowBlock arrowBlock : reader.getRecordBlocks()) {
+        reader.loadRecordBatch(arrowBlock);
+        VectorSchemaRoot vectorSchemaRootRecover = reader.getVectorSchemaRoot();
+        System.out.print(vectorSchemaRootRecover.contentToTSVString());
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
   public static long DICT_ID = 1L;
-
   private static final long[] WORKING_RANGE = new long[] {-1, Long.MAX_VALUE};
-
-  private static boolean printDetail = false;
-  public static final String POINT_IN_PAGE = "\t\tpoints in the page: ";
 
   // basical fields for Arrow
   private final BufferAllocator allocator;
@@ -145,9 +194,10 @@ public class TsFileSequentialConvertor {
   private final Map<String, BigIntVector> bigIntVectors = new HashMap<>();
   private final Map<String, IntVector> intVectors = new HashMap<>();
   private final Map<String, BitVector> bitVectors = new HashMap<>();
-  private final Map<String, TSDataType> vectorNameType = new HashMap<>(); // collect vector names across types
+  // collect vector names across types
+  private final Map<String, TSDataType> vectorNameType = new HashMap<>();
 
-  // collect data during sequential traversal
+  // collect data during sequential conversion
   private final List<ChunkData> collectedChunks = new ArrayList<>();
   private boolean effectiveAligned = true;
   private String processingDev = null;
@@ -157,7 +207,7 @@ public class TsFileSequentialConvertor {
   private long ptsCount = 0;
 
   // collect deserialized chunk data for conversion before next chunk group
-  class ChunkData {
+  static class ChunkData {
     ChunkType type;
     TSDataType dataType;
     List<long[]> timeBatch;
@@ -253,23 +303,8 @@ public class TsFileSequentialConvertor {
   // region Utils
 
   // always truncate first dot
-  private static final String truncateDeviceID(String oid) {
+  private static String truncateDeviceID(String oid) {
     return oid.substring(oid.indexOf(".") + 1);
-  }
-
-  // test only
-  private String printBisSets() {
-    int cnt = 0;
-    StringBuilder builder = new StringBuilder();
-    for (ChunkData cdata : collectedChunks) {
-      cnt++;
-      if (cdata.bs != null) {
-        builder.append(cnt);
-        builder.append(String.format(" %s\n", cdata.bs));
-      }
-    }
-    System.out.println(builder);
-    return builder.toString();
   }
 
   // helper
@@ -280,7 +315,7 @@ public class TsFileSequentialConvertor {
       case INT32:
         return bd.getInt();
       case BOOLEAN:
-        return bd.getBoolean() == true ? 1.0f : 0.0f;
+        return bd.getBoolean() ? 1.0f : 0.0f;
       case INT64:
         return bd.getLong();
       case DOUBLE:
@@ -297,7 +332,7 @@ public class TsFileSequentialConvertor {
   private static int getIntVal(TSDataType type, BatchData bd) {
     switch (type) {
       case BOOLEAN:
-        return bd.getBoolean() == true ? 1 : 0;
+        return bd.getBoolean() ? 1 : 0;
       case INT64:
         return (int) bd.getLong();
       case INT32:
@@ -337,7 +372,10 @@ public class TsFileSequentialConvertor {
     System.out.println("File completed.");
 
     idVector.close();
+    timestampVector.close();
+    idDict.getVector().close();
     root.getFieldVectors().forEach(ValueVector::close);
+
     root.clear();
     root.close();
     channel.close();
@@ -405,13 +443,17 @@ public class TsFileSequentialConvertor {
             continue;
           }
 
+          // not matched so it is effectively non-aligned
+          if (effectiveAligned) {
+            effectiveAligned = false;
+          }
+
+          // decide which pivot to proceed
           if (result[resIdx] > cts) {
-            bd.next();
+            // erroneous case since all timestamps should be contained in result array
+            throw new RuntimeException("Timestamp missed during merging.");
           } else {
             cdata.bs.set(resIdx);
-             if (effectiveAligned) {
-               effectiveAligned = false;
-             }
             resIdx++;
           }
         }
@@ -767,19 +809,21 @@ public class TsFileSequentialConvertor {
             }
             break;
           case MetaMarker.CHUNK_GROUP_HEADER:
-            // handle chunks from last ChunkGroup
+            // all chunks within the last ChunkGroup are collected
             if (!collectedChunks.isEmpty() && inLegalRange(reader.position())) {
+              // update device-sensor mapping
               support.addByChunks(processingDev, collectedChunks);
-              // process last ChunkGroup
+
+              // process chunks in last ChunkGroup
               if (collectedChunks.get(0).type == ChunkType.COMP) {
                 unalignedCG++;
                 // it is an unaligned ChunkGroup
-                effectiveAligned = true;
-                long[] mergedTs = mergeTimestampArrays();
-                fillUnalignedChunksIntoVectors(mergedTs);
-                if (!effectiveAligned) {
-                } else {
-                  effectiveUnalignedCG ++;
+                effectiveAligned = true;  // any divergence during following merge will set it to false
+                fillUnalignedChunksIntoVectors(mergeTimestampArrays());
+
+                // the last chunk group are effectively aligned, although it is designated as non-aligned.
+                if (effectiveAligned) {
+                  effectiveUnalignedCG++;
                 }
               } else {
                 fillAlignedChunksIntoVectors();
@@ -867,13 +911,16 @@ public class TsFileSequentialConvertor {
       idVector.setSafe(soi + i, devByt);
     }
 
-    // ptsCount += 2 * rln;
-
+    // timestamps and deviceIDs are not counted as points
     for (ChunkData cdata : collectedChunks) {
+      // batch-iterations are expanded in each case for efficiency
+      // all cases are semantically identical except the type difference
+      // and thus only first case annotated
       switch (vectorNameType.get(cdata.name)) {
         case FLOAT: {
           Float4Vector vector = float4Vectors.get(cdata.name);
           reAllocTo(vector, vti);
+          // idx always points to the last element in the merged vector which matches that in batch
           int idx = 0;
           for (BatchData bd : cdata.compBatch) {
             bd.resetBatchData();
@@ -888,8 +935,14 @@ public class TsFileSequentialConvertor {
               ptsCount++;
             }
           }
-          if (idx != rln) {
-            System.out.println("Some math wrong");
+
+          // correctness check
+          while (idx < rln) {
+            // set-bit for present element in batch but not migrated to the merged vector
+            if (!cdata.bs.get(idx)) {
+              System.out.println("present element are not iterated");
+            }
+            idx++;
           }
           break;
         }
@@ -910,8 +963,11 @@ public class TsFileSequentialConvertor {
               ptsCount++;
             }
           }
-          if (idx != rln) {
-            System.out.println("Some math wrong");
+          while (idx < rln) {
+            if (!cdata.bs.get(idx)) {
+              System.out.println("present element are not iterated");
+            }
+            idx++;
           }
           break;
         }
@@ -932,8 +988,11 @@ public class TsFileSequentialConvertor {
               ptsCount++;
             }
           }
-          if (idx != rln) {
-            System.out.println("Some math wrong");
+          while (idx < rln) {
+            if (!cdata.bs.get(idx)) {
+              System.out.println("present element are not iterated");
+            }
+            idx++;
           }
           break;
         }
@@ -954,8 +1013,11 @@ public class TsFileSequentialConvertor {
               ptsCount++;
             }
           }
-          if (idx != rln) {
-            System.out.println("Some math wrong");
+          while (idx < rln) {
+            if (!cdata.bs.get(idx)) {
+              System.out.println("present element are not iterated");
+            }
+            idx++;
           }
           break;
         }
@@ -1006,8 +1068,6 @@ public class TsFileSequentialConvertor {
     for (int i = 0; i < offset; i++) {
       idVector.set(soi + i, devByt);
     }
-
-    // ptsCount += 2 * offset;
 
     for (ChunkData cdata : collectedChunks) {
       if (cdata.type == ChunkType.TIME) {
@@ -1117,6 +1177,10 @@ public class TsFileSequentialConvertor {
   }
 
   private void writeCurrentBatch() throws IOException {
+    if (locRowIdx == 0) {
+      return;
+    }
+
     root.setRowCount(locRowIdx);
     idVector.setValueCount(locRowIdx);
     timestampVector.setValueCount(locRowIdx);
@@ -1128,6 +1192,7 @@ public class TsFileSequentialConvertor {
     for (int j = 0; j < v.getValueCount() && j < locRowIdx; j++) {
       idVectorEncoded.set(j, v.get(j));
     }
+    v.close();
 
     writer.writeBatch();
     root.getFieldVectors().forEach(ValueVector::reset);
@@ -1138,102 +1203,4 @@ public class TsFileSequentialConvertor {
   }
 
   // endregion
-
-  // region Reader and Verifier
-
-  private void printMeta() throws Exception{
-    try (FileInputStream fileInputStream = new FileInputStream(dstPath);
-         ArrowFileReader reader = new ArrowFileReader(fileInputStream.getChannel(), allocator)) {
-      // reader.loadNextBatch();
-      VectorSchemaRoot readRoot = reader.getVectorSchemaRoot();
-      // get the encoded vector
-      // IntVector intVector = (IntVector) readRoot.getVector(0);
-
-      // get dictionaries and decode the vector
-      Map<Long, Dictionary> dictionaryMap = reader.getDictionaryVectors();
-      // long dictionaryId = intVector.getField().getDictionary().getId();
-      // try (VarCharVector varCharVector =
-      //          (VarCharVector) DictionaryEncoder.decode(intVector, dictionaryMap.get(dictionaryId))) {
-      //   // ... use decoded vector
-      // }
-      System.out.println("AA");
-    }
-  }
-
-  // endregion
-
-  /* to check meta */
-  public static void main12(String[] args) throws Exception{
-    TsFileSequentialConvertor convertor = new TsFileSequentialConvertor();
-    convertor.printMeta();
-    DevSenSupport dss = DevSenSupport.deserialize(convertor.supPath);
-    System.out.println("ob");
-  }
-
-  /* to convert */
-  public static void main(String[] args) throws Exception {
-    long[] a = new long[] {1,3,4,6,8};
-    long[] b = new long[] {2,5,7,9,10};
-    long[] c = new long[] {11,13,14,16,18};
-    long[] d = new long[] {1,23,34,46,58};
-
-    long maxMemory = Runtime.getRuntime().maxMemory();
-    long allocatedMemory = Runtime.getRuntime().totalMemory();
-    long freeMemory = Runtime.getRuntime().freeMemory();
-
-    System.out.println("Max Memory: " + maxMemory / 1024 / 1024 + " MB");
-    System.out.println("Allocated Memory: " + allocatedMemory / 1024 / 1024 + " MB");
-    System.out.println("Free Memory: " + freeMemory / 1024 / 1024 + " MB");
-
-    try (BufferAllocator all = new RootAllocator(32 * 1024 * 1024 * 1024L)) {
-      TsFileSequentialConvertor convertor = new TsFileSequentialConvertor(all);
-      convertor.preprocess();
-      convertor.reportChunkTypes();
-      convertor.initOutput();
-      convertor.processFile();
-      convertor.closeWithoutAllocator();
-    }
-
-    System.out.println("OK");
-  }
-
-  // to check data
-  public static void mainxx(String[] args) {
-    File file = new File(dstPath);
-    try(
-        BufferAllocator rootAllocator = new RootAllocator();
-        FileInputStream fileInputStream = new FileInputStream(file);
-        ArrowFileReader reader = new ArrowFileReader(fileInputStream.getChannel(), rootAllocator)
-    ){
-      System.out.println("Record batches in file: " + reader.getRecordBlocks().size());
-      for (ArrowBlock arrowBlock : reader.getRecordBlocks()) {
-        reader.loadRecordBatch(arrowBlock);
-        VectorSchemaRoot vectorSchemaRootRecover = reader.getVectorSchemaRoot();
-        System.out.print(vectorSchemaRootRecover.contentToTSVString());
-      }
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
-  }
-
-  public static void main9(String[] args) {
-    TsFileSequentialConvertor convertor = new TsFileSequentialConvertor();
-    // convertor.timestampVector.setValueCount(100);
-    // convertor.idVector.setValueCount(100);
-    // convertor.idVector.reAlloc();
-    convertor.timestampVector.allocateNew(60);
-    convertor.idVector.allocateNew(60);
-    for (long i = 0; i < 100; i++) {
-      if (i % 10 == 0) continue;
-      convertor.timestampVector.set((int) i ,i);
-      convertor.idVector.set((int)i, "A".getBytes(StandardCharsets.UTF_8));
-    }
-
-    for (long i = 0; i < 100; i++) {
-      if (convertor.timestampVector.isNull((int)i)) continue;
-      System.out.println(convertor.timestampVector.get((int)i));
-      System.out.println(new String(convertor.idVector.get((int)i)));
-    }
-  }
-
 }
