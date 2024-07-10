@@ -568,7 +568,7 @@ public class TsFileWriter implements AutoCloseable {
    */
   private boolean checkMemorySizeAndMayFlushChunks() throws IOException {
     /**
-     * NOTE A key method flush buffers to FS
+     * Note(zx) A key method flush buffers to FS
      * <pre>
      *   CALLED on every write method, including write/writeAligned with record/tablet
      *
@@ -674,12 +674,12 @@ public class TsFileWriter implements AutoCloseable {
     flushIndexTime = fileWriter.reportForceIndex();
   }
 
-  public float[] report() {
-    return new float[] {
+  public long[] report() {
+    return new long[] {
         dataPosition,
         fileWriter.getIndexEndPosition() - dataPosition,
-        (float) flushDataTime /1000000,
-        (float) flushIndexTime /1000000};
+        flushDataTime /1000000,
+        flushIndexTime /1000000};
   }
 
   public String verboseReport() {

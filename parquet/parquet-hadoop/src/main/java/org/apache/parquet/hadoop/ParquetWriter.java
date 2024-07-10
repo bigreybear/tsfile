@@ -453,7 +453,7 @@ public class ParquetWriter<T> implements Closeable {
     }
   }
 
-  public float[] report() {
+  public long[] report() {
     return writer.report();
   }
 

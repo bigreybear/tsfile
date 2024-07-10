@@ -166,8 +166,8 @@ public class InternalParquetRecordWriter<T> {
     bw.write(String.format("DataSize: %d, IndexSize: %d\n", dataSize, indexSize));
   }
 
-  public float[] report() {
-    return new float[] {dataSize, indexSize, (float) flushDataTime /1000000, (float) flushIndexTime /1000000};
+  public long[] report() {
+    return new long[] {dataSize, indexSize, flushDataTime /1000000, flushIndexTime /1000000};
   }
 
   public void write(T value) throws IOException, InterruptedException {

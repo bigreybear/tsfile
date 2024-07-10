@@ -19,7 +19,6 @@
 
 package org.apache.tsfile.exps.utils;
 
-import org.apache.arrow.compression.CommonsCompressionFactory;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.BigIntVector;
@@ -29,19 +28,14 @@ import org.apache.arrow.vector.Float4Vector;
 import org.apache.arrow.vector.Float8Vector;
 import org.apache.arrow.vector.IntVector;
 import org.apache.arrow.vector.LargeVarCharVector;
-import org.apache.arrow.vector.TimeStampMicroVector;
-import org.apache.arrow.vector.TimeStampVector;
 import org.apache.arrow.vector.ValueVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
-import org.apache.arrow.vector.compression.CompressionCodec;
-import org.apache.arrow.vector.compression.CompressionUtil;
 import org.apache.arrow.vector.dictionary.Dictionary;
 import org.apache.arrow.vector.dictionary.DictionaryEncoder;
 import org.apache.arrow.vector.dictionary.DictionaryProvider;
 import org.apache.arrow.vector.ipc.ArrowFileReader;
 import org.apache.arrow.vector.ipc.ArrowFileWriter;
 import org.apache.arrow.vector.ipc.message.ArrowBlock;
-import org.apache.arrow.vector.ipc.message.IpcOption;
 import org.apache.arrow.vector.types.Types;
 import org.apache.arrow.vector.types.pojo.DictionaryEncoding;
 import org.apache.arrow.vector.types.pojo.Field;
@@ -50,6 +44,7 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.exps.vector.ArrowVectorHelper;
 import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.header.ChunkGroupHeader;
 import org.apache.tsfile.file.header.ChunkHeader;
@@ -61,7 +56,6 @@ import org.apache.tsfile.read.reader.page.PageReader;
 import org.apache.tsfile.read.reader.page.TimePageReader;
 import org.apache.tsfile.read.reader.page.ValuePageReader;
 import org.apache.tsfile.utils.TsPrimitiveType;
-import org.apache.tsfile.write.record.Tablet;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -77,35 +71,31 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  *  This tool is used to read TsFile sequentially, including nonAligned or aligned timeseries.
- *
- *  <p>
+ * <p>
  *
  *  Enhanced to convert TsFile sequentially rather than interactively, i.e., with queries.
- *
- *  <p>
+ * <p>
  *
  *  The motivation is that, TsFile is designed to be a multi-dimension file format rather than
  *  an ordinary tabular (2-dimension) format. The conversion may increase the universality of
  *  the content.
- *
- *  <p>
+ * <p>
  *
  *  The goal is to convert into an ordinary tabular format, like Arrow. Specifically, this
  *  would integrate all deviceID into a single column, and store all time-series from measurement
  *  with identical name into a single column.
  *  The final table will have one column for each unique sensor name, plus two additional columns:
  *  one for timestamp and another for deviceID.
+ * <p>
  *
- *  <p>
- *
- *  DEFICIENCY: only int, big int, float and boolean columns are available. <br>
+ *  DEFICIENCY: only int, big int, float and boolean columns are available,
+ *  referring to {@link #buildVectors()} <br>
  *  TODO: add options, for either HIGH_FIDELITY or ONLY_NUMERIC. The former will keep diverging type
  *  columns as TEXT and store all data (however obviously inefficient), the latter will only keep
  *  numeric columns.
@@ -114,14 +104,15 @@ import java.util.concurrent.atomic.AtomicInteger;
  * */
 public class TsFileSequentialConvertor {
   // configurations.
-  public static final String prjPath = "F:\\0006DataSets\\";  // @ lab
-  // public static final String prjPath = "E:\\ExpDataSets\\";  // @ home
-  public static final String srcPath = prjPath + "ZY.tsfile"; // path to read TsFile
-  public static final String dstPath = prjPath + "ZY.bin"; // path to write ArrowIPC
-  public static final String supPath = prjPath + "ZY.sup";  // path to supporting file
+  // public static final String prjPath = "F:\\0006DataSets\\";  // @ lab
+  public static final String prjPath = "E:\\ExpDataSets\\Source-TsFile\\";  // @ home
+  public static final String filName = "ZY";
+  public static final String srcPath = prjPath + filName + ".tsfile"; // path to read TsFile
+  public static final String dstPath = prjPath + filName + ".arrow"; // path to write ArrowIPC
+  public static final String supPath = prjPath + filName + ".sup";  // path to supporting file
   private static final int BATCH_ROW = 100_000;
   private static final boolean ONLY_PART = true;
-  private static final int PART_START = -1, PART_END = 540000000;
+  private static final int PART_START = -1, PART_END = 480_000_000;
   // private static final boolean HIGH_FIDELITY = false;  // to develop
 
   /* to convert */
@@ -243,44 +234,6 @@ public class TsFileSequentialConvertor {
     }
   }
 
-  /**
-   * transfrom OverAllIndex into index of the batches by prefix sum array
-   * @param oai overall index
-   * @return [index of the batches within list, index within the batch]
-   */
-  public static int[] getBatchIndex(int oai, int[] psa) {
-    if (oai > psa[psa.length - 1] || oai < 0) {
-      throw new IndexOutOfBoundsException();
-    }
-
-    // only COMP now
-    // if (type != ChunkType.COMP) {return null;}
-
-    if (oai < psa[0]) {
-      return new int[] {0, oai};
-    }
-    if (oai >= psa[psa.length - 2]) {
-      return new int[] {psa.length - 2, oai - psa[psa.length - 2]};
-    }
-
-    int left = 0, right = psa.length - 1, mid = 0;
-
-    // break when oai is between psa[mid-1] and psa[mid]
-    while (left < right) {
-      mid = (right + left) / 2;
-      if (psa[mid] == oai) {
-        return new int[] {mid, 0};
-      }
-
-      if (oai < psa[mid]) {
-        right = mid;
-      } else {
-        left = mid + 1;
-      }
-    }
-    return new int[] {mid, oai - psa[mid-1]};
-  }
-
   private enum ChunkType {
     TIME,
     VALUE,
@@ -304,7 +257,7 @@ public class TsFileSequentialConvertor {
 
   // always truncate first dot
   private static String truncateDeviceID(String oid) {
-    return oid.substring(oid.indexOf(".") + 1);
+    return oid.substring(oid.indexOf("root.") + 1);
   }
 
   // helper
@@ -465,7 +418,9 @@ public class TsFileSequentialConvertor {
     return result;
   }
 
-  /** A reverse procedure to {@link org.apache.tsfile.exps.loader.ZYLoader#fillTablet} */
+  /** Note(zx) Build vectors after {@link #preprocess}, only four (Arrow) types are available now.
+   *  In other word, entry to guard/filter vector types within arrow file.
+   *  A reverse procedure to {@link org.apache.tsfile.exps.loader.ZYLoader#fillTablet} */
   private void buildVectors() {
     for (Map.Entry<String, TSDataType> entry : vectorNameType.entrySet()) {
       switch (entry.getValue()) {
@@ -876,12 +831,6 @@ public class TsFileSequentialConvertor {
 
   // region Fill and Write
 
-  public static void reAllocTo(ValueVector vector, int tarSiz) {
-    while (vector.getValueCapacity() < tarSiz) {
-      vector.reAlloc();
-    }
-  }
-
   /**
    * fill in ts and id
    * find chunk vector one by one
@@ -904,8 +853,8 @@ public class TsFileSequentialConvertor {
 
     byte[] devByt = processingDev.getBytes(StandardCharsets.UTF_8);
     // check and fill vectors of ts and id
-    reAllocTo(timestampVector, vti);
-    reAllocTo(idVector, vti);
+    ArrowVectorHelper.reAllocTo(timestampVector, vti);
+    ArrowVectorHelper.reAllocTo(idVector, vti);
     for (int i = 0; i < rln; i++) {
       timestampVector.set(soi + i, mts[i]);
       idVector.setSafe(soi + i, devByt);
@@ -919,7 +868,7 @@ public class TsFileSequentialConvertor {
       switch (vectorNameType.get(cdata.name)) {
         case FLOAT: {
           Float4Vector vector = float4Vectors.get(cdata.name);
-          reAllocTo(vector, vti);
+          ArrowVectorHelper.reAllocTo(vector, vti);
           // idx always points to the last element in the merged vector which matches that in batch
           int idx = 0;
           for (BatchData bd : cdata.compBatch) {
@@ -948,7 +897,7 @@ public class TsFileSequentialConvertor {
         }
         case INT32: {
           IntVector vector = intVectors.get(cdata.name);
-          reAllocTo(vector, vti);
+          ArrowVectorHelper.reAllocTo(vector, vti);
           int idx = 0;
           for (BatchData bd : cdata.compBatch) {
             bd.resetBatchData();
@@ -973,7 +922,7 @@ public class TsFileSequentialConvertor {
         }
         case BOOLEAN: {
           BitVector vector = bitVectors.get(cdata.name);
-          reAllocTo(vector, vti);
+          ArrowVectorHelper.reAllocTo(vector, vti);
           int idx = 0;
           for (BatchData bd : cdata.compBatch) {
             bd.resetBatchData();
@@ -998,7 +947,7 @@ public class TsFileSequentialConvertor {
         }
         case INT64: {
           BigIntVector vector = bigIntVectors.get(cdata.name);
-          reAllocTo(vector, vti);
+          ArrowVectorHelper.reAllocTo(vector, vti);
           int idx = 0;
           for (BatchData bd : cdata.compBatch) {
             bd.resetBatchData();
@@ -1051,7 +1000,7 @@ public class TsFileSequentialConvertor {
     }
     int offset = 0;
     for (long[] ta : timeChunk.timeBatch) {
-      reAllocTo(timestampVector, offset + ta.length + soi);
+      ArrowVectorHelper.reAllocTo(timestampVector, offset + ta.length + soi);
       for (int i = 0; i < ta.length; i++) {
         timestampVector.set(soi + offset + i, ta[i]);
       }
@@ -1063,8 +1012,8 @@ public class TsFileSequentialConvertor {
     this.locRowIdx = vti;
 
     byte[] devByt = processingDev.getBytes(StandardCharsets.UTF_8);
-    reAllocTo(timestampVector, vti);
-    reAllocTo(idVector, vti);
+    ArrowVectorHelper.reAllocTo(timestampVector, vti);
+    ArrowVectorHelper.reAllocTo(idVector, vti);
     for (int i = 0; i < offset; i++) {
       idVector.set(soi + i, devByt);
     }
@@ -1077,7 +1026,7 @@ public class TsFileSequentialConvertor {
       switch (vectorNameType.get(cdata.name)) {
         case FLOAT: {
           Float4Vector vector = float4Vectors.get(cdata.name);
-          reAllocTo(vector, vti);
+          ArrowVectorHelper.reAllocTo(vector, vti);
           int idx = 0, ofs = 0;
           for (TsPrimitiveType[] tpt : cdata.valueBatch) {
             while (idx < tpt.length) {
@@ -1090,7 +1039,7 @@ public class TsFileSequentialConvertor {
         }
         case INT32: {
           IntVector vector = intVectors.get(cdata.name);
-          reAllocTo(vector, vti);
+          ArrowVectorHelper.reAllocTo(vector, vti);
           int idx = 0, ofs = 0;
           for (TsPrimitiveType[] tpt : cdata.valueBatch) {
             while (idx < tpt.length) {
@@ -1103,7 +1052,7 @@ public class TsFileSequentialConvertor {
         }
         case BOOLEAN: {
           BitVector vector = bitVectors.get(cdata.name);
-          reAllocTo(vector, vti);
+          ArrowVectorHelper.reAllocTo(vector, vti);
           int idx = 0, ofs = 0;
           for (TsPrimitiveType[] tpt : cdata.valueBatch) {
             while (idx < tpt.length) {
@@ -1116,7 +1065,7 @@ public class TsFileSequentialConvertor {
         }
         case INT64: {
           BigIntVector vector = bigIntVectors.get(cdata.name);
-          reAllocTo(vector, vti);
+          ArrowVectorHelper.reAllocTo(vector, vti);
           int idx = 0, ofs = 0;
           for (TsPrimitiveType[] tpt : cdata.valueBatch) {
             while (idx < tpt.length) {
@@ -1158,7 +1107,7 @@ public class TsFileSequentialConvertor {
     // construct dictionary and provider
     DictionaryProvider.MapDictionaryProvider provider = new DictionaryProvider.MapDictionaryProvider();
     LargeVarCharVector dictVector = new LargeVarCharVector(Field.nullable("dict", Types.MinorType.LARGEVARCHAR.getType()), allocator);
-    reAllocTo(dictVector, devSets.size());
+    ArrowVectorHelper.reAllocTo(dictVector, devSets.size());
     int cnt = 0;
     for (String s : devSets) {
       dictVector.setSafe(cnt, s.getBytes(StandardCharsets.UTF_8));
@@ -1188,7 +1137,7 @@ public class TsFileSequentialConvertor {
 
     // encode deviceID
     IntVector v = (IntVector) DictionaryEncoder.encode(idVector, idDict);
-    reAllocTo(idVectorEncoded, locRowIdx);
+    ArrowVectorHelper.reAllocTo(idVectorEncoded, locRowIdx);
     for (int j = 0; j < v.getValueCount() && j < locRowIdx; j++) {
       idVectorEncoded.set(j, v.get(j));
     }

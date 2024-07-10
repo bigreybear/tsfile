@@ -54,7 +54,10 @@ public enum MergedDataSets {
       case TSBS:
         return ARROW_BINS + "TSBS.bin";
       case ZY:
-        return ARROW_BINS + "ZY.bin";
+        return ARROW_BINS + "ZY.arrow";
+      case CCS:
+        // original named: 1692611841058-21-1-0.tsfile-2798
+        return ARROW_BINS + "CCS.arrow";
       default:
     }
     return null;
@@ -69,6 +72,8 @@ public enum MergedDataSets {
         return null;
       case ZY:
         return ARROW_BINS + "ZY.sup";
+      case CCS:
+        return ARROW_BINS + "CCS.sup";
       default:
     }
     return null;
@@ -92,46 +97,6 @@ public enum MergedDataSets {
   // region Parquet-specific
 
   // for single-column filtering
-  public MessageType getParquetSingleColumnSchema() {
-    String messageHeader;
-    switch (this) {
-      case TSBS:
-        return parseMessageType("message TSBS { "
-            + "required binary name;"
-            + "required binary fleet;"
-            + "required binary driver;"
-            + "required int64 timestamp;"
-            + "optional double vel;"
-            + "} ");
-      case REDD:
-        return parseMessageType("message REDD { "
-            + "required binary building;"
-            + "required binary meter;"
-            + "required int64 timestamp;"
-            + "required double elec;"
-            + "} ");
-      case GeoLife:
-        messageHeader = "GeoLife";
-        break;
-      case TDrive:
-        messageHeader = "TDrive";
-        break;
-      case REDD_A:
-        messageHeader = "REDD";
-        break;
-      case TSBS_A:
-        messageHeader = "TSBS";
-        break;
-      default:
-        return null;
-    }
-
-    return parseMessageType("message " + messageHeader + " { "
-        + "required binary deviceID;"
-        + "required int64 timestamp;"
-        + "required double " + filteringColumn + "; "
-        + "} ");
-  }
 
   public FilterCompat.Filter getParquetDeviceComparisonEquation(String device) {
     return FilterCompat.get(getParquetDevicePredicate(device));

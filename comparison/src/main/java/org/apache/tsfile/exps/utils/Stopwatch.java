@@ -2,7 +2,7 @@ package org.apache.tsfile.exps.utils;
 
 public class Stopwatch {
   String id;
-  long acc, temp;
+  long acc = 0, temp = 0;
 
   public Stopwatch() {
 

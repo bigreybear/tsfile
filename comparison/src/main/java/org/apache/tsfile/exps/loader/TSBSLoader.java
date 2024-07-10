@@ -37,7 +37,9 @@ import java.text.SimpleDateFormat;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Stream;
 
@@ -47,7 +49,6 @@ public class TSBSLoader extends LoaderBase {
   private static final Logger logger = LoggerFactory.getLogger(TSBSLoader.class);
   public static final boolean DEBUG = false;
 
-  private VectorSchemaRoot root;
   // public LargeVarCharVector idVector;
   // public BigIntVector timestampVector;
   public Float8Vector latVec;
@@ -149,6 +150,16 @@ public class TSBSLoader extends LoaderBase {
     _lons = (double[]) tablet.values[1];
     _eles = (double[]) tablet.values[2];
     _vels = (double[]) tablet.values[3];
+  }
+
+  @Override
+  public Set<String> getRelatedSensors(String did) {
+    Set<String> res = new HashSet<>();
+    res.add("lat");
+    res.add("lon");
+    res.add("ele");
+    res.add("vel");
+    return res;
   }
 
   public void load(long limit) throws IOException {

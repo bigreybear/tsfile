@@ -1,6 +1,6 @@
 package org.apache.tsfile.exps.loader;
 
-import javafx.scene.control.Tab;
+import org.apache.arrow.compression.CommonsCompressionFactory;
 import org.apache.arrow.vector.BigIntVector;
 import org.apache.arrow.vector.BitVector;
 import org.apache.arrow.vector.Float4Vector;
@@ -26,11 +26,11 @@ import org.apache.tsfile.exps.updated.BenchWriter;
 import org.apache.tsfile.exps.updated.LoaderBase;
 import org.apache.tsfile.exps.utils.DevSenSupport;
 import org.apache.tsfile.exps.utils.TsFileSequentialConvertor;
-import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -40,6 +40,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.apache.tsfile.exps.updated.BenchWriter.compressorTsFile;
 import static org.apache.tsfile.exps.updated.BenchWriter.encodingTsFile;
@@ -73,13 +74,34 @@ public class ZYLoader extends LoaderBase {
     super();
     fis = new FileInputStream(mds.getArrowFile());
     channel = fis.getChannel();
-    reader = new ArrowFileReader(channel, allocator);
+    reader = new ArrowFileReader(channel, allocator, new CommonsCompressionFactory());
+  }
+
+  public ZYLoader(File file) throws FileNotFoundException {
+    super();
+    fis = new FileInputStream(file);
+    channel = fis.getChannel();
+    reader = new ArrowFileReader(channel, allocator, new CommonsCompressionFactory());
   }
 
   public static ZYLoader deser(MergedDataSets mds) throws IOException {
     ZYLoader loader = new ZYLoader(mds);
     try {
       loader.preprocess(mds);
+    } catch (ClassNotFoundException e) {
+      throw new RuntimeException(e);
+    }
+    return loader;
+  }
+
+  /**
+   * Only used to test correctness, share the support file with the source.
+   */
+  @Deprecated
+  public static ZYLoader deserFromFile(File file) throws IOException {
+    ZYLoader loader = new ZYLoader(file);
+    try {
+      loader.preprocess(MergedDataSets.ZY);
     } catch (ClassNotFoundException e) {
       throw new RuntimeException(e);
     }
@@ -93,45 +115,39 @@ public class ZYLoader extends LoaderBase {
 
   @Override
   public byte[] getID(int idx) throws IOException {
-    int[] res = TsFileSequentialConvertor.getBatchIndex(idx, psaRow);
-
-    if (res[0] == curBlk) {
-      return idVector.get(res[1]);
+    if (idx == iteIdx) {
+      return getID();
     }
 
-    reader.loadRecordBatch(reader.getRecordBlocks().get(res[0]));
-    VectorSchemaRoot vsr = reader.getVectorSchemaRoot();
-    org.apache.arrow.vector.dictionary.Dictionary dic = reader.getDictionaryVectors().get(DICT_ID);
-    LargeVarCharVector lvcv = (LargeVarCharVector) DictionaryEncoder.decode(vsr.getVector("id"), dic);
-    byte[] ret = lvcv.get(res[1]);
-
-    restoreStatus();
-    return ret;
+    int[] res = LoaderBase.getBatchIndex(idx, psaRow);
+    setCursor(res[0], res[1]);
+    return getID();
   }
 
-  private void restoreStatus() throws IOException {
-    reader.loadRecordBatch(reader.getRecordBlocks().get(curBlk));
-    root = reader.getVectorSchemaRoot();
-    dictionary = reader.getDictionaryVectors().get(DICT_ID);
-    updateTsAndId();
-    updateDeviceID(deviceID);
-  }
-
+  @Override
   public long getTS(int idx) throws IOException {
-    int[] res = TsFileSequentialConvertor.getBatchIndex(idx, psaRow);
-
-    if (res[0] == curBlk) {
-      return timestampVector.get(res[1]);
+    if (idx == iteIdx) {
+      return getTS();
     }
 
-    reader.loadRecordBatch(reader.getRecordBlocks().get(res[0]));
-    VectorSchemaRoot vsr = reader.getVectorSchemaRoot();
-    long ret = ((BigIntVector) vsr.getVector("timestamp")).get(res[1]);
-
-    restoreStatus();
-    return ret;
+    int[] res = LoaderBase.getBatchIndex(idx, psaRow);
+    setCursor(res[0], res[1]);
+    return getTS();
   }
 
+  // set block and ele pointer and load related bytes
+  private void setCursor(int blkIdx, int eleIdx) throws IOException {
+    if (curBlk != blkIdx) {
+      curBlk = blkIdx;
+      reader.loadRecordBatch(reader.getRecordBlocks().get(curBlk));
+      root = reader.getVectorSchemaRoot();
+      updateTsAndIdVector();
+    }
+    curIdx = eleIdx;
+    updateDeviceID(new String(idVector.get(curIdx), StandardCharsets.UTF_8));
+  }
+
+  @Override
   public void next() throws IOException {
     iteIdx ++;
     curIdx ++;
@@ -144,39 +160,73 @@ public class ZYLoader extends LoaderBase {
       }
       reader.loadRecordBatch(reader.getRecordBlocks().get(curBlk));
       root = reader.getVectorSchemaRoot();
-      updateTsAndId();
+      updateTsAndIdVector();
       String curDev = new String(idVector.get(0), StandardCharsets.UTF_8);
       updateWorkingVectors(curDev);
       deviceID = curDev;
     }
   }
 
+  @Override
+  public Set<String> getAllDevices() {
+    return support.map.keySet();
+  }
+
+  @Override
+  public int getCurrentBatchCursor() {
+    return curIdx;
+  }
+
+  @Override
+  public Set<String> getRelatedSensors(String did) {
+    return support.map.get(did);
+  }
+
+  @Override
   public byte[] getID() {
     return idVector.get(curIdx);
   }
 
+  @Override
   public long getTS() {
     return timestampVector.get(curIdx);
+  }
+
+  @Override
+  public void resetInternalIndex() throws IOException {
+    curIdx = curBlk = iteIdx = 0;
+    reader.loadRecordBatch(reader.getRecordBlocks().get(0));
+    root = reader.getVectorSchemaRoot();
+    updateTsAndIdVector();
+  }
+
+  @Override
+  public boolean lastOneInBatch() {
+    return iteIdx == psaRow[curBlk] - 1;
   }
 
   public void initIterator() throws IOException {
     iteIdx = curBlk = curIdx = 0;
     reader.loadRecordBatch(reader.getRecordBlocks().get(0));
     root = reader.getVectorSchemaRoot();
-    updateTsAndId();
+    updateTsAndIdVector();
   }
 
-  private void updateTsAndId() throws IOException {
+  private void updateTsAndIdVector() throws IOException {
     timestampVector = (BigIntVector) root.getVector("timestamp");
     dictionary = reader.getDictionaryVectors().get(DICT_ID);
     idVector = (LargeVarCharVector) DictionaryEncoder.decode(root.getVector("id"), dictionary);
   }
 
   // parts of full deviceID
-  String ent = null, dev = null;
+  private String ent = null, dev = null;
 
   @Override
   public void updateDeviceID(String fulDev) {
+    if (deviceID != null && deviceID.equals(fulDev)) {
+      return;
+    }
+
     if (BenchWriter.currentScheme.toSplitDeviceID()) {
       String[] nodes = fulDev.split("\\.");
       ent = nodes[0];
@@ -186,7 +236,7 @@ public class ZYLoader extends LoaderBase {
     deviceID = fulDev;
   }
 
-  private void updateWorkingVectors(String dev) {
+  protected void updateWorkingVectors(String dev) {
     if (dev.equals(deviceID)) {
       return;
     }
@@ -240,8 +290,6 @@ public class ZYLoader extends LoaderBase {
     }
     return g;
   }
-
-
 
   /** A reverse process to {@link TsFileSequentialConvertor#buildVectors()} */
   @Override
@@ -330,8 +378,8 @@ public class ZYLoader extends LoaderBase {
   }
 
   // metadata for arrays within (TsFile) tablet
-  private Map<String, Integer> arrayIdxMapping = new HashMap<>();
-  private Map<String, TSDataType> arrayTypeMapping = new HashMap<>();
+  private final Map<String, Integer> arrayIdxMapping = new HashMap<>();
+  private final Map<String, TSDataType> arrayTypeMapping = new HashMap<>();
 
   @Override
   public List<MeasurementSchema> getSchemaList() {

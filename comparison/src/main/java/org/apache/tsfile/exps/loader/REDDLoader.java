@@ -36,6 +36,8 @@ import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.stream.Stream;
 
 public class REDDLoader extends LoaderBase {
@@ -45,7 +47,6 @@ public class REDDLoader extends LoaderBase {
   public static String DIR = "F:\\0006DataSets\\REDD";
   public static String ARROW_DIR = "F:\\0006DataSets\\Arrows\\";
 
-  private VectorSchemaRoot root;
   public Float8Vector elecVector;
 
   String building = null, meter = null;
@@ -110,6 +111,13 @@ public class REDDLoader extends LoaderBase {
   @Override
   public void refreshArrays(Tablet tablet) {
     _elecs = (double[]) tablet.values[0];
+  }
+
+  @Override
+  public Set<String> getRelatedSensors(String did) {
+    Set<String> res = new HashSet<>();
+    res.add("elec");
+    return res;
   }
 
   public void load(long limit) throws IOException {

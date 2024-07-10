@@ -17,6 +17,7 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.exps.loader.CCSLoader;
 import org.apache.tsfile.exps.loader.GeoLifeLoader;
 import org.apache.tsfile.exps.loader.REDDLoader;
 import org.apache.tsfile.exps.loader.TDriveLoader;
@@ -30,8 +31,11 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 import static org.apache.tsfile.exps.conf.FileScheme.Parquet;
@@ -69,6 +73,44 @@ public abstract class LoaderBase {
   // arrays for legacy loaders
   public static double[] _lats, _lons, _alts, _vels, _elecs, _eles;
 
+  /**
+   * transfrom OverAllIndex into index of the batches by prefix sum array
+   * @param oai overall index
+   * @return [index of the batches within list, index within the batch]
+   */
+  public static int[] getBatchIndex(int oai, int[] psa) {
+    if (oai > psa[psa.length - 1] || oai < 0) {
+      throw new IndexOutOfBoundsException();
+    }
+
+    // only COMP now
+    // if (type != ChunkType.COMP) {return null;}
+
+    if (oai < psa[0]) {
+      return new int[] {0, oai};
+    }
+    if (oai >= psa[psa.length - 2]) {
+      return new int[] {psa.length - 2, oai - psa[psa.length - 2]};
+    }
+
+    int left = 0, right = psa.length - 1, mid = 0;
+
+    // break when oai is between psa[mid-1] and psa[mid]
+    while (left < right) {
+      mid = (right + left) / 2;
+      if (psa[mid] == oai) {
+        return new int[] {mid, 0};
+      }
+
+      if (oai < psa[mid]) {
+        right = mid;
+      } else {
+        left = mid + 1;
+      }
+    }
+    return new int[] {mid, oai - psa[mid-1]};
+  }
+
   public String getCurDev() {
     return deviceID;
   }
@@ -85,6 +127,22 @@ public abstract class LoaderBase {
     iteIdx++;
   }
 
+  public int getCurrentBatchCursor() {
+    return iteIdx;
+  }
+
+  public Set<String> getAllDevices() {
+    Set<String> res = new HashSet<>();
+    for (int i = 0; i < idVector.getValueCount(); i++) {
+      if (!idVector.isNull(i)) {
+        res.add(new String(idVector.get(i), StandardCharsets.UTF_8));
+      }
+    }
+    return res;
+  }
+
+  abstract public Set<String> getRelatedSensors(String did);
+
   public void initIterator() throws IOException {
     iteIdx = 0;
     ttlRow = idVector.getValueCount();
@@ -95,6 +153,8 @@ public abstract class LoaderBase {
     return ttlRow;
   }
 
+  // region Basic Getter
+
   public byte[] getID() {
     return idVector.get(iteIdx);
   }
@@ -103,13 +163,31 @@ public abstract class LoaderBase {
     return timestampVector.get(iteIdx);
   }
 
+  /**
+   * These two gets-methods should change the internal index.
+   */
   public byte[] getID(int i) throws IOException {
+    iteIdx = i;
     return idVector.get(i);
   }
 
   public long getTS(int i) throws IOException {
+    iteIdx = i;
     return timestampVector.get(i);
   }
+
+  // endregion
+
+  // reset internal index to the very first element
+  public void resetInternalIndex() throws IOException {
+    iteIdx = 0;
+  }
+
+  public boolean lastOneInBatch() {
+    return iteIdx == ttlRow - 1;
+  }
+
+  public boolean reachEnd() {return lastOneInBatch();}
 
   abstract public void updateDeviceID(String fulDev);
   abstract public Group fillGroup(SimpleGroupFactory factory);
@@ -124,6 +202,8 @@ public abstract class LoaderBase {
   public Tablet refreshTablet(Tablet tablet) {
     return tablet;
   }
+
+  // region Schema & Type
 
   public MessageType getParquetSchema() {
     switch (BenchWriter.mergedDataSets) {
@@ -268,6 +348,8 @@ public abstract class LoaderBase {
     }
   }
 
+  // endregion
+
   public static LoaderBase getLoader(MergedDataSets mds) throws IOException {
     // following constructor with integer parameter is to create an empty object
     switch (mds) {
@@ -281,17 +363,19 @@ public abstract class LoaderBase {
         return GeoLifeLoader.deser(mds);
       case ZY:
         return ZYLoader.deser(mds);
+      case CCS:
+        return CCSLoader.deser(mds);
       default:
         return null;
     }
   }
 
   public void close() throws IOException {
-    allocator.close();
     if (reader != null) {
       reader.close();
       channel.close();
       fis.close();
     }
+    allocator.close();
   }
 }

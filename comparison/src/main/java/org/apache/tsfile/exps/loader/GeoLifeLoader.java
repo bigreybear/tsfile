@@ -34,6 +34,8 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.stream.Stream;
 
 public class GeoLifeLoader extends LoaderBase {
@@ -43,7 +45,6 @@ public class GeoLifeLoader extends LoaderBase {
   public static String DIR = "F:\\0006DataSets\\GeolifeTrajectories1.3\\GeolifeTrajectories1.3\\Data";
   public static String ARROW_DIR = "F:\\0006DataSets\\Arrows\\";
 
-  private VectorSchemaRoot root;
   public Float8Vector latitudeVector;
   public Float8Vector longitudeVector;
   public Float8Vector altitudeVector;
@@ -105,6 +106,15 @@ public class GeoLifeLoader extends LoaderBase {
     _lats = (double[]) tablet.values[0];
     _lons = (double[]) tablet.values[1];
     _alts = (double[]) tablet.values[2];
+  }
+
+  @Override
+  public Set<String> getRelatedSensors(String did) {
+    Set<String> res = new HashSet<>();
+    res.add("latitude");
+    res.add("longitude");
+    res.add("altitude");
+    return res;
   }
 
   public void load(long limit) throws IOException {

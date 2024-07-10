@@ -2,6 +2,7 @@ package org.apache.tsfile.exps.utils;
 
 import org.apache.tsfile.exps.conf.FileScheme;
 import org.apache.tsfile.exps.conf.MergedDataSets;
+import org.apache.tsfile.exps.updated.BenchWriter;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -28,10 +29,15 @@ public class ResultPrinter {
     this.dataSets = dataSets;
   }
 
-  public void writeResult(float[] res)
+  /**
+   * param: [data_size, index_size, data_time(ms), index_time]
+   */
+  public void writeResult(long[] res)
       throws IOException {
+    setStatus(BenchWriter.currentScheme, BenchWriter.mergedDataSets);
+
     // file_scheme data_set data_size index_size data_time index_time, all time are mil-seconds
-    String c = String.format("%s\t\t%s\t%.0f\t%.0f\t%.0f\t%.0f\t%s\n",
+    String c = String.format("%s\t\t%s\t%d\t%d\t%d\t%d\t%s\n",
         scheme.name(), dataSets.name(),
         res[0], res[1],
         res[2], res[3],

@@ -1,5 +1,24 @@
 package org.apache.tsfile.exps.updated;
 
+import org.apache.arrow.compression.CommonsCompressionFactory;
+import org.apache.arrow.memory.BufferAllocator;
+import org.apache.arrow.memory.RootAllocator;
+import org.apache.arrow.vector.BigIntVector;
+import org.apache.arrow.vector.FieldVector;
+import org.apache.arrow.vector.IntVector;
+import org.apache.arrow.vector.LargeVarCharVector;
+import org.apache.arrow.vector.ValueVector;
+import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.vector.compression.CompressionUtil;
+import org.apache.arrow.vector.dictionary.Dictionary;
+import org.apache.arrow.vector.dictionary.DictionaryEncoder;
+import org.apache.arrow.vector.dictionary.DictionaryProvider;
+import org.apache.arrow.vector.ipc.ArrowFileWriter;
+import org.apache.arrow.vector.ipc.message.IpcOption;
+import org.apache.arrow.vector.types.Types;
+import org.apache.arrow.vector.types.pojo.DictionaryEncoding;
+import org.apache.arrow.vector.types.pojo.Field;
+import org.apache.commons.collections.map.HashedMap;
 import org.apache.parquet.conf.PlainParquetConfiguration;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
@@ -7,11 +26,13 @@ import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.io.LocalOutputFile;
-import org.apache.parquet.schema.MessageType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.exps.conf.FileScheme;
 import org.apache.tsfile.exps.conf.MergedDataSets;
+import org.apache.tsfile.exps.utils.DevSenSupport;
 import org.apache.tsfile.exps.utils.ResultPrinter;
+import org.apache.tsfile.exps.utils.Stopwatch;
+import org.apache.tsfile.exps.vector.ArrowVectorHelper;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.Path;
@@ -20,14 +41,20 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+
+import static org.apache.tsfile.exps.utils.TsFileSequentialConvertor.DICT_ID;
 
 public class BenchWriter {
   public static int BATCH = 1024;
+  public static int ARROW_BATCH = 65535;
   public static boolean TO_PROFILE = true;
 
   public static class DataSetsProfile {
@@ -230,9 +257,177 @@ public class BenchWriter {
     writeParquetInternal();
   }
 
+  /**
+   * build schema vector via loader vector (nullable vectors)
+   * build dictionary
+   * open writer, with compressor setting
+   * fill vector accords to dev-sen mapping: loop getID, choose wrk vec, fill in
+   * once reach batch bound, write and record time
+   * finish and report time
+   */
   public static void writeArrowIPC() throws IOException {
+    Stopwatch flushDataTime = new Stopwatch(), flushMetarTime = new Stopwatch();
+    long dataSize = 0, metaSize = 0;
+
+    // init
+    loaderBase.initIterator();
     currentScheme = FileScheme.ArrowIPC;
-    System.out.println("NOT WORK NOW");
+    File arrFile = new File(_file_name + _arrowipc);
+    BufferAllocator allocator = new RootAllocator(8 * 1024 * 1024 * 1024L);
+
+    // Note(zx) build dictionary
+    DictionaryProvider.MapDictionaryProvider provider = new DictionaryProvider.MapDictionaryProvider();
+    LargeVarCharVector dictVector = new LargeVarCharVector(Field.nullable("dict", Types.MinorType.LARGEVARCHAR.getType()), allocator);
+    int cnt = 0;
+    for (String s : loaderBase.getAllDevices()) {
+      dictVector.setSafe(cnt, s.getBytes(StandardCharsets.UTF_8));
+      cnt++;
+    }
+    dictVector.setValueCount(cnt);
+    Dictionary dstIdDict = new Dictionary(dictVector, new DictionaryEncoding(DICT_ID, false, null));
+    provider.put(dstIdDict);
+
+    // build the root
+    LargeVarCharVector tempIdVector = new LargeVarCharVector(Field.nullable("id", Types.MinorType.LARGEVARCHAR.getType()), allocator);
+    Map<String, FieldVector> candidateVectors = new HashedMap(); // all vectors from the root
+    VectorSchemaRoot refRoot = loaderBase.root;
+    for (FieldVector rfv : refRoot.getFieldVectors()) {
+      if (rfv.getName().equals("id")) {
+        // different for coded id vector
+        candidateVectors.put(
+            "id",
+            (FieldVector) DictionaryEncoder.encode(tempIdVector, dstIdDict)
+        );
+      } else {
+        candidateVectors.put(
+            rfv.getName(),
+            ArrowVectorHelper.buildNullableVector(rfv.getField(), allocator));
+      }
+    }
+    VectorSchemaRoot standingRoot = new VectorSchemaRoot(candidateVectors.values());
+    try (FileOutputStream fos = new FileOutputStream(arrFile);
+         FileChannel channel = fos.getChannel();
+         ArrowFileWriter writer = compressorArrow == CompressionUtil.CodecType.NO_COMPRESSION
+                               ?  new ArrowFileWriter(standingRoot, provider, channel)
+                               :  new ArrowFileWriter(standingRoot,
+                                                      provider,
+                                                      channel,
+                                                      null,
+                                                      new IpcOption(),
+                                                      new CommonsCompressionFactory(),
+                                                      compressorArrow)) {
+      writer.start();
+
+      int sttFil = 0; // start of each filling batch
+      int batIdx = 0; // index upon current batch
+
+      // init working vectors
+      // break when: 1. device changed; 2. internal vector runs out; 3. filling rows reach bounds
+      for (;;) {
+        int sob = loaderBase.getCurrentBatchCursor();  // Start Of the source Block
+        sttFil = batIdx;
+        BigIntVector tsVector = (BigIntVector) standingRoot.getVector("timestamp");
+        while (batIdx < ARROW_BATCH) {
+          tempIdVector.setSafe(batIdx, loaderBase.getID());
+          tsVector.setSafe(batIdx, loaderBase.getTS());
+          batIdx++;
+
+          if (loaderBase.lastOneInBatch()) {
+            break;
+          }
+          loaderBase.next();
+        }
+
+        tempIdVector.setValueCount(batIdx);
+        tsVector.setValueCount(batIdx);
+        // either last one from src block or dst bath full, fill whatever
+        fillVectors(
+            refRoot,
+            standingRoot,
+            sob,
+            sttFil,
+            batIdx - sttFil,
+            tempIdVector,
+            dstIdDict,
+            loaderBase
+        );
+        standingRoot.setRowCount(batIdx);
+
+        if (batIdx == ARROW_BATCH) {
+          // write and continue
+          flushDataTime.start();
+          writer.writeBatch();
+          flushDataTime.stop();
+
+          batIdx = 0;
+
+          standingRoot.getFieldVectors().forEach(ValueVector::reset);
+          tempIdVector.reset();
+        }
+
+        if (loaderBase.lastOneInBatch()) {
+          if (loaderBase.hasNext()) {
+            // current block has been filled into the batch as above, fell free to load next block
+            loaderBase.next();
+          } else {
+            // to break the whole loop
+            break;
+          }
+        }
+      }
+
+      flushDataTime.start();
+      writer.writeBatch();
+      flushDataTime.stop();
+      dataSize = writer.bytesWritten();
+
+      flushMetarTime.start();
+      writer.end();
+      flushMetarTime.stop();
+      metaSize = writer.bytesWritten() - dataSize;
+    }
+    candidateVectors.values().forEach(ValueVector::close);
+    dictVector.close();
+    tempIdVector.close();
+    allocator.close();
+
+    logger.writeResult(new long[] {dataSize, metaSize, flushDataTime.reportMilSecs(), flushMetarTime.reportMilSecs()});
+  }
+
+  // both begins are inclusive, while ends are exclusive
+  private static void fillVectors(VectorSchemaRoot srcRoot,
+                                  VectorSchemaRoot dstRoot,
+                                  int srcBeg,
+                                  int dstBeg,
+                                  int steps,
+                                  LargeVarCharVector dstCharIds,
+                                  Dictionary dstDict,
+                                  LoaderBase loaderBase) {
+
+    IntVector codedIdVec = (IntVector) DictionaryEncoder.encode(dstCharIds, dstDict);
+
+    for (int ofs = 0; ofs < steps; ) {
+      int codedDev = codedIdVec.get(dstBeg + ofs);
+      int span = 0;
+      IntVector dstCodedIdVec = (IntVector) dstRoot.getVector("id");
+
+      while (ofs + span < steps && codedDev == codedIdVec.get(span + ofs + dstBeg)) {
+        dstCodedIdVec.setSafe(span + ofs + dstBeg, codedDev);
+        span ++;
+      }
+
+      for (String vecName : loaderBase.getRelatedSensors(new String(dstCharIds.get(ofs + dstBeg), StandardCharsets.UTF_8))) {
+        ArrowVectorHelper.setVectorInBatch(
+            srcRoot.getVector(vecName),
+            dstRoot.getVector(vecName),
+            srcBeg + ofs,
+            dstBeg + ofs,
+            span);
+      }
+
+      ofs += span;
+    }
+    codedIdVec.close();
   }
 
 
@@ -247,6 +442,7 @@ public class BenchWriter {
 
   public static CompressionCodecName compressorParquet;
   public static CompressionType compressorTsFile;
+  public static CompressionUtil.CodecType compressorArrow;
   public static TSEncoding encodingTsFile = TSEncoding.GORILLA;
   public static boolean _tsfileAlignedTablet = true;
 
@@ -266,7 +462,7 @@ public class BenchWriter {
   static LoaderBase loaderBase;
 
 
-  static String[] _args = {"ZY", "SNAPPY"};  // pseudo input args
+  static String[] _args = {"ZY", "UNCOMPRESSED"};  // pseudo input args
   /** Encoding is defined by {@link #encodingTsFile} for TsFile, and automated with Parquet.
    *  Compressor is defined by above parameters.
    *  Each run process a dataset. */
@@ -278,18 +474,19 @@ public class BenchWriter {
     mergedDataSets = MergedDataSets.valueOf(args[0]);
     compressorParquet = CompressionCodecName.valueOf(args[1]);
     compressorTsFile = CompressionType.valueOf(args[1]);
+    compressorArrow = getCompressorArrow(args[1]);
     _log_name = MergedDataSets.TARGET_DIR + _log_name;
     // logger = new BufferedWriter(new FileWriter(_log_name, true));
     logger = new ResultPrinter(_log_name, true);
 
-    _file_name = "t-" + MergedDataSets.TARGET_DIR + mergedDataSets.name() + "_" + _date_time; // test at dev
-    // _file_name = MergedDataSets.TARGET_DIR + mergedDataSets.name();  // run at exp
+    _file_name = MergedDataSets.TARGET_DIR + args[0] + "_" + args[1]; // no time
+    // _file_name = MergedDataSets.TARGET_DIR + args[0] + "_" + args[1] + "_" + _date_time; // test at dev
 
     // load once, use always
     loaderBase = LoaderBase.getLoader(mergedDataSets);
 
-    // writeArrowIPC();
-    // printProgress("Finish ArrowIPC");
+    writeArrowIPC();
+    printProgress("Finish ArrowIPC");
 
     writeTsFile();
     printProgress("Finish TsFIle");
@@ -309,5 +506,18 @@ public class BenchWriter {
     System.out.println(String.format(
         "%s, at time: %s",
         content, time));
+  }
+
+  public static CompressionUtil.CodecType getCompressorArrow(String comp) {
+    switch (comp) {
+      case "UNCOMPRESSED":
+        return CompressionUtil.CodecType.NO_COMPRESSION;
+      case "LZ4":
+        return CompressionUtil.CodecType.LZ4_FRAME;
+      case "ZSTD":
+        return CompressionUtil.CodecType.ZSTD;
+      default:
+        throw new RuntimeException("No related compressor for Arrow.");
+    }
   }
 }

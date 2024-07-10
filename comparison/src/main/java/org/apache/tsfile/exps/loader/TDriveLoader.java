@@ -33,6 +33,8 @@ import java.nio.file.Paths;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import static org.apache.tsfile.exps.loader.GeoLifeLoader.ARROW_DIR;
@@ -42,7 +44,6 @@ public class TDriveLoader extends LoaderBase {
 
   public static String DIR = "F:\\0006DataSets\\TDrive\\";
 
-  private VectorSchemaRoot root;
   public Float8Vector latitudeVector;
   public Float8Vector longitudeVector;
 
@@ -96,6 +97,14 @@ public class TDriveLoader extends LoaderBase {
   public void refreshArrays(Tablet tablet) {
     _lats = (double[]) tablet.values[0];
     _lons = (double[]) tablet.values[1];
+  }
+
+  @Override
+  public Set<String> getRelatedSensors(String did) {
+    Set<String> res = new HashSet<>();
+    res.add("latitude");
+    res.add("longitude");
+    return res;
   }
 
   public void load(long limit) throws IOException {

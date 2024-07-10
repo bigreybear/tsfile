@@ -104,11 +104,16 @@ public enum FileScheme {
           zyMT = buildParquetSchemaWithArrowSchema(dataSets);
         }
         return zyMT;
+      case CCS:
+        if (ccsMT == null) {
+          ccsMT = buildParquetSchemaWithArrowSchema(dataSets);
+          return ccsMT;
+        }
       default:
         return null;
     }
   }
-  MessageType zyMT = null;
+  MessageType zyMT = null, ccsMT = null;
 
   public MessageType buildParquetSchemaWithArrowSchema(MergedDataSets mds) {
 
@@ -138,6 +143,10 @@ public enum FileScheme {
             parquetFields.add((Type) builder.named("dev"));
             break;
           case CCS:
+            Types.PrimitiveBuilder<?> builder2 =
+                Types.required(PrimitiveType.PrimitiveTypeName.BINARY);
+            parquetFields.add((Type) builder2.named("ent"));
+            parquetFields.add((Type) builder2.named("dev"));
           default:
             throw new RuntimeException("Should not go here.");
         }
@@ -177,38 +186,6 @@ public enum FileScheme {
         throw new RuntimeException();
     }
     return (Type) builder.named(field.getName());
-  }
-
-  public static List<MeasurementSchema> getTsFileSchema(String dev) {
-    List<MeasurementSchema> schemas = new ArrayList<>();
-    switch (BenchWriter.mergedDataSets) {
-      case TSBS:
-        schemas.add(new MeasurementSchema("lat", TSDataType.DOUBLE, encodingTsFile, compressorTsFile));
-        schemas.add(new MeasurementSchema("lon", TSDataType.DOUBLE, encodingTsFile, compressorTsFile));
-        schemas.add(new MeasurementSchema("ele", TSDataType.DOUBLE, encodingTsFile, compressorTsFile));
-        schemas.add(new MeasurementSchema("vel", TSDataType.DOUBLE, encodingTsFile, compressorTsFile));
-        return schemas;
-      case TDrive:
-        schemas.add(new MeasurementSchema("lat", TSDataType.DOUBLE, encodingTsFile, compressorTsFile));
-        schemas.add(new MeasurementSchema("lon", TSDataType.DOUBLE, encodingTsFile, compressorTsFile));
-        return schemas;
-      case GeoLife:
-        schemas.add(new MeasurementSchema("lat", TSDataType.DOUBLE, encodingTsFile, compressorTsFile));
-        schemas.add(new MeasurementSchema("lon", TSDataType.DOUBLE, encodingTsFile, compressorTsFile));
-        schemas.add(new MeasurementSchema("alt", TSDataType.DOUBLE, encodingTsFile, compressorTsFile));
-        return schemas;
-      case REDD:
-        schemas.add(new MeasurementSchema("elec", TSDataType.DOUBLE, encodingTsFile, compressorTsFile));
-        return schemas;
-      case ZY:
-        return getTsFileSchemaByDevice(dev);
-      default:
-        return null;
-    }
-  }
-
-  private static List<MeasurementSchema> getTsFileSchemaByDevice(String dev) {
-    return null;
   }
 
   public static void main(String[] args) throws IOException, ClassNotFoundException {
