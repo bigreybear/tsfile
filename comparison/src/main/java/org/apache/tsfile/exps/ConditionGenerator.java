@@ -176,43 +176,6 @@ public class ConditionGenerator implements Serializable {
     }
   }
 
-  private void sampleTimeRanges(LargeVarCharVector idVector, BigIntVector tVector, String sensor) {
-    int total = idVector.getValueCount();
-    int span = total/CONDITION_CARD;
-    int shift = (int) (0.2 * span);
-
-    String dev;
-    for (int idx = shift; idx < total; idx += span) {
-      dev = new String(idVector.get(idx), StandardCharsets.UTF_8);
-      int steps = 1;
-      int idxOffset = 0;
-      while (steps < RANGE_SPAN + idxOffset) {
-        String ndev = new String(idVector.get(idx + steps), StandardCharsets.UTF_8);
-        if (!ndev.equals(dev)) {
-          // if occurred last row of one device, examine next device as condition with offset
-          if (steps == 1 + idxOffset) {
-            dev = ndev;
-            // now to measure from here, limit of steps expands with offset as well
-            idxOffset = steps;
-            steps ++;
-            continue;
-          }
-          steps --;
-          break;
-        }
-        steps++;
-      }
-
-      String series = dev + "." + sensor;
-      timeRanges.add(
-          new TimeRange(
-              series,
-              tVector.get(idx + idxOffset),
-              tVector.get(idx + idxOffset + steps))
-      );
-    }
-  }
-
   public static class NamedVector {
     String name;
     Float8Vector vector;
@@ -256,49 +219,6 @@ public class ConditionGenerator implements Serializable {
       String series = dev + "." + sensor;
 
       tVector = lnv.get(var % lnv.size()).vector;
-      if (tVector.isNull(idx+idxOffset)
-          || tVector.isNull(idx+idxOffset+steps)
-          || tVector.get(idx + idxOffset) == tVector.get(idx + idxOffset + steps)) {
-        continue;
-      }
-      doubleRanges.add(
-          new DoubleRange(
-              series,
-              tVector.get(idx + idxOffset),
-              tVector.get(idx + idxOffset + steps))
-      );
-    }
-  }
-
-  private void sampleDoubleRanges(LargeVarCharVector idVector, Float8Vector tVector, String sensor) {
-    int total = idVector.getValueCount();
-    int span = total/CONDITION_CARD;
-    int shift = (int) (0.1 * span);
-
-    String dev;
-    for (int idx = shift; idx < total; idx += span) {
-      dev = new String(idVector.get(idx), StandardCharsets.UTF_8);
-      int steps = 1;
-      int idxOffset = 0;
-      while (steps < RANGE_SPAN + idxOffset) {
-        String ndev = new String(idVector.get(idx + steps), StandardCharsets.UTF_8);
-        if (!ndev.equals(dev)) {
-          // if occurred last row of one device, examine next device as condition with offset
-          if (steps == 1) {
-            dev = ndev;
-            // now to measure from here, limit of steps expands with offset as well
-            idxOffset = steps;
-            steps ++;
-            continue;
-          }
-          steps --;
-          break;
-        }
-        steps++;
-      }
-
-      String series = dev + "." + sensor;
-
       if (tVector.isNull(idx+idxOffset)
           || tVector.isNull(idx+idxOffset+steps)
           || tVector.get(idx + idxOffset) == tVector.get(idx + idxOffset + steps)) {

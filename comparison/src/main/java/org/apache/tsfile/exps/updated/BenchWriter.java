@@ -80,6 +80,8 @@ public class BenchWriter {
   }
 
   public static void writeTsFile() throws IOException, WriteProcessException {
+    Stopwatch tabletConsTime = new Stopwatch();
+
     loaderBase.initIterator();
     String preDev = new String(loaderBase.getID(0), StandardCharsets.UTF_8);
 
@@ -144,7 +146,9 @@ public class BenchWriter {
       }
 
       lastTS = timestamps[rowInTablet];
+      tabletConsTime.start();
       loaderBase.fillTablet(tablet, rowInTablet);
+      tabletConsTime.stop();
       rowInTablet ++;
 
       if (TO_PROFILE) {
@@ -157,6 +161,7 @@ public class BenchWriter {
     logger.setStatus(currentScheme, mergedDataSets);
     logger.writeResult(writer.report());
     logger.log(writer.verboseReport());
+    System.out.println(String.format("Tablet construction time: %d", tabletConsTime.reportMilSecs()));
     // writer.report(logger);
   }
 
@@ -462,7 +467,7 @@ public class BenchWriter {
   static LoaderBase loaderBase;
 
 
-  static String[] _args = {"ZY", "UNCOMPRESSED"};  // pseudo input args
+  static String[] _args = {"GeoLife", "UNCOMPRESSED"};  // pseudo input args
   /** Encoding is defined by {@link #encodingTsFile} for TsFile, and automated with Parquet.
    *  Compressor is defined by above parameters.
    *  Each run process a dataset. */
@@ -485,16 +490,16 @@ public class BenchWriter {
     // load once, use always
     loaderBase = LoaderBase.getLoader(mergedDataSets);
 
-    writeArrowIPC();
+    // writeArrowIPC();
     printProgress("Finish ArrowIPC");
 
     writeTsFile();
     printProgress("Finish TsFIle");
 
-    writeParquet();
+    // writeParquet();
     printProgress("Finish Parquet");
 
-    writeParquetAS();  // alternated-schema Parquet available IFF deviceID consists of multiple fields
+    // writeParquetAS();  // alternated-schema Parquet available IFF deviceID consists of multiple fields
     printProgress("Finish ParquetAS");
 
     closeAndSummary();

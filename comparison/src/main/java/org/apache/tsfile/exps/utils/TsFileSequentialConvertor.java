@@ -106,7 +106,7 @@ public class TsFileSequentialConvertor {
   // configurations.
   // public static final String prjPath = "F:\\0006DataSets\\";  // @ lab
   public static final String prjPath = "E:\\ExpDataSets\\Source-TsFile\\";  // @ home
-  public static final String filName = "ZY";
+  public static final String filName = "CCS";
   public static final String srcPath = prjPath + filName + ".tsfile"; // path to read TsFile
   public static final String dstPath = prjPath + filName + ".arrow"; // path to write ArrowIPC
   public static final String supPath = prjPath + filName + ".sup";  // path to supporting file
