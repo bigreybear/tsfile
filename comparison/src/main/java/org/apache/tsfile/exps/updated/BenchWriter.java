@@ -108,7 +108,7 @@ public class BenchWriter {
     long lastTS = -1L;
 
     DataSetsProfile.deviceNum = 1;
-    for (; loaderBase.hasNext(); loaderBase.next()) {
+    do {
       curDev = new String(loaderBase.getID(), StandardCharsets.UTF_8);
       if (!preDev.equals(curDev)) {
         tablet.rowSize = rowInTablet;
@@ -154,13 +154,14 @@ public class BenchWriter {
       if (TO_PROFILE) {
         DataSetsProfile.rowNum ++;
       }
-    }
+    } while (loaderBase.next());
     tablet.rowSize = rowInTablet;
     writeTablet(writer, tablet);
     writer.close();
     logger.setStatus(currentScheme, mergedDataSets);
     logger.writeResult(writer.report());
     logger.log(writer.verboseReport());
+    logger.log(String.format("Tablet construction time: %d", tabletConsTime.reportMilSecs()));
     System.out.println(String.format("Tablet construction time: %d", tabletConsTime.reportMilSecs()));
     // writer.report(logger);
   }
@@ -193,7 +194,7 @@ public class BenchWriter {
     final int totalRows = loaderBase.getTotalRows();
     long lastTS = -1L, curTS; // filter out-of-order data
 
-    for (; loaderBase.hasNext(); loaderBase.next()) {
+    do {
       curDev = new String(loaderBase.getID(), StandardCharsets.UTF_8);
       if (!preDev.equals(curDev)) {
 
@@ -228,7 +229,7 @@ public class BenchWriter {
       if (TO_PROFILE) {
         DataSetsProfile.rowNum ++;
       }
-    }
+    } while (loaderBase.next());
 
     for (int i = 0; i < batchGroups.size(); i++) {
       writer.write(batchGroups.get(i));
@@ -467,13 +468,30 @@ public class BenchWriter {
   static LoaderBase loaderBase;
 
 
-  static String[] _args = {"GeoLife", "UNCOMPRESSED"};  // pseudo input args
+  static String[] _args = {"ZY", "UNCOMPRESSED", "0100"};  // pseudo input args
   /** Encoding is defined by {@link #encodingTsFile} for TsFile, and automated with Parquet.
    *  Compressor is defined by above parameters.
    *  Each run process a dataset. */
   public static void main(String[] args) throws IOException, WriteProcessException {
-    if (args.length != 2) {
+    if (args.length != 3) {
       args = _args;
+    }
+
+    boolean[] fileOption = new boolean[4];
+    if (args[2].length() != 4) {
+      System.out.println("Wrong with third flag option.");
+      return;
+    } else {
+      for (int i = 0; i < args[2].length(); i++) {
+        if (args[2].charAt(i) == '0') {
+          fileOption[i] = false;
+        } else if (args[2].charAt(i) == '1') {
+          fileOption[i] = true;
+        } else {
+          System.out.println("Wrong code for file option.");
+          return;
+        }
+      }
     }
 
     mergedDataSets = MergedDataSets.valueOf(args[0]);
@@ -484,23 +502,31 @@ public class BenchWriter {
     // logger = new BufferedWriter(new FileWriter(_log_name, true));
     logger = new ResultPrinter(_log_name, true);
 
-    _file_name = MergedDataSets.TARGET_DIR + args[0] + "_" + args[1]; // no time
+    _file_name = MergedDataSets.TARGET_DIR + args[0] + "_new_" + args[1]; // no time
     // _file_name = MergedDataSets.TARGET_DIR + args[0] + "_" + args[1] + "_" + _date_time; // test at dev
 
     // load once, use always
     loaderBase = LoaderBase.getLoader(mergedDataSets);
 
-    // writeArrowIPC();
-    printProgress("Finish ArrowIPC");
+    if (fileOption[0]) {
+      writeArrowIPC();
+      printProgress("Finish ArrowIPC");
+    }
 
-    writeTsFile();
-    printProgress("Finish TsFIle");
+    if (fileOption[1]) {
+      writeTsFile();
+      printProgress("Finish TsFIle");
+    }
 
-    // writeParquet();
-    printProgress("Finish Parquet");
+    if (fileOption[2]) {
+      writeParquet();
+      printProgress("Finish Parquet");
+    }
 
-    // writeParquetAS();  // alternated-schema Parquet available IFF deviceID consists of multiple fields
-    printProgress("Finish ParquetAS");
+    if (fileOption[3]) {
+      // writeParquetAS();  // alternated-schema Parquet available IFF deviceID consists of multiple fields
+      printProgress("Finish ParquetAS");
+    }
 
     closeAndSummary();
     logger.close();

@@ -22,6 +22,7 @@ import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.FieldVector;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.tsfile.exps.conf.MergedDataSets;
+import org.apache.tsfile.exps.loader.CCSLoader;
 import org.apache.tsfile.exps.loader.ZYLoader;
 import org.apache.tsfile.exps.utils.ProgressReporter;
 
@@ -396,9 +397,13 @@ public class ArrowVectorHelper {
   }
 
   public static void main(String[] args) throws IOException {
+
+    // CCSLoader loader1 = CCSLoader.deserFromFile(new File("F:\\0006DataSets\\new_arrow_src\\CCS-b4b2.arrow"));
+    // CCSLoader loader2 = CCSLoader.deserFromFile(new File("F:\\0006DataSets\\new_arrow_src\\CCS-rr.arrow"));
     boolean b = testArrowFilesEquality(
-        new File(MergedDataSets.CCS.getArrowFile()),
-        new File("E:\\ExpDataSets\\Results\\CCS_UNCOMPRESSED.arrow")
+        // new File(MergedDataSets.CCS.getArrowFile()),
+        new File("F:\\0006DataSets\\new_arrow_src\\ZY-afb.arrow"),
+        new File("F:\\0006DataSets\\Arrows\\ZY.arrow")
     );
     System.out.println(b);
   }

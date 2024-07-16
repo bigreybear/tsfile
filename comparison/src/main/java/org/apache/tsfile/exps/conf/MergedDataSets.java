@@ -35,8 +35,8 @@ public enum MergedDataSets {
   // to be retrieved while not filtered
   public String crossColumn;
 
-  // static final String PRJ_DIR = "F:\\0006DataSets\\"; // @lab
-  static final String PRJ_DIR = "E:\\ExpDataSets\\";  // @home
+  static final String PRJ_DIR = "F:\\0006DataSets\\"; // @lab
+  // static final String PRJ_DIR = "E:\\ExpDataSets\\";  // @home
 
   public static String ARROW_BINS = PRJ_DIR + "Arrows\\";
   public static String CONDITION_DIR = PRJ_DIR + "Conditions\\";

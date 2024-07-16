@@ -72,6 +72,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -104,12 +105,14 @@ import java.util.concurrent.atomic.AtomicInteger;
  * */
 public class TsFileSequentialConvertor {
   // configurations.
-  // public static final String prjPath = "F:\\0006DataSets\\";  // @ lab
-  public static final String prjPath = "E:\\ExpDataSets\\Source-TsFile\\";  // @ home
-  public static final String filName = "CCS";
-  public static final String srcPath = prjPath + filName + ".tsfile"; // path to read TsFile
-  public static final String dstPath = prjPath + filName + ".arrow"; // path to write ArrowIPC
-  public static final String supPath = prjPath + filName + ".sup";  // path to supporting file
+  public static final String prjPath = "F:\\0006DataSets\\";  // @ lab
+  // public static final String prjPath = "E:\\ExpDataSets\\Source-TsFile\\";  // @ home
+  public static final String filName = "ZY-afb";
+  // public static final String srcPath = prjPath + "Results\\" + filName + "_UNCOMPRESSED.tsfile"; // path to read TsFile
+  // public static final String srcPath = prjPath + "Results\\CCS_new2_UNCOMPRESSED.tsfile"; // path to read TsFile
+  public static final String srcPath = prjPath + "Results\\ZY_new_UNCOMPRESSED.tsfile"; // raw, original tsfile
+  public static final String dstPath = prjPath + "\\new_arrow_src\\" + filName + ".arrow"; // path to write ArrowIPC
+  public static final String supPath = prjPath + "\\new_arrow_src\\" + filName + ".sup";  // path to supporting file
   private static final int BATCH_ROW = 100_000;
   private static final boolean ONLY_PART = true;
   private static final int PART_START = -1, PART_END = 480_000_000;
@@ -117,11 +120,6 @@ public class TsFileSequentialConvertor {
 
   /* to convert */
   public static void main(String[] args) throws Exception {
-    long[] a = new long[] {1,3,4,6,8};
-    long[] b = new long[] {2,5,7,9,10};
-    long[] c = new long[] {11,13,14,16,18};
-    long[] d = new long[] {1,23,34,46,58};
-
     long maxMemory = Runtime.getRuntime().maxMemory();
     long allocatedMemory = Runtime.getRuntime().totalMemory();
     long freeMemory = Runtime.getRuntime().freeMemory();
@@ -135,7 +133,8 @@ public class TsFileSequentialConvertor {
       convertor.preprocess();
       convertor.reportChunkTypes();
       convertor.initOutput();
-      convertor.processFile();
+      // convertor.processFile();
+      convertor.processFileByDeviceID();
       convertor.closeWithoutAllocator();
     }
 
@@ -193,6 +192,15 @@ public class TsFileSequentialConvertor {
   private boolean effectiveAligned = true;
   private String processingDev = null;
   private final Set<String> devSets = new HashSet<>();
+
+  // Note(zx) IMPORTANT:
+  //  to gather ckg(s) from same device together, and sort by device ID
+  //  so that the target Arrow is optimal.
+  private final Map<String, List<Long>> orderedChunkGroupPos = new TreeMap<>();
+
+  private void addCkgPos(String dev, long pos) {
+    orderedChunkGroupPos.computeIfAbsent(dev, k -> new ArrayList<>()).add(pos);
+  }
 
   // statistics
   private long ptsCount = 0;
@@ -257,7 +265,12 @@ public class TsFileSequentialConvertor {
 
   // always truncate first dot
   private static String truncateDeviceID(String oid) {
-    return oid.substring(oid.indexOf("root.") + 1);
+    int i = oid.indexOf("root.");
+    if (i != 0) {
+      return oid;
+    }
+    // remove the root prefix
+    return oid.substring(5);
   }
 
   // helper
@@ -292,6 +305,26 @@ public class TsFileSequentialConvertor {
         return bd.getInt();
       case DOUBLE:
       case FLOAT:
+      case TEXT:
+      case UNKNOWN:
+      case VECTOR:
+      default:
+        throw new UnsupportedOperationException();
+    }
+  }
+
+  // helper
+  private static double getDoubleVal(TSDataType type, BatchData bd) {
+    switch (type) {
+      case BOOLEAN:
+        return bd.getBoolean() ? 1 : 0;
+      case INT64:
+        return (double) bd.getLong();
+      case INT32:
+        return bd.getInt();
+      case DOUBLE:
+      case FLOAT:
+        return bd.getDouble();
       case TEXT:
       case UNKNOWN:
       case VECTOR:
@@ -533,13 +566,21 @@ public class TsFileSequentialConvertor {
     String filename = srcPath;
     try (TsFileSequenceReader reader = new TsFileSequenceReader(filename)) {
 
-      float lastProgressReported = 0.0f, progress = 0.0f;
+      // float lastProgressReported = 0.0f, progress = 0.0f;
+      ProgressReporter reporter = new ProgressReporter(reader.fileSize() - reader.getAllMetadataSize());
+      reporter.setID("Preprocess");
       // Note(zx) start of the file
       reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
       List<long[]> timeBatch = new ArrayList<>();
       int pageIndex = 0;
       byte marker;
-      while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
+      long posBeforeMarker = reader.position();
+      boolean finishInAdvance = false;
+      while ( (posBeforeMarker = reader.position()) > 0 // nothing to check but to assign
+              && ((marker = reader.readMarker()) != MetaMarker.SEPARATOR)
+              && !finishInAdvance) {
+        reporter.report(reader.position());
+
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
           case MetaMarker.TIME_CHUNK_HEADER:
@@ -580,6 +621,10 @@ public class TsFileSequentialConvertor {
                     new TimePageReader(pageHeader, pageData, defaultTimeDecoder);
                 timeBatch.add(timePageReader.getNextTimeBatch());
 
+                if (pageIndex == 0) {
+                  cdata = new ChunkData(timeBatch);
+                }
+
                 // Value Chunk
               } else if ((header.getChunkType() & TsFileConstant.VALUE_COLUMN_MASK)
                   == TsFileConstant.VALUE_COLUMN_MASK) {
@@ -612,28 +657,42 @@ public class TsFileSequentialConvertor {
             }
 
             // summary one chunk which has finished
+            if (cdata == null) {
+              System.out.println("Wrong");
+              return;
+            }
             this.collectedChunks.add(cdata);
             break;
           case MetaMarker.CHUNK_GROUP_HEADER:
-
             // handle chunks from last ChunkGroup
             if (!collectedChunks.isEmpty() && inLegalRange(reader.position())) {
               unifyChunkDataType();
             }
 
-            progress = reader.position() * 1.0f / (reader.fileSize() - reader.getAllMetadataSize());
-            if (progress - lastProgressReported > 0.1) {
-              lastProgressReported = progress;
-              String time = DateTimeFormatter.ofPattern("HH:mm:ss").format(java.time.LocalDateTime.now());
-              System.out.println(String.format(
-                  "prepocessing progress: %f, at time: %s",
-                  progress, time));
-            }
+            // progress = reader.position() * 1.0f / (reader.fileSize() - reader.getAllMetadataSize());
+            // if (progress - lastProgressReported > 0.1) {
+            //   lastProgressReported = progress;
+            //   String time = DateTimeFormatter.ofPattern("HH:mm:ss").format(java.time.LocalDateTime.now());
+            //   System.out.println(String.format(
+            //       "prepocessing progress: %f, at time: %s",
+            //       progress, time));
+            // }
             // reader.readChunkGroupHeader();
+
             processingDev = truncateDeviceID(reader.readChunkGroupHeader().getDeviceID());
             devSets.add(processingDev);
             // all chunks cleared
             collectedChunks.clear();
+
+            if (!inLegalRange(posBeforeMarker)) {
+              // marker of current cg is out of scope, following chunks will not be collected
+              System.out.println("Finish preprocess in advance.");
+              finishInAdvance = true;
+            } else {
+              // only legal marker (with its followers) are collected
+              addCkgPos(processingDev, posBeforeMarker);
+            }
+
             break;
           case MetaMarker.OPERATION_INDEX_RANGE:
             reader.readPlanIndex();
@@ -646,6 +705,160 @@ public class TsFileSequentialConvertor {
       }
       buildVectors();
     }
+  }
+
+  /**
+   * Process file for recorded positions.
+   * @throws Exception
+   */
+  public void processFileByDeviceID() throws Exception {
+    collectedChunks.clear();
+    DevSenSupport support = new DevSenSupport();
+    int alignedCG = 0, unalignedCG = 0, effectiveUnalignedCG = 0;  // statistics
+
+    List<long[]> timeBatch = new ArrayList<>();
+    int pageIndex = 0;
+    byte marker;
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(srcPath)) {
+      int ttlCkg = orderedChunkGroupPos.entrySet().stream().mapToInt( e -> e.getValue().size() ).sum();
+      ProgressReporter reporter = new ProgressReporter(ttlCkg);
+
+      for (Map.Entry<String, List<Long>> entry : orderedChunkGroupPos.entrySet()) {
+        for (long pos : entry.getValue()) {
+          // set positions as recorded in preprocess
+          reader.position(pos);
+
+          // check first marker is for Chunk Group
+          if ((marker = reader.readMarker()) != MetaMarker.CHUNK_GROUP_HEADER) {
+            System.out.println("Wrong mark for ChunkGroup start.");
+            System.exit(-1);
+          }
+
+          // handle chunk group header
+          ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
+          processingDev = truncateDeviceID(chunkGroupHeader.getDeviceID());
+          // all chunks cleared
+          collectedChunks.clear();
+
+          // read following chunks
+          for (;;) {
+            // if next mark is ChunkGroup, then collect and go to next one
+            marker = reader.readMarker();
+            if (marker == MetaMarker.SEPARATOR || marker == MetaMarker.CHUNK_GROUP_HEADER) {
+              // all chunks within the last ChunkGroup are collected
+              if (!collectedChunks.isEmpty() && inLegalRange(reader.position())) {
+                // update device-sensor mapping
+                support.addByChunks(processingDev, collectedChunks);
+
+                // process chunks in last ChunkGroup
+                if (collectedChunks.get(0).type == ChunkType.COMP) {
+                  unalignedCG++;
+                  // it is an unaligned ChunkGroup
+                  effectiveAligned = true;  // any divergence during following merge will set it to false
+                  fillUnalignedChunksIntoVectors(mergeTimestampArrays());
+
+                  // the last chunk group are effectively aligned, although it is designated as non-aligned.
+                  if (effectiveAligned) {
+                    effectiveUnalignedCG++;
+                  }
+                } else {
+                  fillAlignedChunksIntoVectors();
+                  alignedCG ++;
+                }
+              }
+              break;
+            }
+
+            ChunkHeader header = reader.readChunkHeader(marker);
+            if (header.getDataSize() == 0) {
+              // empty value chunk, check next chunk
+              continue;
+            }
+            Decoder defaultTimeDecoder =
+                Decoder.getDecoderByType(
+                    TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
+                    TSDataType.INT64);
+            Decoder valueDecoder =
+                Decoder.getDecoderByType(header.getEncodingType(), header.getDataType());
+            int dataSize = header.getDataSize();
+            pageIndex = 0;
+            if (header.getDataType() == TSDataType.VECTOR) {
+              timeBatch.clear();
+            }
+
+            ChunkData cdata = null;  // Note(zx) to collect chunks
+            while (dataSize > 0) {
+              valueDecoder.reset();
+              PageHeader pageHeader =
+                  reader.readPageHeader(
+                      header.getDataType(),
+                      (header.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
+              ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
+
+              // Time Chunk
+              if ((header.getChunkType() & TsFileConstant.TIME_COLUMN_MASK)
+                  == TsFileConstant.TIME_COLUMN_MASK) {
+                TimePageReader timePageReader =
+                    new TimePageReader(pageHeader, pageData, defaultTimeDecoder);
+                timeBatch.add(timePageReader.getNextTimeBatch());
+
+                if (pageIndex == 0) {
+                  cdata = new ChunkData(timeBatch);
+                }
+
+                // Value Chunk
+              } else if ((header.getChunkType() & TsFileConstant.VALUE_COLUMN_MASK)
+                  == TsFileConstant.VALUE_COLUMN_MASK) {
+                ValuePageReader valuePageReader =
+                    new ValuePageReader(pageHeader, pageData, header.getDataType(), valueDecoder);
+                TsPrimitiveType[] valueBatch =
+                    valuePageReader.nextValueBatch(timeBatch.get(pageIndex));
+
+                // Note(zx) todo incomplete hotfix excluding all text types
+                if (header.getDataType() != TSDataType.TEXT) {
+                  if (pageIndex == 0) {
+                    cdata = new ChunkData(header, valueBatch);
+                  } else {
+                    cdata.valueBatch.add(valueBatch);
+                  }
+                }
+
+                // NonAligned Chunk
+              } else {
+                PageReader pageReader =
+                    new PageReader(
+                        pageData, header.getDataType(), valueDecoder, defaultTimeDecoder);
+                BatchData batchData = pageReader.getAllSatisfiedPageData();
+
+                if (header.getDataType() != TSDataType.TEXT) {
+                  if (pageIndex == 0) {
+                    cdata = new ChunkData(header, batchData);
+                  } else {
+                    cdata.compBatch.add(batchData);
+                  }
+                }
+              }
+              pageIndex++;
+              dataSize -= pageHeader.getSerializedPageSize();
+            }
+
+            // summary one chunk which has finished
+            if (cdata == null) {
+              System.out.println(String.format("A TEXT measurement skipped: %s.%s, at pos: %d",
+                  processingDev, header.getMeasurementID(), pos));
+            } else {
+              this.collectedChunks.add(cdata);
+            }
+          }
+        }
+        reporter.addProgressAndReport(entry.getValue().size());
+      }
+    }
+    DevSenSupport.serialize(support, supPath);
+    System.out.println(String.format("Valid Devces: %d, valid sensors: %d, points: %d",
+        support.map.size(),
+        support.map.values().stream().mapToLong(Set::size).sum(),
+        ptsCount));
   }
 
   /**
@@ -666,9 +879,11 @@ public class TsFileSequentialConvertor {
       // Because we do not know how many chunks a ChunkGroup may have, we should read one byte (the
       // marker) ahead and judge accordingly.
 
-      final long fullDataSize = reader.fileSize() - reader.getAllMetadataSize();
-      float lastProgressReported = 0.0f, progress = 0.0f;
+      // final long fullDataSize = reader.fileSize() - reader.getAllMetadataSize();
+      // float lastProgressReported = 0.0f, progress = 0.0f;
       int alignedCG = 0, unalignedCG = 0, effectiveUnalignedCG = 0;
+
+      ProgressReporter reporter = new ProgressReporter(reader.fileSize() - reader.getAllMetadataSize());
 
       // Note(zx) start of the file
       reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
@@ -677,6 +892,8 @@ public class TsFileSequentialConvertor {
       byte marker;
       boolean finishInAdvece = false;
       while (((marker = reader.readMarker()) != MetaMarker.SEPARATOR) && !finishInAdvece ) {
+        reporter.report(reader.position());
+
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
           case MetaMarker.TIME_CHUNK_HEADER:
@@ -720,6 +937,8 @@ public class TsFileSequentialConvertor {
 
                 if (pageIndex == 0) {
                   cdata = new ChunkData(timeBatch);
+                // } else {
+                //   cdata.timeBatch.add(timeBatch.get(timeBatch.size() - 1));
                 }
 
                 // Value Chunk
@@ -787,16 +1006,16 @@ public class TsFileSequentialConvertor {
             }
 
             // report progress
-            progress = reader.position() * 1.0f / fullDataSize;
-            if (progress - lastProgressReported > 0.05) {
-              lastProgressReported = progress;
-              String time = DateTimeFormatter.ofPattern("HH:mm:ss").format(java.time.LocalDateTime.now());
-              System.out.println(String.format(
-                  "progress: %f, Aligned cg: %s, unaligned cg: %s, effective aligned cg: %s, " +
-                      "total rows: %d, batch rows: %d, pts: %s, time at: %s",
-                  progress, alignedCG, unalignedCG, effectiveUnalignedCG,
-                  totalRowCount, locRowIdx, ptsCount, time));
-            }
+            // progress = reader.position() * 1.0f / fullDataSize;
+            // if (progress - lastProgressReported > 0.05) {
+            //   lastProgressReported = progress;
+            //   String time = DateTimeFormatter.ofPattern("HH:mm:ss").format(java.time.LocalDateTime.now());
+            //   System.out.println(String.format(
+            //       "progress: %f, Aligned cg: %s, unaligned cg: %s, effective aligned cg: %s, " +
+            //           "total rows: %d, batch rows: %d, pts: %s, time at: %s",
+            //       progress, alignedCG, unalignedCG, effectiveUnalignedCG,
+            //       totalRowCount, locRowIdx, ptsCount, time));
+            // }
 
             // update dev-sen counting
 
@@ -970,9 +1189,33 @@ public class TsFileSequentialConvertor {
           }
           break;
         }
+        case DOUBLE: {
+          Float8Vector vector = float8Vectors.get(cdata.name);
+          ArrowVectorHelper.reAllocTo(vector, vti);
+          int idx = 0;
+          for (BatchData bd : cdata.compBatch) {
+            bd.resetBatchData();
+            while (bd.hasCurrent()) {
+              if (cdata.bs.get(idx)) {
+                idx++;
+                continue;
+              }
+              vector.set(idx + soi, getDoubleVal(cdata.dataType, bd));
+              bd.next();
+              idx++;
+              ptsCount++;
+            }
+          }
+          while (idx < rln) {
+            if (!cdata.bs.get(idx)) {
+              System.out.println("present element are not iterated");
+            }
+            idx++;
+          }
+          break;
+        }
         case VECTOR:
         case TEXT:
-        case DOUBLE:
         case UNKNOWN:
         default:
           System.out.println(String.format("Unknown type chunk: %s.%s",
@@ -998,6 +1241,11 @@ public class TsFileSequentialConvertor {
        break;
      }
     }
+
+    if (processingDev.equals("dacoo.BF116_BFHydSta_BFHydSta_BleedSolVlv_South")) {
+      System.out.println("DEBUG");
+    }
+
     int offset = 0;
     for (long[] ta : timeChunk.timeBatch) {
       ArrowVectorHelper.reAllocTo(timestampVector, offset + ta.length + soi);
@@ -1015,7 +1263,7 @@ public class TsFileSequentialConvertor {
     ArrowVectorHelper.reAllocTo(timestampVector, vti);
     ArrowVectorHelper.reAllocTo(idVector, vti);
     for (int i = 0; i < offset; i++) {
-      idVector.set(soi + i, devByt);
+      idVector.setSafe(soi + i, devByt);
     }
 
     for (ChunkData cdata : collectedChunks) {
@@ -1027,10 +1275,14 @@ public class TsFileSequentialConvertor {
         case FLOAT: {
           Float4Vector vector = float4Vectors.get(cdata.name);
           ArrowVectorHelper.reAllocTo(vector, vti);
-          int idx = 0, ofs = 0;
+          int ofs = 0; // offset across batches
           for (TsPrimitiveType[] tpt : cdata.valueBatch) {
+            int idx = 0; // index within the batch
             while (idx < tpt.length) {
-              vector.set(soi + ofs + idx, tpt[idx].getFloat());
+              if (tpt[idx] != null) {
+                vector.set(soi + ofs + idx, tpt[idx].getFloat());
+                ptsCount ++;
+              }
               idx++;
             }
             ofs += tpt.length;
@@ -1040,10 +1292,14 @@ public class TsFileSequentialConvertor {
         case INT32: {
           IntVector vector = intVectors.get(cdata.name);
           ArrowVectorHelper.reAllocTo(vector, vti);
-          int idx = 0, ofs = 0;
+          int ofs = 0; // offset across batches
           for (TsPrimitiveType[] tpt : cdata.valueBatch) {
+            int idx = 0; // index within the batch
             while (idx < tpt.length) {
-              vector.set(soi + ofs + idx, tpt[idx].getInt());
+              if (tpt[idx] != null) {
+                vector.set(soi + ofs + idx, tpt[idx].getInt());
+                ptsCount ++;
+              }
               idx++;
             }
             ofs += tpt.length;
@@ -1053,10 +1309,14 @@ public class TsFileSequentialConvertor {
         case BOOLEAN: {
           BitVector vector = bitVectors.get(cdata.name);
           ArrowVectorHelper.reAllocTo(vector, vti);
-          int idx = 0, ofs = 0;
+          int ofs = 0; // offset across batches
           for (TsPrimitiveType[] tpt : cdata.valueBatch) {
+            int idx = 0; // index within the batch
             while (idx < tpt.length) {
-              vector.set(soi + ofs + idx, tpt[idx].getBoolean() ? 1 : 0);
+              if (tpt[idx] != null) {
+                vector.set(soi + ofs + idx, tpt[idx].getBoolean() ? 1 : 0);
+                ptsCount ++;
+              }
               idx++;
             }
             ofs += tpt.length;
@@ -1066,19 +1326,40 @@ public class TsFileSequentialConvertor {
         case INT64: {
           BigIntVector vector = bigIntVectors.get(cdata.name);
           ArrowVectorHelper.reAllocTo(vector, vti);
-          int idx = 0, ofs = 0;
+          int ofs = 0; // offset across batches
           for (TsPrimitiveType[] tpt : cdata.valueBatch) {
+            int idx = 0; // index within the batch
             while (idx < tpt.length) {
-              vector.set(soi + ofs + idx, tpt[idx].getLong());
+              if (tpt[idx] != null) {
+                vector.set(soi + ofs + idx, tpt[idx].getLong());
+                ptsCount ++;
+              }
               idx++;
             }
             ofs += tpt.length;
           }
           break;
         }
+        case DOUBLE: {
+          Float8Vector vector = float8Vectors.get(cdata.name);
+          ArrowVectorHelper.reAllocTo(vector, vti);
+          int ofs = 0; // offset across batches
+          for (TsPrimitiveType[] tpt : cdata.valueBatch) {
+            int idx = 0; // index within the batch
+            while (idx < tpt.length) {
+              if (tpt[idx] != null) {
+                vector.set(soi + ofs + idx, tpt[idx].getDouble());
+                ptsCount ++;
+              }
+              idx++;
+            }
+            ofs += tpt.length;
+          }
+          break;
+        }
+
         case VECTOR:
         case TEXT:
-        case DOUBLE:
         case UNKNOWN:
         default:
           System.out.println(String.format("Unknown type chunk: %s.%s",

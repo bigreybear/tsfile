@@ -47,8 +47,12 @@ public class ProgressReporter {
       return;
     }
     lastReportedPrg = curPgr;
-    lastPts = currentPoints;
     printReport();
+  }
+
+  public void addProgressAndReport(long add) {
+    report(add + lastPts);
+    lastPts += add;
   }
 
   private void printReport() {
