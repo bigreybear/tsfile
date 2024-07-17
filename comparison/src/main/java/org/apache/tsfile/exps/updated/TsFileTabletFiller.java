@@ -2,10 +2,10 @@ package org.apache.tsfile.exps.updated;
 
 import org.apache.arrow.vector.Float8Vector;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.exps.loader.GeoLifeLoader;
-import org.apache.tsfile.exps.loader.REDDLoader;
-import org.apache.tsfile.exps.loader.TDriveLoader;
-import org.apache.tsfile.exps.loader.TSBSLoader;
+import org.apache.tsfile.exps.loader.legacy.GeoLifeLoader;
+import org.apache.tsfile.exps.loader.legacy.REDDLoader;
+import org.apache.tsfile.exps.loader.legacy.TDriveLoader;
+import org.apache.tsfile.exps.loader.legacy.TSBSLoader;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;

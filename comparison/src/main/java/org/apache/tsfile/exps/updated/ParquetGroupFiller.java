@@ -3,12 +3,12 @@ package org.apache.tsfile.exps.updated;
 import org.apache.arrow.vector.Float8Vector;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
-import org.apache.tsfile.exps.loader.GeoLifeLoader;
-import org.apache.tsfile.exps.loader.REDDLoader;
-import org.apache.tsfile.exps.loader.TDriveLoader;
-import org.apache.tsfile.exps.loader.TSBSLoader;
+import org.apache.tsfile.exps.loader.legacy.GeoLifeLoader;
+import org.apache.tsfile.exps.loader.legacy.REDDLoader;
+import org.apache.tsfile.exps.loader.legacy.TDriveLoader;
+import org.apache.tsfile.exps.loader.legacy.TSBSLoader;
 import org.apache.tsfile.exps.conf.FileScheme;
-import org.apache.tsfile.exps.loader.ZYLoader;
+import org.apache.tsfile.exps.loader.legacy.ZYLoader;
 
 /**
  * Serves as a helper to init and update group, which is the unit to write parquet

@@ -250,11 +250,12 @@ public class BenchWriter {
   public static void writeParquetAS() throws IOException {
     currentScheme = FileScheme.ParquetAS;
         switch (mergedDataSets) {
+      case CCS:
       case ZY:
       case REDD:
       case TSBS:
         break;
-      // These are unavailable with alternated schema
+      // follows are unavailable with alternated schema
       case GeoLife:
       case TDrive:
       default:
@@ -468,11 +469,20 @@ public class BenchWriter {
   static LoaderBase loaderBase;
 
 
+  // scripting wrapper for main
+  // public static void main(String[] args) throws Exception{
+  //   String[] parg = new String[0];
+  //   for (MergedDataSets mds : MergedDataSets.values()) {
+  //     _args[0] = mds.name();
+  //     mainInternal(parg);
+  //   }
+  // }
+
   static String[] _args = {"ZY", "UNCOMPRESSED", "0100"};  // pseudo input args
   /** Encoding is defined by {@link #encodingTsFile} for TsFile, and automated with Parquet.
    *  Compressor is defined by above parameters.
    *  Each run process a dataset. */
-  public static void main(String[] args) throws IOException, WriteProcessException {
+  public static void main(String[] args) throws IOException, WriteProcessException, ClassNotFoundException {
     if (args.length != 3) {
       args = _args;
     }
@@ -498,11 +508,11 @@ public class BenchWriter {
     compressorParquet = CompressionCodecName.valueOf(args[1]);
     compressorTsFile = CompressionType.valueOf(args[1]);
     compressorArrow = getCompressorArrow(args[1]);
-    _log_name = MergedDataSets.TARGET_DIR + _log_name;
+    String __log_name = MergedDataSets.TARGET_DIR + _log_name;
     // logger = new BufferedWriter(new FileWriter(_log_name, true));
-    logger = new ResultPrinter(_log_name, true);
+    logger = new ResultPrinter(__log_name, true);
 
-    _file_name = MergedDataSets.TARGET_DIR + args[0] + "_new_" + args[1]; // no time
+    _file_name = MergedDataSets.TARGET_DIR + args[0] + "V2_" + args[1]; // no time
     // _file_name = MergedDataSets.TARGET_DIR + args[0] + "_" + args[1] + "_" + _date_time; // test at dev
 
     // load once, use always

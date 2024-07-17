@@ -1,10 +1,11 @@
 package org.apache.tsfile.exps.updated;
 
-import javafx.scene.control.Tab;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.BigIntVector;
+import org.apache.arrow.vector.FieldVector;
 import org.apache.arrow.vector.LargeVarCharVector;
+import org.apache.arrow.vector.ValueVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.ipc.ArrowFileReader;
 import org.apache.arrow.vector.dictionary.Dictionary;
@@ -17,13 +18,12 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.exps.loader.CCSLoader;
-import org.apache.tsfile.exps.loader.GeoLifeLoader;
-import org.apache.tsfile.exps.loader.REDDLoader;
-import org.apache.tsfile.exps.loader.TDriveLoader;
-import org.apache.tsfile.exps.loader.TSBSLoader;
+import org.apache.tsfile.exps.loader.REDDLoaderV2;
+import org.apache.tsfile.exps.loader.TSBSLoaderV2;
+import org.apache.tsfile.exps.loader.ZYLoaderV2;
+import org.apache.tsfile.exps.loader.CCSLoaderV2;
+import org.apache.tsfile.exps.loader.AtomicIDDatasetLoaderV2;
 import org.apache.tsfile.exps.conf.MergedDataSets;
-import org.apache.tsfile.exps.loader.ZYLoader;
 import org.apache.tsfile.exps.utils.DevSenSupport;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -108,7 +108,13 @@ public abstract class LoaderBase {
         left = mid + 1;
       }
     }
-    return new int[] {mid, oai - psa[mid-1]};
+
+    if (left != right) {
+      System.out.println("Strange binary search.");
+      System.exit(-1);
+    }
+
+    return new int[] {left, oai - psa[left-1]};
   }
 
   public String getCurDev() {
@@ -123,9 +129,20 @@ public abstract class LoaderBase {
     return iteIdx < ttlRow - 1;
   }
 
-  public void next() throws IOException {
+  public boolean next() throws IOException {
+    if (iteIdx == ttlRow - 1) {
+      return false;
+    }
     iteIdx++;
+    return true;
   }
+
+  public void initIterator() throws IOException {
+    iteIdx = 0;
+    ttlRow = idVector.getValueCount();
+  }
+
+  // region Getters
 
   public int getCurrentBatchCursor() {
     return iteIdx;
@@ -143,17 +160,10 @@ public abstract class LoaderBase {
 
   abstract public Set<String> getRelatedSensors(String did);
 
-  public void initIterator() throws IOException {
-    iteIdx = 0;
-    ttlRow = idVector.getValueCount();
-  }
-
   public int getTotalRows() {
     ttlRow = idVector.getValueCount();
     return ttlRow;
   }
-
-  // region Basic Getter
 
   public byte[] getID() {
     return idVector.get(iteIdx);
@@ -171,9 +181,25 @@ public abstract class LoaderBase {
     return idVector.get(i);
   }
 
+  public String getIDString(int i) throws IOException {
+    return new String(getID(i), StandardCharsets.UTF_8);
+  }
+
   public long getTS(int i) throws IOException {
     iteIdx = i;
     return timestampVector.get(i);
+  }
+
+  public List<FieldVector> getVectors() {
+    return root.getFieldVectors();
+  }
+
+  public FieldVector getVector(String vecName) {
+    return root.getVector(vecName);
+  }
+
+  public int reloadAndGetLocalIndex(int glbIdx) throws IOException {
+    return glbIdx;
   }
 
   // endregion
@@ -195,8 +221,12 @@ public abstract class LoaderBase {
   abstract public void fillTablet(Tablet tablet, int rowInTablet);
 
   // legacy loaders only
-  abstract public void initArrays(Tablet tablet);
-  abstract public void refreshArrays(Tablet tablet);
+  public void initArrays(Tablet tablet) {
+    return;
+  }
+  public void refreshArrays(Tablet tablet) {
+    return;
+  }
 
   // designed for revision datasets
   public Tablet refreshTablet(Tablet tablet) {
@@ -288,9 +318,19 @@ public abstract class LoaderBase {
       case Bool:
         builder = Types.optional(PrimitiveType.PrimitiveTypeName.BOOLEAN);
         break;
-      case FloatingPoint:
-        builder = Types.optional(PrimitiveType.PrimitiveTypeName.FLOAT);
+      case FloatingPoint: {
+        switch (((ArrowType.FloatingPoint)field.getType()).getPrecision()) {
+          case DOUBLE:
+            builder = Types.optional(PrimitiveType.PrimitiveTypeName.DOUBLE);
+            break;
+          case SINGLE:
+            builder = Types.optional(PrimitiveType.PrimitiveTypeName.FLOAT);
+            break;
+          default:
+            throw new RuntimeException("No match datatype.");
+        }
         break;
+      }
       default:
         throw new RuntimeException("No match datatype.");
     }
@@ -312,14 +352,24 @@ public abstract class LoaderBase {
         throw new RuntimeException("No match datatype: int96?");
       case Bool:
         return TSDataType.BOOLEAN;
-      case FloatingPoint:
-        return TSDataType.FLOAT;
+      case FloatingPoint: {
+        switch (((ArrowType.FloatingPoint)field.getType()).getPrecision()) {
+          case DOUBLE:
+            return TSDataType.DOUBLE;
+          case SINGLE:
+            return TSDataType.FLOAT;
+          default:
+            throw new RuntimeException("No match datatype.");
+        }
+      }
       default:
         throw new RuntimeException("No match datatype.");
     }
   }
 
   public List<MeasurementSchema> getSchemaList() {
+    throw new UnsupportedOperationException();
+    /** legacy
     List<MeasurementSchema> schemas = new ArrayList<>();
     switch (BenchWriter.mergedDataSets) {
       case TSBS:
@@ -346,31 +396,48 @@ public abstract class LoaderBase {
       default:
         return null;
     }
+     **/
   }
 
   // endregion
 
-  public static LoaderBase getLoader(MergedDataSets mds) throws IOException {
+  public static LoaderBase getLoader(MergedDataSets mds) throws IOException, ClassNotFoundException {
     // following constructor with integer parameter is to create an empty object
     switch (mds) {
       case TSBS:
-        return TSBSLoader.deser(mds);
+        TSBSLoaderV2 tsbsLoaderV2 = new TSBSLoaderV2(mds);
+        return tsbsLoaderV2.deser(mds);
       case REDD:
-        return REDDLoader.deser(mds);
+        REDDLoaderV2 reddLoaderV2 = new REDDLoaderV2(mds);
+        return reddLoaderV2.deser(mds);
       case TDrive:
-        return TDriveLoader.deser(mds);
       case GeoLife:
-        return GeoLifeLoader.deser(mds);
+        AtomicIDDatasetLoaderV2 aidLoader = new AtomicIDDatasetLoaderV2(mds);
+        return aidLoader.deser(mds);
       case ZY:
-        return ZYLoader.deser(mds);
+        ZYLoaderV2 zyLoaderV2 = new ZYLoaderV2(mds);
+        return zyLoaderV2.deser(mds);
       case CCS:
-        return CCSLoader.deser(mds);
+        CCSLoaderV2 ccsLoaderV2 = new CCSLoaderV2(mds);
+        return ccsLoaderV2.deser(mds);
       default:
         return null;
     }
   }
 
   public void close() throws IOException {
+    if (idVector != null) {
+      idVector.close();
+    }
+
+    if (dictionary != null) {
+      dictionary.getVector().close();
+    }
+
+    if (root != null) {
+      root.getFieldVectors().forEach(ValueVector::close);
+      root.close();
+    }
     if (reader != null) {
       reader.close();
       channel.close();

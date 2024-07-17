@@ -177,9 +177,11 @@ public class TsFileArrowConvertor {
       case TEXT:
         return Types.MinorType.LARGEVARCHAR;
       case DOUBLE:
-      case FLOAT:
         return Types.MinorType.FLOAT8;
+      case FLOAT:
+        return Types.MinorType.FLOAT4;
       case INT32:
+        return Types.MinorType.INT;
       case INT64:
         return Types.MinorType.BIGINT;
       case BOOLEAN:

@@ -18,6 +18,10 @@ public class DevSenSupport implements Serializable {
   public final Map<String, Set<String>> map = new HashMap<>();
 
   private void add(String d, String s) {
+    if (s == null) {
+      // for time chunk
+      return;
+    }
     if (!map.containsKey(d)) {
       map.put(d, new HashSet<>());
     }

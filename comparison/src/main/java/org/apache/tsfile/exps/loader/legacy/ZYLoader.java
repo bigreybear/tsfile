@@ -1,4 +1,4 @@
-package org.apache.tsfile.exps.loader;
+package org.apache.tsfile.exps.loader.legacy;
 
 import org.apache.arrow.compression.CommonsCompressionFactory;
 import org.apache.arrow.vector.BigIntVector;
@@ -51,8 +51,8 @@ public class ZYLoader extends LoaderBase {
 
   // load support file, read through file and collect all length
   public void preprocess(MergedDataSets mds) throws IOException, ClassNotFoundException {
-    if (mds.getSupportFile() != null) {
-      support = DevSenSupport.deserialize(mds.getSupportFile());
+    if (mds.getNewSupport() != null) {
+      support = DevSenSupport.deserialize(mds.getNewSupport());
     }
     psaRow = new int[reader.getRecordBlocks().size()];
     for (int i = 0; i < reader.getRecordBlocks().size(); i++) {
@@ -72,7 +72,7 @@ public class ZYLoader extends LoaderBase {
 
   public ZYLoader(MergedDataSets mds) throws FileNotFoundException {
     super();
-    fis = new FileInputStream(mds.getArrowFile());
+    fis = new FileInputStream(mds.getNewArrowFile());
     channel = fis.getChannel();
     reader = new ArrowFileReader(channel, allocator, new CommonsCompressionFactory());
   }
@@ -119,9 +119,21 @@ public class ZYLoader extends LoaderBase {
       return getID();
     }
 
-    int[] res = LoaderBase.getBatchIndex(idx, psaRow);
+    int[] res = getCursor(idx);
     setCursor(res[0], res[1]);
     return getID();
+  }
+
+  private int[] getCursor(int idx) {
+    if (lastBlockRows() <= idx && idx < psaRow[curBlk]) {
+      return new int[] {curBlk, idx - lastBlockRows()};
+    } else {
+      return LoaderBase.getBatchIndex(idx, psaRow);
+    }
+  }
+
+  private int lastBlockRows() {
+    return curBlk == 0 ? 0 : psaRow[curBlk - 1];
   }
 
   @Override
@@ -130,9 +142,16 @@ public class ZYLoader extends LoaderBase {
       return getTS();
     }
 
-    int[] res = LoaderBase.getBatchIndex(idx, psaRow);
+    int[] res = getCursor(idx);
     setCursor(res[0], res[1]);
     return getTS();
+  }
+
+  @Override
+  public int reloadAndGetLocalIndex(int glbIdx) throws IOException {
+    int[] res = getCursor(glbIdx);
+    setCursor(res[0], res[1]);
+    return res[1];
   }
 
   // set block and ele pointer and load related bytes
@@ -148,7 +167,11 @@ public class ZYLoader extends LoaderBase {
   }
 
   @Override
-  public void next() throws IOException {
+  public boolean next() throws IOException {
+    if (iteIdx == ttlRow - 1) {
+      return false;
+    }
+
     iteIdx ++;
     curIdx ++;
     if (iteIdx == psaRow[curBlk]) {
@@ -165,6 +188,7 @@ public class ZYLoader extends LoaderBase {
       updateWorkingVectors(curDev);
       deviceID = curDev;
     }
+    return true;
   }
 
   @Override
@@ -205,8 +229,10 @@ public class ZYLoader extends LoaderBase {
     return iteIdx == psaRow[curBlk] - 1;
   }
 
+  @Override
   public void initIterator() throws IOException {
     iteIdx = curBlk = curIdx = 0;
+    root.getFieldVectors().forEach(ValueVector::reset);
     reader.loadRecordBatch(reader.getRecordBlocks().get(0));
     root = reader.getVectorSchemaRoot();
     updateTsAndIdVector();
@@ -215,6 +241,10 @@ public class ZYLoader extends LoaderBase {
   private void updateTsAndIdVector() throws IOException {
     timestampVector = (BigIntVector) root.getVector("timestamp");
     dictionary = reader.getDictionaryVectors().get(DICT_ID);
+
+    if (idVector != null) {
+      idVector.close();
+    }
     idVector = (LargeVarCharVector) DictionaryEncoder.decode(root.getVector("id"), dictionary);
   }
 
@@ -227,7 +257,7 @@ public class ZYLoader extends LoaderBase {
       return;
     }
 
-    if (BenchWriter.currentScheme.toSplitDeviceID()) {
+    if (BenchWriter.currentScheme != null && BenchWriter.currentScheme.toSplitDeviceID()) {
       String[] nodes = fulDev.split("\\.");
       ent = nodes[0];
       dev = nodes[1];
@@ -322,16 +352,6 @@ public class ZYLoader extends LoaderBase {
           throw new RuntimeException("Unexpected type during filling.");
       }
     }
-  }
-
-  @Override
-  public void initArrays(Tablet tablet) {
-    return;
-  }
-
-  @Override
-  public void refreshArrays(Tablet tablet) {
-    return;
   }
 
   @Override

@@ -685,7 +685,7 @@ public class TsFileWriter implements AutoCloseable {
   public String verboseReport() {
     StringBuilder stringBuilder = new StringBuilder("verbose chunk_index and series_index");
     stringBuilder.append(
-        String.format("ChunkIndex: %d, SereisIndex: %d\n",
+        String.format("ChunkIndex: %d, SereisIndex: %d",
             fileWriter.tsmEndPos - dataPosition, fileWriter.indexEndPosition - fileWriter.tsmEndPos)
     );
     return stringBuilder.toString();

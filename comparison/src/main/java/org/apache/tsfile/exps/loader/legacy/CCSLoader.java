@@ -1,9 +1,6 @@
-package org.apache.tsfile.exps.loader;
+package org.apache.tsfile.exps.loader.legacy;
 
-import org.apache.arrow.vector.BigIntVector;
-import org.apache.arrow.vector.LargeVarCharVector;
 import org.apache.arrow.vector.ValueVector;
-import org.apache.arrow.vector.dictionary.DictionaryEncoder;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
@@ -14,8 +11,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Map;
-
-import static org.apache.tsfile.exps.utils.TsFileSequentialConvertor.DICT_ID;
 
 // ccs datasets from Timecho's nas
 public class CCSLoader extends ZYLoader{
@@ -28,6 +23,20 @@ public class CCSLoader extends ZYLoader{
 
   public CCSLoader(File file) throws FileNotFoundException {
     super(file);
+  }
+
+  /**
+   * Only used to test correctness, share the support file with the source.
+   */
+  @Deprecated
+  public static CCSLoader deserFromFile(File file) throws IOException {
+    CCSLoader loader = new CCSLoader(file);
+    try {
+      loader.preprocess(MergedDataSets.ZY);
+    } catch (ClassNotFoundException e) {
+      throw new RuntimeException(e);
+    }
+    return loader;
   }
 
   public static CCSLoader deser(MergedDataSets mds) throws IOException {
@@ -46,7 +55,7 @@ public class CCSLoader extends ZYLoader{
       return;
     }
 
-    if (BenchWriter.currentScheme.toSplitDeviceID()) {
+    if (BenchWriter.currentScheme != null && BenchWriter.currentScheme.toSplitDeviceID()) {
       String[] nodes = fulDev.split("\\.");
       ent = nodes[0];
       dev = nodes[1];

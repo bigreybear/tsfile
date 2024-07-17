@@ -1,4 +1,4 @@
-package org.apache.tsfile.exps.loader;
+package org.apache.tsfile.exps.loader.legacy;
 
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.BigIntVector;

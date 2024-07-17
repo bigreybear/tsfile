@@ -4,9 +4,6 @@ import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.predicate.FilterApi;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.io.api.Binary;
-import org.apache.parquet.schema.MessageType;
-
-import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 
 /**
  * Latest class to provide datasets services. 6/28/24
@@ -17,10 +14,10 @@ public enum MergedDataSets {
 
   // underscore _A means alternative schema
   REDD("elec", "elec"),
-  REDD_A("elec", "elec"),
+  // REDD_A("elec", "elec"),
 
   TSBS("vel", "lat"),
-  TSBS_A("vel", "lat"),
+  // TSBS_A("vel", "lat"),
 
   ZY(null, null),
   CCS(null, null);
@@ -41,6 +38,10 @@ public enum MergedDataSets {
   public static String ARROW_BINS = PRJ_DIR + "Arrows\\";
   public static String CONDITION_DIR = PRJ_DIR + "Conditions\\";
   public static String TARGET_DIR = PRJ_DIR + "Results\\";
+
+  // added during revision
+  public static String NEW_ARW_SRC = PRJ_DIR + "new_arrow_src\\";
+  public static String NEW_COND_DIR = PRJ_DIR + "new_cond\\";
 
   public String getArrowFile() {
     switch (this) {
@@ -63,6 +64,14 @@ public enum MergedDataSets {
     return null;
   }
 
+  public String getNewArrowFile() {
+    return NEW_ARW_SRC + name() + ".arrow";
+  }
+
+  public String getNewSupport() {
+    return NEW_ARW_SRC + name() + ".sup";
+  }
+
   public String getSupportFile() {
     switch (this) {
       case TDrive:
@@ -77,6 +86,10 @@ public enum MergedDataSets {
       default:
     }
     return null;
+  }
+
+  public String getNewConditionFile() {
+    return NEW_COND_DIR + name() + ".cond";
   }
 
   public String getConditionBinPath() {
@@ -128,8 +141,8 @@ public enum MergedDataSets {
         );
       case GeoLife:
       case TDrive:
-      case REDD_A:
-      case TSBS_A:
+      // case REDD_A:
+      // case TSBS_A:
         Binary targetDevice = new Binary.FromStringBinary(device[0]);
         return FilterApi.eq(FilterApi.binaryColumn("deviceID"), targetDevice);
       default:

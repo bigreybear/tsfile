@@ -3,10 +3,10 @@ package org.apache.tsfile.exps;
 import org.apache.arrow.vector.BigIntVector;
 import org.apache.arrow.vector.Float8Vector;
 import org.apache.arrow.vector.LargeVarCharVector;
-import org.apache.tsfile.exps.loader.GeoLifeLoader;
-import org.apache.tsfile.exps.loader.REDDLoader;
-import org.apache.tsfile.exps.loader.TDriveLoader;
-import org.apache.tsfile.exps.loader.TSBSLoader;
+import org.apache.tsfile.exps.loader.legacy.GeoLifeLoader;
+import org.apache.tsfile.exps.loader.legacy.REDDLoader;
+import org.apache.tsfile.exps.loader.legacy.TDriveLoader;
+import org.apache.tsfile.exps.loader.legacy.TSBSLoader;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;

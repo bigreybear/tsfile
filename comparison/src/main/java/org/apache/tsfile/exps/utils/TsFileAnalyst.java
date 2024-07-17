@@ -18,7 +18,6 @@ import org.apache.tsfile.read.reader.page.PageReader;
 import org.apache.tsfile.read.reader.page.TimePageReader;
 import org.apache.tsfile.read.reader.page.ValuePageReader;
 import org.apache.tsfile.utils.TsPrimitiveType;
-import sun.awt.util.IdentityArrayList;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -30,15 +29,20 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 public class TsFileAnalyst {
 
   // private static final String tarFile = "F:\\0006DataSets\\CCS.tsfile";
-  private static final String tarFile = "E:\\ExpDataSets\\Source-TsFile\\CCS.tsfile";
+  public String tarFile = "E:\\ExpDataSets\\Source-TsFile\\CCS.tsfile";
 
   public static void main(String[] args) throws IOException {
     TsFileAnalyst analyst = new TsFileAnalyst();
-    analyst.analyze();
+    TsFileAnalyst a2 = new TsFileAnalyst();
+    analyst.tarFile = "F:\\0006DataSets\\CCS.tsfile";
+    a2.tarFile = "F:\\0006DataSets\\Results\\CCS_new2_UNCOMPRESSED.tsfile";
+    // analyst.analyze();
+    a2.analyze();
     System.out.println("Analysis finished.");
   }
 
@@ -86,7 +90,8 @@ public class TsFileAnalyst {
             int dataSize = header.getDataSize();
             pageIndex = 0;
             if (header.getDataType() == TSDataType.VECTOR) {
-              throw new RuntimeException("Unsupported to VECTOR type.");
+              timeBatch.clear();
+              // throw new RuntimeException("Unsupported to VECTOR type.");
             }
 
             BaseChunk bc = null;
@@ -109,6 +114,9 @@ public class TsFileAnalyst {
               // Time Chunk
               if ((header.getChunkType() & TsFileConstant.TIME_COLUMN_MASK)
                   == TsFileConstant.TIME_COLUMN_MASK) {
+                TimePageReader timePageReader =
+                    new TimePageReader(pageHeader, pageData, defaultTimeDecoder);
+                timeBatch.add(timePageReader.getNextTimeBatch());
                 if (pageIndex == 0) {
                   bc = new TimeChunk(pos, pageHeader.getCompressedSize(), pageHeader.getUncompressedSize());
                 }
@@ -150,6 +158,9 @@ public class TsFileAnalyst {
             break;
           case MetaMarker.CHUNK_GROUP_HEADER:
             curDev = appendChunkGroupHeader(reader.readChunkGroupHeader(), reader.position());
+            if (curDev.equals("dacoo.BF116_BFHydSta_BFHydSta_BleedSolVlv_South")) {
+              System.out.println("DEBUG");
+            }
             break;
           case MetaMarker.OPERATION_INDEX_RANGE:
             reader.readPlanIndex();
@@ -164,7 +175,9 @@ public class TsFileAnalyst {
   }
 
   private final StringBuilder reporter = new StringBuilder();
-  private final Map<String, DeviceRep> deviceReps = new HashMap<>();
+  private final Map<String, DeviceRep> deviceReps = new TreeMap<>();
+  private final List<DeviceRep> orderedDevices = new ArrayList<>();
+  private final List<String> orderedDeviceNames = new ArrayList<>();
   private final Map<String, Set<String>> sensorMapping = new HashedMap();
   private long fileSize, dataSize;
   private String curDev;
@@ -183,6 +196,8 @@ public class TsFileAnalyst {
       deviceReps.put(dev, new DeviceRep());
       rep = deviceReps.get(dev);
     }
+    orderedDevices.add(rep);
+    orderedDeviceNames.add(header.getDeviceID());
 
     rep.ckgNum ++;
     rep.ckgPos.add(pos);

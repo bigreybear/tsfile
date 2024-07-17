@@ -37,7 +37,7 @@ public class ResultPrinter {
     setStatus(BenchWriter.currentScheme, BenchWriter.mergedDataSets);
 
     // file_scheme data_set data_size index_size data_time index_time, all time are mil-seconds
-    String c = String.format("%s\t\t%s\t%d\t%d\t%d\t%d\t%s\n",
+    String c = String.format("%s\t%s\t%d\t%d\t%d\t%d\t%s\n",
         scheme.name(), dataSets.name(),
         res[0], res[1],
         res[2], res[3],

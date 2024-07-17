@@ -16,6 +16,11 @@ public class ProgressReporter {
     lastReportedPrg = 0;
   }
 
+  public ProgressReporter(long ttlPts, String id) {
+    this(ttlPts);
+    this.id = id;
+  }
+
   public ProgressReporter(long ttlPts) {
     this(ttlPts, 0.1f);
   }

@@ -15,24 +15,18 @@ import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.dictionary.Dictionary;
 import org.apache.arrow.vector.dictionary.DictionaryEncoder;
 import org.apache.arrow.vector.ipc.ArrowFileReader;
-import org.apache.arrow.vector.ipc.ArrowStreamReader;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.ArrowType.Int;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.FieldVector;
 import org.apache.arrow.vector.types.pojo.Field;
-import org.apache.tsfile.exps.conf.MergedDataSets;
-import org.apache.tsfile.exps.loader.CCSLoader;
-import org.apache.tsfile.exps.loader.ZYLoader;
 import org.apache.tsfile.exps.utils.ProgressReporter;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.apache.tsfile.exps.utils.TsFileSequentialConvertor.DICT_ID;
@@ -402,8 +396,8 @@ public class ArrowVectorHelper {
     // CCSLoader loader2 = CCSLoader.deserFromFile(new File("F:\\0006DataSets\\new_arrow_src\\CCS-rr.arrow"));
     boolean b = testArrowFilesEquality(
         // new File(MergedDataSets.CCS.getArrowFile()),
-        new File("F:\\0006DataSets\\new_arrow_src\\ZY-afb.arrow"),
-        new File("F:\\0006DataSets\\Arrows\\ZY.arrow")
+        new File("F:\\0006DataSets\\new_arrow_src\\ZYV1.arrow"),
+        new File("F:\\0006DataSets\\new_arrow_src\\ZYV2.arrow")
     );
     System.out.println(b);
   }
