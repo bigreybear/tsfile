@@ -263,7 +263,6 @@ public class ParquetBMReader {
   // to fix too late read
   public static long READ_MAX = 1000;
 
-  /**
   public static void main(String[] args) throws IOException, ClassNotFoundException {
     int queryType = 0;
     FILE_PATH = DST_DIR + "PAQ_FILE__TSBS-5.3.2-length-1_.parquet";
@@ -278,9 +277,9 @@ public class ParquetBMReader {
     }
 
     init();
-    ConditionGenerator cg = ConditionGenerator.getConditionsByDataSets(DATA_SET);
+    // ConditionGenerator cg = ConditionGenerator.getConditionsByDataSets(DATA_SET);
     ParquetReader.Builder builder = ParquetReader.builder(new GroupReadSupport(), new Path(FILE_PATH));
-    bmQuery(builder, cg, queryType, DATA_SET.ordinal());
+    // bmQuery(builder, cg, queryType, DATA_SET.ordinal());
     logger.close();
 
     // PlainParquetConfiguration configuration = new PlainParquetConfiguration();
@@ -308,7 +307,6 @@ public class ParquetBMReader {
     // bmQuery(reader, conditions, 4, 0);
     // logger.close();
   }
-**/
 
   public enum QueryType {
     SingleRaw,

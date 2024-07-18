@@ -38,6 +38,7 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -47,9 +48,6 @@ import static org.apache.tsfile.exps.updated.BenchWriter.encodingTsFile;
 import static org.apache.tsfile.exps.utils.TsFileSequentialConvertor.DICT_ID;
 
 public abstract class StreamingLoader<T extends StreamingLoader<T>> extends LoaderBase {
-
-  // to do impl.:
-  // 1. public void updateDeviceID(String fulDev); and related field
 
   protected abstract void updateDeviceIDComponents(String fulDev);
   // 2. protect void appendGroup
@@ -64,7 +62,8 @@ public abstract class StreamingLoader<T extends StreamingLoader<T>> extends Load
   // region Cores
 
   public final void updateDeviceID(String fulDev) {
-    if (deviceID != null && deviceID.equals(fulDev)) {
+    if (deviceID != null && deviceID.equals(fulDev)
+        && !BenchWriter.currentScheme.toSplitDeviceID()) {
       return;
     }
 
@@ -98,9 +97,19 @@ public abstract class StreamingLoader<T extends StreamingLoader<T>> extends Load
           } else {
             throw new RuntimeException("Illegal int width during group filling.");
           }
-        case FloatingPoint:
-          g.append(entry.getKey(), (float) res);
+        case FloatingPoint: {
+          switch (((ArrowType.FloatingPoint)entry.getValue().getField().getType()).getPrecision()) {
+            case DOUBLE:
+              g.append(entry.getKey(), (double) res);
+              break;
+            case SINGLE:
+              g.append(entry.getKey(), (float) res);
+              break;
+            default:
+              throw new RuntimeException("No match datatype.");
+          }
           break;
+        }
         default:
           throw new RuntimeException("Illegal type during group filling.");
       }

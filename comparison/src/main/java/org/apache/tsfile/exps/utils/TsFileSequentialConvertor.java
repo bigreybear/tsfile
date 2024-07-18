@@ -104,16 +104,16 @@ import java.util.concurrent.atomic.AtomicInteger;
  * */
 public class TsFileSequentialConvertor {
   // configurations.
-  public static final String prjPath = "F:\\0006DataSets\\";  // @ lab
-  // public static final String prjPath = "E:\\ExpDataSets\\Source-TsFile\\";  // @ home
-  public static final String filName = "ZYV2";
+  // public static final String prjPath = "F:\\0006DataSets\\";  // @ lab
+  public static final String prjPath = "E:\\ExpDataSets\\";  // @ home
+  public static final String filName = "CCS";
   // public static final String srcPath = prjPath + "Results\\" + filName + "_UNCOMPRESSED.tsfile"; // path to read TsFile
   // public static final String srcPath = prjPath + "Results\\CCS_new2_UNCOMPRESSED.tsfile"; // path to read TsFile
-  public static final String srcPath = prjPath + "Results\\ZYV2_UNCOMPRESSED.tsfile"; // raw, original tsfile
+  public static final String srcPath = prjPath + "Results\\CCS_UNCOMPRESSED.tsfile"; // raw, original tsfile
   public static final String dstPath = prjPath + "\\new_arrow_src\\" + filName + ".arrow"; // path to write ArrowIPC
   public static final String supPath = prjPath + "\\new_arrow_src\\" + filName + ".sup";  // path to supporting file
   private static final int BATCH_ROW = 100_000;
-  private static final boolean ONLY_PART = false;
+  private static final boolean ONLY_PART = true;
   private static final int PART_START = -1, PART_END = 480_000_000;
   // private static final boolean HIGH_FIDELITY = false;  // to develop
 
@@ -644,7 +644,7 @@ public class TsFileSequentialConvertor {
                 idx++;
                 continue;
               }
-              vector.set(idx + soi, bd.getLong());
+              vector.set(idx + soi, getLongVal(cdata.dataType, bd));
               bd.next();
               idx++;
               ptsCount++;
@@ -1132,6 +1132,27 @@ public class TsFileSequentialConvertor {
   }
 
   // helper
+  private static long getLongVal(TSDataType type, BatchData bd) {
+    switch (type) {
+      case BOOLEAN:
+        return bd.getBoolean() ? 1 : 0;
+      case INT64:
+        return bd.getLong();
+      case INT32:
+        return bd.getInt();
+      case DOUBLE:
+        return (long) bd.getDouble();
+      case FLOAT:
+        return (long) bd.getFloat();
+      case TEXT:
+      case UNKNOWN:
+      case VECTOR:
+      default:
+        throw new UnsupportedOperationException();
+    }
+  }
+
+  // helper
   private static double getDoubleVal(TSDataType type, BatchData bd) {
     switch (type) {
       case BOOLEAN:
@@ -1141,8 +1162,9 @@ public class TsFileSequentialConvertor {
       case INT32:
         return bd.getInt();
       case DOUBLE:
-      case FLOAT:
         return bd.getDouble();
+      case FLOAT:
+        return bd.getFloat();
       case TEXT:
       case UNKNOWN:
       case VECTOR:

@@ -26,15 +26,15 @@ public class TSBSLoaderV2 extends StreamingLoader<TSBSLoaderV2> {
   @Override
   protected void updateDeviceIDComponents(String fulDev) {
     String[] nodes = fulDev.split("\\.");
-    name = nodes[0];
-    fleet = nodes[1];
+    fleet = nodes[0];
+    name = nodes[1];
     driver = nodes[2];
   }
 
   @Override
   protected void appendIDFieldsToGroup(Group g) {
-    g.append("name", name);
     g.append("fleet", fleet);
+    g.append("name", name);
     g.append("driver", driver);
   }
 
@@ -42,8 +42,8 @@ public class TSBSLoaderV2 extends StreamingLoader<TSBSLoaderV2> {
   protected void appendIDFieldsToParquetFields(List<Type> fields) {
     Types.PrimitiveBuilder<?> builder =
         Types.required(PrimitiveType.PrimitiveTypeName.BINARY);
-    fields.add((Type) builder.named("name"));
     fields.add((Type) builder.named("fleet"));
+    fields.add((Type) builder.named("name"));
     fields.add((Type) builder.named("driver"));
   }
 }

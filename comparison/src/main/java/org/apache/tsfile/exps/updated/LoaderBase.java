@@ -24,6 +24,12 @@ import org.apache.tsfile.exps.loader.ZYLoaderV2;
 import org.apache.tsfile.exps.loader.CCSLoaderV2;
 import org.apache.tsfile.exps.loader.AtomicIDDatasetLoaderV2;
 import org.apache.tsfile.exps.conf.MergedDataSets;
+import org.apache.tsfile.exps.loader.legacy.CCSLoader;
+import org.apache.tsfile.exps.loader.legacy.GeoLifeLoader;
+import org.apache.tsfile.exps.loader.legacy.REDDLoader;
+import org.apache.tsfile.exps.loader.legacy.TDriveLoader;
+import org.apache.tsfile.exps.loader.legacy.TSBSLoader;
+import org.apache.tsfile.exps.loader.legacy.ZYLoader;
 import org.apache.tsfile.exps.utils.DevSenSupport;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -51,6 +57,10 @@ import static org.apache.tsfile.exps.updated.BenchWriter.encodingTsFile;
  * competitor file formats.
  */
 public abstract class LoaderBase {
+  /** Legacy loaders requires more memory, but need no support file.
+   * New loaders depend on arrow&sup files in new_arrow_src as {@link #getLoader} */
+  public static boolean USE_LEGACY_LOADER;
+
   public final BufferAllocator allocator;
   public LargeVarCharVector idVector;
   public BigIntVector timestampVector;
@@ -368,8 +378,10 @@ public abstract class LoaderBase {
   }
 
   public List<MeasurementSchema> getSchemaList() {
-    throw new UnsupportedOperationException();
-    /** legacy
+    if (!USE_LEGACY_LOADER) {
+      throw new UnsupportedOperationException();
+    }
+    // legacy
     List<MeasurementSchema> schemas = new ArrayList<>();
     switch (BenchWriter.mergedDataSets) {
       case TSBS:
@@ -396,13 +408,18 @@ public abstract class LoaderBase {
       default:
         return null;
     }
-     **/
   }
 
   // endregion
 
+  /** Dependent on {@link #USE_LEGACY_LOADER} */
   public static LoaderBase getLoader(MergedDataSets mds) throws IOException, ClassNotFoundException {
-    // following constructor with integer parameter is to create an empty object
+    if (USE_LEGACY_LOADER) {
+      return getLoaderLegacy(mds);
+    }
+
+    /** these use arrow&sup in new dir,
+     *  see{@link org.apache.tsfile.exps.loader.legacy.StreamingLoader#StreamingLoader(MergedDataSets)} */
     switch (mds) {
       case TSBS:
         TSBSLoaderV2 tsbsLoaderV2 = new TSBSLoaderV2(mds);
@@ -420,6 +437,25 @@ public abstract class LoaderBase {
       case CCS:
         CCSLoaderV2 ccsLoaderV2 = new CCSLoaderV2(mds);
         return ccsLoaderV2.deser(mds);
+      default:
+        return null;
+    }
+  }
+
+  public static LoaderBase getLoaderLegacy(MergedDataSets mds) throws IOException, ClassNotFoundException {
+    switch (mds) {
+      case TSBS:
+        return TSBSLoader.deser(mds);
+      case REDD:
+        return REDDLoader.deser(mds);
+      case TDrive:
+        return TDriveLoader.deser(mds);
+      case GeoLife:
+        return GeoLifeLoader.deser(mds);
+      case ZY:
+        return ZYLoader.deser(mds);
+      case CCS:
+        return CCSLoader.deser(mds);
       default:
         return null;
     }

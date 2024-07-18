@@ -285,7 +285,7 @@ public class ConditionGeneratorV2 implements Serializable {
       for (;;) {
         String curID = loader.getIDString(startIdx);
         int step = 0;
-        while (step < RANGE_SPAN) {
+        while (step < RANGE_SPAN && startIdx + step < ttlRow - 1) {
           if (curID.equals(loader.getIDString(startIdx + step))) {
             step++;
           } else {

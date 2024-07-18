@@ -468,7 +468,6 @@ public class BenchWriter {
 
   static LoaderBase loaderBase;
 
-
   // scripting wrapper for main
   // public static void main(String[] args) throws Exception{
   //   String[] parg = new String[0];
@@ -478,11 +477,13 @@ public class BenchWriter {
   //   }
   // }
 
-  static String[] _args = {"ZY", "UNCOMPRESSED", "0100"};  // pseudo input args
+  static String[] _args = {"REDD", "UNCOMPRESSED", "0011"};  // pseudo input args
   /** Encoding is defined by {@link #encodingTsFile} for TsFile, and automated with Parquet.
    *  Compressor is defined by above parameters.
    *  Each run process a dataset. */
   public static void main(String[] args) throws IOException, WriteProcessException, ClassNotFoundException {
+    LoaderBase.USE_LEGACY_LOADER = false;
+
     if (args.length != 3) {
       args = _args;
     }
@@ -512,29 +513,33 @@ public class BenchWriter {
     // logger = new BufferedWriter(new FileWriter(_log_name, true));
     logger = new ResultPrinter(__log_name, true);
 
-    _file_name = MergedDataSets.TARGET_DIR + args[0] + "V2_" + args[1]; // no time
+    _file_name = MergedDataSets.TARGET_DIR + args[0] + "_" + args[1]; // no time
     // _file_name = MergedDataSets.TARGET_DIR + args[0] + "_" + args[1] + "_" + _date_time; // test at dev
 
     // load once, use always
     loaderBase = LoaderBase.getLoader(mergedDataSets);
 
     if (fileOption[0]) {
+      currentScheme = FileScheme.ArrowIPC;
       writeArrowIPC();
       printProgress("Finish ArrowIPC");
     }
 
     if (fileOption[1]) {
+      currentScheme = FileScheme.TsFile;
       writeTsFile();
       printProgress("Finish TsFIle");
     }
 
     if (fileOption[2]) {
+      currentScheme = FileScheme.Parquet;
       writeParquet();
       printProgress("Finish Parquet");
     }
 
     if (fileOption[3]) {
-      // writeParquetAS();  // alternated-schema Parquet available IFF deviceID consists of multiple fields
+      currentScheme = FileScheme.ParquetAS;
+      writeParquetAS();  // alternated-schema Parquet available IFF deviceID consists of multiple fields
       printProgress("Finish ParquetAS");
     }
 

@@ -4,6 +4,7 @@ import org.apache.arrow.compression.CommonsCompressionFactory;
 import org.apache.arrow.vector.BigIntVector;
 import org.apache.arrow.vector.BitVector;
 import org.apache.arrow.vector.Float4Vector;
+import org.apache.arrow.vector.Float8Vector;
 import org.apache.arrow.vector.IntVector;
 import org.apache.arrow.vector.LargeVarCharVector;
 import org.apache.arrow.vector.ValueVector;
@@ -51,9 +52,8 @@ public class ZYLoader extends LoaderBase {
 
   // load support file, read through file and collect all length
   public void preprocess(MergedDataSets mds) throws IOException, ClassNotFoundException {
-    if (mds.getNewSupport() != null) {
-      support = DevSenSupport.deserialize(mds.getNewSupport());
-    }
+    support = DevSenSupport.deserialize(mds.getLegacySupport());
+
     psaRow = new int[reader.getRecordBlocks().size()];
     for (int i = 0; i < reader.getRecordBlocks().size(); i++) {
       reader.loadRecordBatch(reader.getRecordBlocks().get(i));
@@ -72,7 +72,7 @@ public class ZYLoader extends LoaderBase {
 
   public ZYLoader(MergedDataSets mds) throws FileNotFoundException {
     super();
-    fis = new FileInputStream(mds.getNewArrowFile());
+    fis = new FileInputStream(mds.getArrowFile());
     channel = fis.getChannel();
     reader = new ArrowFileReader(channel, allocator, new CommonsCompressionFactory());
   }
@@ -335,6 +335,10 @@ public class ZYLoader extends LoaderBase {
         case FLOAT:
           ((float[]) tablet.values[arrayIdxMapping.get(entry.getKey())])[rowInTablet] =
               ((Float4Vector) entry.getValue()).get(curIdx);
+          break;
+        case DOUBLE:
+          ((double[]) tablet.values[arrayIdxMapping.get(entry.getKey())])[rowInTablet] =
+              ((Float8Vector) entry.getValue()).get(curIdx);
           break;
         case BOOLEAN:
           ((boolean[]) tablet.values[arrayIdxMapping.get(entry.getKey())])[rowInTablet] =

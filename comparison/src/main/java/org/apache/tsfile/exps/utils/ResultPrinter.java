@@ -46,6 +46,19 @@ public class ResultPrinter {
     writer.write(c);
   }
 
+  public void queryResult(long[] res, String filePath) throws IOException {
+    // total time, query num, rec num
+    String c = String.format("%s\t%s\t%d\t%d\t%d\t%d\t%s\t%s\n",
+        dataSets.name(),
+        scheme.name(),
+        res[0], res[1], res[2],
+        res[0] / res[1], filePath,
+        LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+    builder.append(c);
+    writer.write(c);
+    System.out.print(c);
+  }
+
   public void log(String content) throws IOException {
     String c =String.format("%s\t%s\t%s\t%s\n",
         scheme.name(), dataSets.name(), content,
