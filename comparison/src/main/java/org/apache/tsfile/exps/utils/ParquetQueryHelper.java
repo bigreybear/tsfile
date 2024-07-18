@@ -27,6 +27,7 @@ public class ParquetQueryHelper {
 
   MessageType messageType;
   Map<String, PrimitiveType> mapping = new HashMap<>();
+  static Map<String, PrimitiveType> staticMapping = new HashMap<>();
 
   public ParquetQueryHelper() {}
 
@@ -43,6 +44,8 @@ public class ParquetQueryHelper {
         mapping.put(t.getName(), t.asPrimitiveType());
       }
 
+      // Note(zx) lazy but dangerous
+      staticMapping = mapping;
       return messageType;
     }
   }
@@ -77,6 +80,8 @@ public class ParquetQueryHelper {
   }
 
   private MessageType buildIDSchema(MergedDataSets dataSets, List<Type> fields, boolean as) {
+    // ts as part of the id
+    fields.add(Types.required(PrimitiveType.PrimitiveTypeName.INT64).named("timestamp"));
     if (as) {
       // only device ID and timestamp
       fields.add(
@@ -228,16 +233,30 @@ public class ParquetQueryHelper {
       for (ConditionGeneratorV2.DoubleRange dr: cg.doubleRanges) {
         String[] nodes = dr.series.split("\\.");
         String sensorCol = nodes[nodes.length - 1];
-        FilterCompat.Filter vFilter =
-            FilterCompat.get(
-                FilterApi.and(
-                    getDeviceEqPredicate(getDeviceFromNodes(nodes)),
-                    FilterApi.and(
-                        FilterApi.gtEq(FilterApi.doubleColumn(sensorCol), dr.v1),
-                        FilterApi.ltEq(FilterApi.doubleColumn(sensorCol), dr.v2)
-                    )
-                )
-            );
+
+        FilterPredicate fp = null;
+        PrimitiveType type = staticMapping.get(sensorCol);
+        if (type.getPrimitiveTypeName() == PrimitiveType.PrimitiveTypeName.FLOAT) {
+          fp = FilterApi.and(
+              getDeviceEqPredicate(getDeviceFromNodes(nodes)),
+              FilterApi.and(
+                  FilterApi.gtEq(FilterApi.floatColumn(sensorCol), (float) dr.v1),
+                  FilterApi.ltEq(FilterApi.floatColumn(sensorCol), (float) dr.v2)
+              )
+          );
+        } else if (type.getPrimitiveTypeName() == PrimitiveType.PrimitiveTypeName.DOUBLE) {
+          fp = FilterApi.and(
+              getDeviceEqPredicate(getDeviceFromNodes(nodes)),
+              FilterApi.and(
+                  FilterApi.gtEq(FilterApi.doubleColumn(sensorCol), dr.v1),
+                  FilterApi.ltEq(FilterApi.doubleColumn(sensorCol), dr.v2)
+              )
+          );
+        } else {
+          throw new RuntimeException("Wrong type field has been collected.");
+        }
+
+        FilterCompat.Filter vFilter = FilterCompat.get(fp);
         expressions.add(vFilter);
       }
       return expressions;

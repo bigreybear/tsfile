@@ -40,7 +40,7 @@ public class TsFileAnalyst {
     TsFileAnalyst analyst = new TsFileAnalyst();
     TsFileAnalyst a2 = new TsFileAnalyst();
     analyst.tarFile = "F:\\0006DataSets\\CCS.tsfile";
-    a2.tarFile = "F:\\0006DataSets\\Results\\CCS_new2_UNCOMPRESSED.tsfile";
+    a2.tarFile = "F:\\0006DataSets\\Results\\ZY_UNCOMPRESSED.tsfile";
     // analyst.analyze();
     a2.analyze();
     System.out.println("Analysis finished.");

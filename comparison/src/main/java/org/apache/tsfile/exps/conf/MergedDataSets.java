@@ -32,15 +32,16 @@ public enum MergedDataSets {
   // to be retrieved while not filtered
   public String crossColumn;
 
-  // static final String PRJ_DIR = "F:\\0006DataSets\\"; // @lab
-  static final String PRJ_DIR = "E:\\ExpDataSets\\";  // @home
+  static final String PRJ_DIR = "F:\\0006DataSets\\"; // @lab
+  // static final String PRJ_DIR = "E:\\ExpDataSets\\";  // @home
 
   public static String ARROW_BINS = PRJ_DIR + "Arrows\\";
   public static String CONDITION_DIR = PRJ_DIR + "Conditions\\";
   public static String TARGET_DIR = PRJ_DIR + "Results\\";
 
   // added during revision
-  public static String NEW_ARW_SRC = PRJ_DIR + "new_arrow_src\\";
+  // public static String NEW_ARW_SRC = PRJ_DIR + "new_arrow_src\\";
+  public static String NEW_ARW_SRC = "D:\\0006DataSets\\" + "new_arrow_src\\";  // at label, temp dir
   public static String NEW_COND_DIR = PRJ_DIR + "new_cond\\";
 
   public String getArrowFile() {

@@ -468,16 +468,30 @@ public class BenchWriter {
 
   static LoaderBase loaderBase;
 
-  // scripting wrapper for main
-  // public static void main(String[] args) throws Exception{
-  //   String[] parg = new String[0];
-  //   for (MergedDataSets mds : MergedDataSets.values()) {
-  //     _args[0] = mds.name();
-  //     mainInternal(parg);
-  //   }
-  // }
+  // preprocess: generate tsfile from legacy arrow
+  public static void mainWrapper(String[] args) throws Exception{
+    String[] parg = new String[0];
+    // produce tsfile for convertor, which produce new_arrow_src
+    // _args[0] = "GeoLife";
+    // mainInternal(parg);
+    //
+    // _args[0] = "TDrive";
+    // mainInternal(parg);
+    //
+    // _args[0] = "TSBS";
+    // mainInternal(parg);
+    //
+    // _args[0] = "REDD";
+    // mainInternal(parg);
+    //
+    // _args[0] = "ZY";
+    // mainInternal(parg);
+    //
+    // _args[0] = "CCS";
+    // mainInternal(parg);
+  }
 
-  static String[] _args = {"REDD", "UNCOMPRESSED", "0011"};  // pseudo input args
+  static String[] _args = {"TDrive", "UNCOMPRESSED", "0111"};  // pseudo input args
   /** Encoding is defined by {@link #encodingTsFile} for TsFile, and automated with Parquet.
    *  Compressor is defined by above parameters.
    *  Each run process a dataset. */

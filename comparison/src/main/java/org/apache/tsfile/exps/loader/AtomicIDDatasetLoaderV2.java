@@ -1,7 +1,9 @@
 package org.apache.tsfile.exps.loader;
 
 import org.apache.parquet.example.data.Group;
+import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
+import org.apache.parquet.schema.Types;
 import org.apache.tsfile.exps.conf.MergedDataSets;
 import org.apache.tsfile.exps.loader.legacy.StreamingLoader;
 
@@ -25,9 +27,13 @@ public class AtomicIDDatasetLoaderV2 extends StreamingLoader<AtomicIDDatasetLoad
 
   @Override
   protected void appendIDFieldsToGroup(Group g) {
+    g.append("deviceID", deviceID);
   }
 
   @Override
   protected void appendIDFieldsToParquetFields(List<Type> fields) {
+    Types.PrimitiveBuilder<?> builder =
+        Types.required(PrimitiveType.PrimitiveTypeName.BINARY);
+    fields.add((Type) builder.named("deviceID"));
   }
 }

@@ -2,6 +2,7 @@ package org.apache.tsfile.exps.utils;
 
 import org.apache.tsfile.exps.conf.FileScheme;
 import org.apache.tsfile.exps.conf.MergedDataSets;
+import org.apache.tsfile.exps.updated.BenchReader;
 import org.apache.tsfile.exps.updated.BenchWriter;
 
 import java.io.BufferedWriter;
@@ -48,8 +49,9 @@ public class ResultPrinter {
 
   public void queryResult(long[] res, String filePath) throws IOException {
     // total time, query num, rec num
-    String c = String.format("%s\t%s\t%d\t%d\t%d\t%d\t%s\t%s\n",
+    String c = String.format("%s\t%s\t%s\t%d\t%d\t%d\t%d\t%s\t%s\n",
         dataSets.name(),
+        BenchReader.QTYPE.name(),
         scheme.name(),
         res[0], res[1], res[2],
         res[0] / res[1], filePath,

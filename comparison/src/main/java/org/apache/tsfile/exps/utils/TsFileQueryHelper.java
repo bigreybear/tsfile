@@ -1,6 +1,8 @@
 package org.apache.tsfile.exps.utils;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exps.ConditionGeneratorV2;
+import org.apache.tsfile.exps.updated.LoaderBase;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.expression.IExpression;
 import org.apache.tsfile.read.expression.QueryExpression;
@@ -17,6 +19,11 @@ import java.util.List;
 import java.util.Map;
 
 public class TsFileQueryHelper {
+
+  // feel free to use as all sensor with same name has been unified to identical type
+  /** ref: {@linkplain TsFileSequentialConvertor#unifyChunkDataType()}*/
+  public static Map<String, TSDataType> sensorTypes;
+
   public static class QueryBuilder {
     public static List<QueryExpression> singleSeries(ConditionGeneratorV2 cg) {
       List<QueryExpression> expressions = new ArrayList<>();
@@ -53,10 +60,22 @@ public class TsFileQueryHelper {
     public static List<QueryExpression> valueExpression(ConditionGeneratorV2 cg) {
       List<QueryExpression> expressions = new ArrayList<>();
       for (ConditionGeneratorV2.DoubleRange dr: cg.doubleRanges) {
+        SingleSeriesExpression sse1 = null, sse2 = null;
+        String[] nodes = dr.series.split("\\.");
+        String sensor = nodes[nodes.length - 1];
+        switch (sensorTypes.get(sensor)) {
+          /** guarateed by {@linkplain ConditionGeneratorV2#getValidDFVector} that only
+           * FloatingPoint sensro will be collected. **/
+          case DOUBLE:
+            sse1 = new SingleSeriesExpression(new Path(dr.series), ValueFilterApi.gtEq(dr.v1));
+            sse2 = new SingleSeriesExpression(new Path(dr.series), ValueFilterApi.ltEq(dr.v2));
+            break;
+          case FLOAT:
+            sse1 = new SingleSeriesExpression(new Path(dr.series), ValueFilterApi.gtEq((float)dr.v1));
+            sse2 = new SingleSeriesExpression(new Path(dr.series), ValueFilterApi.ltEq((float)dr.v1));
+        }
         IExpression tFilter =
-            BinaryExpression.and(
-                new SingleSeriesExpression(new Path(dr.series), ValueFilterApi.gtEq(dr.v1)),
-                new SingleSeriesExpression(new Path(dr.series), ValueFilterApi.ltEq(dr.v2)));
+            BinaryExpression.and(sse1, sse2);
         expressions.add(QueryExpression.create(Collections.singletonList(new Path(dr.series)), tFilter));
       }
       return expressions;

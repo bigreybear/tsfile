@@ -31,7 +31,7 @@ import java.io.IOException;
 
 public class TsFileReader implements AutoCloseable {
 
-  private TsFileSequenceReader fileReader;
+  public TsFileSequenceReader fileReader;
   private IMetadataQuerier metadataQuerier;
   private IChunkLoader chunkLoader;
   private TsFileExecutor tsFileExecutor;

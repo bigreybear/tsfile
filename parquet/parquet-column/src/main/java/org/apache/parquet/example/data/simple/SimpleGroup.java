@@ -29,7 +29,7 @@ import org.apache.parquet.schema.Type;
 public class SimpleGroup extends Group {
 
   private final GroupType schema;
-  private final List<Object>[] data;
+  public final List<Object>[] data;
 
   @SuppressWarnings("unchecked")
   public SimpleGroup(GroupType schema) {

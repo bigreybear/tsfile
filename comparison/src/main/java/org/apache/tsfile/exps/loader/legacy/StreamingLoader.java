@@ -180,7 +180,7 @@ public abstract class StreamingLoader<T extends StreamingLoader<T>> extends Load
 
   @Override
   public MessageType getParquetSchema() {
-    try (FileInputStream fis = new FileInputStream(BenchWriter.mergedDataSets.getArrowFile());
+    try (FileInputStream fis = new FileInputStream(BenchWriter.mergedDataSets.getNewArrowFile());
          FileChannel channel = fis.getChannel();
          ArrowFileReader reader = new ArrowFileReader(channel, allocator)) {
       VectorSchemaRoot vectorSchemaRoot = reader.getVectorSchemaRoot();

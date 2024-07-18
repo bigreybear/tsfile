@@ -3,6 +3,7 @@ package org.apache.tsfile.exps.updated;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.conf.PlainParquetConfiguration;
 import org.apache.parquet.example.data.Group;
+import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.api.ReadSupport;
@@ -51,12 +52,15 @@ public class BenchReader {
           queryExpressions = TsFileQueryHelper.QueryBuilder.timeExpression(con);
           break;
         case ValueFilter:
+          TsFileQueryHelper.sensorTypes = reader.fileReader.getAllMeasurements();
           queryExpressions = TsFileQueryHelper.QueryBuilder.valueExpression(con);
+          break;
         default:
           throw new RuntimeException("Wrong query type.");
       }
       Stopwatch latency = new Stopwatch();
       QueryDataSet dataSet;
+      RowRecord rr;
       int recNum = 0;
       for (QueryExpression exp : queryExpressions) {
         latency.start();
@@ -78,6 +82,12 @@ public class BenchReader {
   }
 
   public static void queryParquetAS(ConditionGeneratorV2 con) throws IOException {
+
+    if (QUERY_DATA_SET == MergedDataSets.GeoLife || QUERY_DATA_SET == MergedDataSets.TDrive) {
+      System.out.println("DeviceID with only one field has not to query parquet-as.");
+      return;
+    }
+
     queryParquetInternal(con, true);
   }
 
@@ -120,10 +130,15 @@ public class BenchReader {
     logger.queryResult(new long[] {latency.reportMilSecs(), ttl, recordsCount}, fileName);
   }
 
+  // debug parameter
+  // static List<Integer> rl1 = new ArrayList<>(), rl2 = new ArrayList<>();
+
   private static List<FilterCompat.Filter> getParquetExpression(ConditionGeneratorV2 condition) {
     // expression depends on parameters
     switch (QTYPE) {
       case SingleRaw:
+        // notice this query may return group with null in target field, as
+        //  that condition generator only guarantees part of it is not null.
         return ParquetQueryHelper.QueryBuilder.singleSeries(condition);
       case AlignedRaw:
         return ParquetQueryHelper.QueryBuilder.alignedDevices(condition);
@@ -197,6 +212,18 @@ public class BenchReader {
     }
   }
 
+  // test: run all over cases
+  public static void main(String[] args) throws IOException, ClassNotFoundException {
+    String[] parg = new String[0];
+    for (MergedDataSets dataSets : MergedDataSets.values()) {
+      _args[0] = dataSets.name();
+      // for (int i = 0;i < 4; i++) {
+        _args[1] = QueryType.values()[3].name();
+        mainInternal(parg);
+      // }
+    }
+  }
+
 
   // middle part of file to query
   public static String FILE_MIDDLE = "_UNCOMPRESSED";
@@ -207,8 +234,8 @@ public class BenchReader {
   public static DevSenSupport DEV_SEN_MAP;
   public static MergedDataSets QUERY_DATA_SET;
   public static QueryType QTYPE;
-  public static String[] _args = new String[] {"REDD", "SingleRaw"};
-  public static void main(String[] args) throws IOException, ClassNotFoundException {
+  public static String[] _args = new String[] {"TDrive", QueryType.values()[3].name()};
+  public static void mainInternal(String[] args) throws IOException, ClassNotFoundException {
 
     // init parameter
     if (args.length == 0) {
@@ -238,6 +265,12 @@ public class BenchReader {
     // query parquet-as
     logger.setStatus(FileScheme.ParquetAS, QUERY_DATA_SET);
     queryParquetAS(condition);
+
+    // debug
+    // for (int i = 0; i < rl1.size(); i++) {
+    //   System.out.println(String.format("%d %d %d",
+    //       i, rl1.get(i), rl2.get(i)));
+    // }
 
     logger.close();
   }
