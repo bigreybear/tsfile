@@ -354,7 +354,7 @@ public class TsFileIOWriter implements AutoCloseable {
   }
 
   /**
-   * NOTE the worst of the this method is that most key variable are named after its type
+   * Note(zx) the worst of the this method is that most key variable are named after its type
    * providing no semantics to understand. It's a result of lazy.
    * @throws IOException
    */
@@ -371,8 +371,8 @@ public class TsFileIOWriter implements AutoCloseable {
     // serialize the SEPARATOR of MetaData
     ReadWriteIOUtils.write(MetaMarker.SEPARATOR, out.wrapAsStream());
 
-    // NOTE generation of TSMIterator will sort and merge cGM elements with identical deviceID
-    // NOTE cGML is populated at endChunkGroup
+    // Note(zx) generation of TSMIterator will sort and merge cGM elements with identical deviceID
+    // Note(zx) cGML is populated at endChunkGroup
     TSMIterator tsmIterator =
         hasChunkMetadataInDisk
             ? TSMIterator.getTSMIteratorInDisk(
@@ -393,7 +393,7 @@ public class TsFileIOWriter implements AutoCloseable {
 
     while (tsmIterator.hasNext()) {
       // read in all chunk metadata of one series
-      // NOTE construct the timeseries metadata for this series
+      // Note(zx) construct the timeseries metadata for this series
       Pair<Path, TimeseriesMetadata> timeseriesMetadataPair = tsmIterator.next();
       TimeseriesMetadata timeseriesMetadata = timeseriesMetadataPair.right;
       currentPath = timeseriesMetadataPair.left;
@@ -406,15 +406,15 @@ public class TsFileIOWriter implements AutoCloseable {
       if (!currentDevice.equals(prevDevice)) {
         if (prevDevice != null) {
           addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
-          // NOTE mapping deviceID to root-MIN of its measurements
-          // NOTE may
+          // Note(zx) mapping deviceID to root-MIN of its measurements
+          // Note(zx) may
           deviceMetadataIndexMap.put(
               prevDevice,
               generateRootNode(
                   measurementMetadataIndexQueue, out, MetadataIndexNodeType.INTERNAL_MEASUREMENT));
           currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
         }
-        // NOTE the queue cleared ever time as new device enters the process
+        // Note(zx) the queue cleared ever time as new device enters the process
         measurementMetadataIndexQueue = new ArrayDeque<>();
         seriesIdxForCurrDevice = 0;
       }
@@ -425,7 +425,7 @@ public class TsFileIOWriter implements AutoCloseable {
           addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
           currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
         }
-        // NOTE SPARSE-index only 1/256 TSM position(out.getPosition) into currentIndexNode(L_M MIN)
+        // Note(zx) SPARSE-index only 1/256 TSM position(out.getPosition) into currentIndexNode(L_M MIN)
         if (timeseriesMetadata.getTsDataType() != TSDataType.VECTOR) {
           currentIndexNode.addEntry(
               new MetadataIndexEntry(currentPath.getMeasurement(), out.getPosition()));
@@ -436,7 +436,7 @@ public class TsFileIOWriter implements AutoCloseable {
 
       prevDevice = currentDevice;
       seriesIdxForCurrDevice++;
-      // serialize the timeseries metadata to file NOTE Ser TSM
+      // serialize the timeseries metadata to file Note(zx) Ser TSM
       timeseriesMetadata.serializeTo(out.wrapAsStream());
     }
 
