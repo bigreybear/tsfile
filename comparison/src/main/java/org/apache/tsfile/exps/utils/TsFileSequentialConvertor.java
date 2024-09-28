@@ -395,7 +395,8 @@ public class TsFileSequentialConvertor {
   public void processFileByDeviceID() throws Exception {
     collectedChunks.clear();
     DevSenSupport support = new DevSenSupport();
-    int alignedCG = 0, unalignedCG = 0, effectiveUnalignedCG = 0;  // statistics
+    int alignedCG = 0, unalignedCG = 0, effectiveUnalignedCG = 0, actualNonAligned = 0;  // statistics
+    Set<String> actualNonAlignedDevs = new HashSet<>();
 
     List<long[]> timeBatch = new ArrayList<>();
     int pageIndex = 0;
@@ -442,6 +443,9 @@ public class TsFileSequentialConvertor {
                   // the last chunk group are effectively aligned, although it is designated as non-aligned.
                   if (effectiveAligned) {
                     effectiveUnalignedCG++;
+                  } else {
+                    actualNonAligned ++;
+                    actualNonAlignedDevs.add(processingDev);
                   }
                 } else {
                   fillAlignedChunksIntoVectors();
@@ -541,6 +545,10 @@ public class TsFileSequentialConvertor {
         support.map.size(),
         support.map.values().stream().mapToLong(Set::size).sum(),
         ptsCount));
+    System.out.println("Actually non-aligned devices are:");
+    for (String s : actualNonAlignedDevs) {
+      System.out.println(s);
+    }
   }
 
   // region Fill and Write

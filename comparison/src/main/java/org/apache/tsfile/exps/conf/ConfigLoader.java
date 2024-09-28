@@ -11,7 +11,7 @@ public class ConfigLoader {
 
   private ConfigLoader() {
     properties = new Properties();
-    
+
     try (InputStream is = ConfigLoader.class.getClassLoader().getResourceAsStream(FILE_NAME)) {
       if (is != null) {
         properties.load(is);
