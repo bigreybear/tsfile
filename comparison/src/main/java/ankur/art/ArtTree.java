@@ -278,7 +278,7 @@ public class ArtTree extends ChildPtr implements Serializable {
         leaf = (Leaf) child;
         base = res + (char) node.getKeyAt(i);
         base = base + new String(leaf.getPartialKey());
-        System.out.println(String.format("%s,%d", base, ((Long) leaf.value)));
+        // System.out.println(String.format("%s,%d", base, ((Long) leaf.value)));
       } else {
         traverseAfterDeserialize((ArtNode) child, res + (char) node.getKeyAt(i));
       }
@@ -299,7 +299,7 @@ public class ArtTree extends ChildPtr implements Serializable {
         leaf = (Leaf) child;
         base = res + (char) node.getKeyAt(i);
         base = base + Node.translator(leaf.key, leaf.depth, leaf.remain);
-        System.out.println(String.format("%s,%d", base, ((Long) leaf.value)));
+        // System.out.println(String.format("%s,%d", base, ((Long) leaf.value)));
       } else {
         traverse((ArtNode) child, res + (char) node.getKeyAt(i));
       }
