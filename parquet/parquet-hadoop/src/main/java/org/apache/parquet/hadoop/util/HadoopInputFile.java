@@ -34,6 +34,15 @@ public class HadoopInputFile implements InputFile {
   private final Configuration conf;
 
   public static HadoopInputFile fromPath(Path path, Configuration conf) throws IOException {
+    // Note(zx) hack for service in maven-assembly
+    // hadoopConfig.set("fs.hdfs.impl",
+    //     org.apache.hadoop.hdfs.DistributedFileSystem.class.getName()
+    // );
+    // hadoopConfig.set("fs.file.impl",
+    //     org.apache.hadoop.fs.LocalFileSystem.class.getName()
+    // );
+    conf.set("fs.hdfs.impl", org.apache.hadoop.hdfs.DistributedFileSystem.class.getName());
+    conf.set("fs.file.impl", org.apache.hadoop.fs.LocalFileSystem.class.getName());
     FileSystem fs = path.getFileSystem(conf);
     return new HadoopInputFile(fs, fs.getFileStatus(path), conf);
   }

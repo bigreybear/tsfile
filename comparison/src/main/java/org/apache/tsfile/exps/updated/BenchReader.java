@@ -213,16 +213,16 @@ public class BenchReader {
   }
 
   // test: run all over cases
-  public static void main(String[] args) throws IOException, ClassNotFoundException {
-    String[] parg = new String[0];
-    for (MergedDataSets dataSets : MergedDataSets.values()) {
-      _args[0] = dataSets.name();
-      // for (int i = 0;i < 4; i++) {
-        _args[1] = QueryType.values()[3].name();
-        mainInternal(parg);
-      // }
-    }
-  }
+  // public static void main(String[] args) throws IOException, ClassNotFoundException {
+  //   String[] parg = new String[0];
+  //   for (MergedDataSets dataSets : MergedDataSets.values()) {
+  //     _args[0] = dataSets.name();
+  //     // for (int i = 0;i < 4; i++) {
+  //       _args[1] = QueryType.values()[3].name();
+  //       mainInternal(parg);
+  //     // }
+  //   }
+  // }
 
 
   // middle part of file to query
@@ -235,7 +235,7 @@ public class BenchReader {
   public static MergedDataSets QUERY_DATA_SET;
   public static QueryType QTYPE;
   public static String[] _args = new String[] {"TDrive", QueryType.values()[3].name()};
-  public static void mainInternal(String[] args) throws IOException, ClassNotFoundException {
+  public static void main(String[] args) throws IOException, ClassNotFoundException {
 
     // init parameter
     if (args.length == 0) {

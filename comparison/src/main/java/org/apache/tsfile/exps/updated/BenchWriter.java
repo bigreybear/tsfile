@@ -27,6 +27,7 @@ import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.io.LocalOutputFile;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.exps.conf.ConfigLoader;
 import org.apache.tsfile.exps.conf.FileScheme;
 import org.apache.tsfile.exps.conf.MergedDataSets;
 import org.apache.tsfile.exps.utils.DevSenSupport;
@@ -54,7 +55,7 @@ import static org.apache.tsfile.exps.utils.TsFileSequentialConvertor.DICT_ID;
 
 public class BenchWriter {
   public static int BATCH = 1024;
-  public static int ARROW_BATCH = 65535;
+  public static int ARROW_BATCH = Integer.parseInt(ConfigLoader.getProperty("arrow_batch"));
   public static boolean TO_PROFILE = true;
 
   public static class DataSetsProfile {
@@ -90,6 +91,7 @@ public class BenchWriter {
     tsFile.delete();
 
     TsFileWriter writer = new TsFileWriter(tsFile);
+    writer.setChunkGroupSizeThreshold(Long.parseLong(ConfigLoader.getProperty("chunk_group_size")));
 
     loaderBase.updateDeviceID(preDev);
     List<MeasurementSchema> schemaList = loaderBase.getSchemaList();
@@ -176,6 +178,7 @@ public class BenchWriter {
         .withConf(new PlainParquetConfiguration())
         .withType(loaderBase.getParquetSchema())
         .withCompressionCodec(compressorParquet)
+        .withRowGroupSize(Long.parseLong(ConfigLoader.getProperty("row_group_size")))
         // .enableDictionaryEncoding()  // should or not?
         .build();
 

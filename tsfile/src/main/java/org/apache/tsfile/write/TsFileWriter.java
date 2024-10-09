@@ -91,6 +91,10 @@ public class TsFileWriter implements AutoCloseable {
 
   private long chunkGroupSizeThreshold;
 
+  public void setChunkGroupSizeThreshold(long val) {
+    chunkGroupSizeThreshold = val;
+  }
+
   /**
    * init this TsFileWriter.
    *
