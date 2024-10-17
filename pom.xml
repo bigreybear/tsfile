@@ -37,6 +37,7 @@
         <module>examples</module>
         <module>parquet</module>
         <module>comparison</module>
+        <module>seart</module>
     </modules>
     <properties>
         <!-- Note(zx) version for experimental building -->
