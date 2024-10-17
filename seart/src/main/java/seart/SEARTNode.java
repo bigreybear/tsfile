@@ -35,6 +35,11 @@ public abstract class SEARTNode {
     return ptrs[idx];
   }
 
+  public final SEARTNode getChildByKeyByte(byte b) {
+    int c = getPtrIdxByByte(b);
+    return c < 0 ? null : ptrs[c];
+  }
+
   public final void setChildPtrByIndex(int idx, SEARTNode n) {
     ptrs[idx] = n;
   }
@@ -42,6 +47,16 @@ public abstract class SEARTNode {
   public final void shiftInsert(int pos, byte kb, SEARTNode child) {
     System.arraycopy(keys, pos, keys, pos+1, keys.length-pos-1);
     System.arraycopy(ptrs, pos, ptrs, pos+1, ptrs.length-pos-1);
+    keys[pos] = kb;
+    ptrs[pos] = child;
+  }
+
+  /**
+   * shift 4 bytes at most.
+   */
+  public final void shiftInsertIn4(int pos, byte kb, SEARTNode child) {
+    System.arraycopy(keys, pos, keys, pos+1, 3-pos);
+    System.arraycopy(ptrs, pos, ptrs, pos+1, 3-pos);
     keys[pos] = kb;
     ptrs[pos] = child;
   }
@@ -67,6 +82,11 @@ public abstract class SEARTNode {
 
   public boolean isLeaf() {
     return false;
+  }
+
+  // todo optimize with virtualization
+  public void insertOnByteMap(byte bk, SEARTNode child) {
+    throw new UnsupportedOperationException();
   }
 
   // only for initialization

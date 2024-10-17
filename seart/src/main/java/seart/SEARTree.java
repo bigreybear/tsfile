@@ -3,6 +3,7 @@ package seart;
 import seart.exception.PrefixPropertyException;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 public class SEARTree {
   SEARTNode root;
@@ -59,23 +60,13 @@ public class SEARTree {
       if (res[0] < res[1]) {
         // pk not exhausted, but partially matched
         // a new Node4 and a new Leaf
-
         splitPartialKey(parNode, parNodeIdx, insKey, curNode, res[0], ofs);
         return;
       } else {
         // res[0] == res[1]: pk exhausted, insKey not, and find no branching byte
-
-        SEARTNode nl = new Leaf();
+        SEARTNode nl = new Leaf(Arrays.copyOfRange(insKey, ofs + res[0], insKey.length), value);
         curNode.insertWithExpand(parNode, parNodeIdx, insKey, ofs, res, nl);
         return;
-        // if (curNode.isFull()) {
-        //   migrate(parNode, insKey, curNode, res[0], ofs);
-        // } else {
-        //   // insertNewLeaf();
-        //   SEARTNode nleaf = new Leaf();
-        //   curNode.insert(insKey[ofs+res[0]], nleaf);
-        // }
-        // return;
       }
     }
 

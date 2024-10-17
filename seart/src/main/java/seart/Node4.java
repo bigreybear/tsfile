@@ -30,8 +30,9 @@ public class Node4 extends SEARTNode {
   public void insertWithExpand(SEARTNode parNode, int parNodeIdx, byte[] insKey, int ofs, int[] res, SEARTNode child) {
     if (ptrs[3] != null) {
       // to expand since full
-      SEARTNode nnode = new Node16();
+      SEARTNode nnode = new Node16(this);
       parNode.setChildPtrByIndex(parNodeIdx, nnode);
+      nnode.shiftInsertIn4(-res[2]-1, insKey[ofs+res[0]], child);
       return;
     }
     shiftInsert(-res[2]-1, insKey[ofs+res[0]], child);
@@ -49,9 +50,9 @@ public class Node4 extends SEARTNode {
 
   public static void main(String[] args) {
     SEARTNode n4 = new Node4();
-    n4.keys = new byte[]{'a', 'b', 'z', Byte.MAX_VALUE};
+    n4.keys = new byte[]{'a', 'h', 'z', Byte.MAX_VALUE};
     n4.partialKey = "root.".getBytes(StandardCharsets.UTF_8);
-    byte[] ik = "prefix.root.g".getBytes(StandardCharsets.UTF_8);
+    byte[] ik = "prefix.root.b".getBytes(StandardCharsets.UTF_8);
 
     int[] res  = n4.matchPartialKey(ik, 7);
     System.out.println(Arrays.toString(res));
