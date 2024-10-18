@@ -1,97 +1,107 @@
 package seart;
 
-public abstract class SEARTNode {
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+
+public abstract class SEARTNode implements ISEARTNode {
   byte[] partialKey;
   byte[] keys;
-  SEARTNode[] ptrs;
+  ISEARTNode[] ptrs;
+
+  @Override
+  public byte[] getPartialKey() {
+    return partialKey;
+  }
 
   /**
    * MAGIC array for efficiency.
+   *
    * @return [length of the overlapped bytes, pk.len, index of pointer array]
    */
-  public int[] matchPartialKey(byte[] insKey, final int ofs) {
+  @Override
+  public final int[] matchPartialKey(byte[] insKey, final int ofs) {
     if (partialKey == null || partialKey.length == 0) {
-      return new int[] {0, 0, getPtrIdxByByte(insKey[ofs])};
+      return new int[]{0, 0, getPtrIdxByByte(insKey[ofs])};
     }
 
     int i = 0;
     while (i + ofs < insKey.length
-              && i < partialKey.length
-              && partialKey[i] == insKey[ofs + i]) {
+        && i < partialKey.length
+        && partialKey[i] == insKey[ofs + i]) {
       i++;
     }
 
     // pk is exhausted while ins key is not, try to find ptr
     if (i == partialKey.length && i + ofs < insKey.length) {
-      return new int[] {i, partialKey.length, getPtrIdxByByte(insKey[i+ofs])};
+      return new int[]{i, partialKey.length, getPtrIdxByByte(insKey[i + ofs])};
     }
 
     // pk not exhaust, return matched/overlapped len as in array[0]
-    return new int[] {i, partialKey.length, -1};
+    return new int[]{i, partialKey.length, -1};
   }
 
-  public final SEARTNode getChildByPtrIndex(int idx) {
+  @Override
+  public final ISEARTNode getChildByPtrIndex(int idx) {
     // Leaf shall not access this method by control logic
     return ptrs[idx];
   }
 
-  public final SEARTNode getChildByKeyByte(byte b) {
+  @Override
+  public final ISEARTNode getChildByKeyByte(byte b) {
     int c = getPtrIdxByByte(b);
     return c < 0 ? null : ptrs[c];
   }
 
-  public final void setChildPtrByIndex(int idx, SEARTNode n) {
+  @Override
+  public final void setChildPtrByIndex(int idx, ISEARTNode n) {
     ptrs[idx] = n;
   }
 
-  public final void shiftInsert(int pos, byte kb, SEARTNode child) {
-    System.arraycopy(keys, pos, keys, pos+1, keys.length-pos-1);
-    System.arraycopy(ptrs, pos, ptrs, pos+1, ptrs.length-pos-1);
+  @Override
+  public final void shiftInsert(int pos, byte kb, ISEARTNode child) {
+    System.arraycopy(keys, pos, keys, pos + 1, keys.length - pos - 1);
+    System.arraycopy(ptrs, pos, ptrs, pos + 1, ptrs.length - pos - 1);
     keys[pos] = kb;
     ptrs[pos] = child;
   }
 
-  /**
-   * shift 4 bytes at most.
-   */
-  public final void shiftInsertIn4(int pos, byte kb, SEARTNode child) {
-    System.arraycopy(keys, pos, keys, pos+1, 3-pos);
-    System.arraycopy(ptrs, pos, ptrs, pos+1, 3-pos);
-    keys[pos] = kb;
-    ptrs[pos] = child;
-  }
-
-  /**
-   * Consistent with {@link java.util.Arrays#binarySearch}
-   * @param k target key value
-   * @return result on the {@linkplain #keys}
-   */
-  public abstract int getPtrIdxByByte(byte k);
-
-  /**
-   *
-   * @param res refer to return of {@linkplain #matchPartialKey}
-   */
-  public abstract void insertWithExpand(
-      SEARTNode parNode,
-      int parNodeIdx,
-      byte[] insKey,
-      int ofs,
-      int[] res,
-      SEARTNode child);
-
+  @Override
   public boolean isLeaf() {
     return false;
   }
 
+  @Override
+  public byte[] getKeys() {
+    int num = 0;
+    while (num < ptrs.length && ptrs[num] != null) num++;
+    return Arrays.copyOfRange(keys, 0, num);
+  }
+
   // todo optimize with virtualization
-  public void insertOnByteMap(byte bk, SEARTNode child) {
+  @Override
+  public void insertOnByteMap(byte bk, ISEARTNode child) {
     throw new UnsupportedOperationException();
   }
 
   // only for initialization
-  public void reassignPartialKey(byte[] pk) {
-    partialKey = new byte[pk.length];
-    System.arraycopy(pk, 0, partialKey, 0, partialKey.length);
+  @Override
+  public final void reassignPartialKey(byte[] pk) {
+    partialKey = pk;
+  }
+
+  @Override
+  public String toString() {
+    byte[] byteArray = getKeys();
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < byteArray.length; i++) {
+      sb.append((char) byteArray[i]);
+      if (i < byteArray.length - 1) {
+        sb.append(", ");
+      }
+    }
+    return String.format(
+        " %s : {%s}",
+        partialKey == null ? "(null)" : new String(partialKey, StandardCharsets.UTF_8),
+        sb);
   }
 }
