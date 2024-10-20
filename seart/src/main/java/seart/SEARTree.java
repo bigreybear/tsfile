@@ -2,20 +2,20 @@ package seart;
 
 import seart.exception.PrefixPropertyException;
 import seart.traversal.DFSTraversal;
-import seart.traversal.Traverser;
-import sun.util.resources.cldr.sk.TimeZoneNames_sk;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayDeque;
+import java.sql.Ref;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Deque;
+import java.util.List;
 
-public class SEARTree {
+public class SEARTree implements SeriesIndexTree {
   public ISEARTNode root;
 
   public SEARTree() {
   }
 
+  @Override
   public void insert(String key, long value) {
     insert(key.getBytes(StandardCharsets.UTF_8), value);
   }
@@ -79,8 +79,12 @@ public class SEARTree {
       }
     }
 
+    if (curNode instanceof RefNode) {
+      throw new UnsupportedOperationException("Shall not insert on RefNode:" + new String(insKey, StandardCharsets.UTF_8));
+    }
+
     res = curNode.matchPartialKey(insKey, ofs);
-    if (res[0] < res[1]) {
+    if (res[0] < res[1] && res[0] + ofs < insKey.length) {
       // split partial key
       return updateRoot(
           root,
@@ -116,12 +120,103 @@ public class SEARTree {
     return n4;
   }
 
+  @Override
   public long search(String sk) {
     return search(sk.getBytes(StandardCharsets.UTF_8));
   }
 
   public long search(byte[] sk) {
     return search(this.root, sk, 0);
+  }
+
+  private volatile long lastRec;
+  public long[][] analyzeSearch(String path) {
+    List<Long> nanoLatencyByLevel = new ArrayList<>(100);
+    List<Long> parLenByLevel = new ArrayList<>(100);
+    List<Long> nodeTypeByLevel = new ArrayList<>(100);
+    List<Long> value = new ArrayList<>();
+
+    int ofs = 0;
+    int[] res;
+    byte[] sk = path.getBytes(StandardCharsets.UTF_8);
+    ISEARTNode curNode = root;
+
+    lastRec = System.nanoTime();
+    while (!curNode.isLeaf()) {
+      res = curNode.matchPartialKey(sk, ofs);
+
+      if (res[2] >= 0) {
+        ofs += res[0] + 1;
+        curNode = curNode.getChildByPtrIndex(res[2]);
+
+        nanoLatencyByLevel.add(System.nanoTime() - lastRec);
+        parLenByLevel.add((long) res[1]);
+        if (curNode instanceof Node4) {
+          nodeTypeByLevel.add(4L);
+        } else if (curNode instanceof Node16) {
+          nodeTypeByLevel.add(16L);
+        } else if (curNode instanceof Node48) {
+          nodeTypeByLevel.add(48L);
+        } else if (curNode instanceof Node256) {
+          nodeTypeByLevel.add(256L);
+        }
+        lastRec = System.nanoTime();
+        continue;
+      }
+
+      throw new RuntimeException("Key not exists");
+    }
+
+    // todo faster check
+    if (curNode instanceof RefNode) {
+      res = curNode.matchPartialKey(sk, ofs);
+      if (res[0] != 1) {
+        throw new RuntimeException("Key not exists: " + new String(sk, StandardCharsets.UTF_8));
+      }
+      nanoLatencyByLevel.add(lastRec - System.nanoTime());
+      value.add(((RefNode)curNode).values[res[1]]);
+      return wrapLongLists(value, nanoLatencyByLevel, parLenByLevel, nodeTypeByLevel);
+    }
+
+    res = curNode.matchPartialKey(sk, ofs);
+    if (res[0] == res[1] && res[0] + ofs == sk.length) {
+      nanoLatencyByLevel.add(System.nanoTime() - lastRec);
+      value.add(curNode.getValue());
+      return wrapLongLists(value, nanoLatencyByLevel, parLenByLevel, nodeTypeByLevel);
+    }
+    throw new RuntimeException("Key not exists: " + new String(sk, StandardCharsets.UTF_8));
+  }
+
+  @SafeVarargs
+  private static long[][] wrapLongLists(List<Long> ...lists) {
+    long[][] res = new long[lists.length][];
+    for (int i = 0; i < lists.length; i++) {
+      res[i] = new long[lists[i].size()];
+      for (int j = 0; j < res[i].length; j++) {
+        res[i][j] = lists[i].get(j);
+      }
+    }
+    return res;
+  }
+
+  public static List<ISEARTNode> getPrefixPaths(final ISEARTNode curNode, final byte[] sk, final int offset, List<ISEARTNode> _paths) {
+    List<ISEARTNode> paths = _paths == null ? new ArrayList<>() : _paths;
+
+    if (!curNode.isLeaf()) {
+      int[] res = curNode.matchPartialKey(sk, offset);
+      if (res[0] + offset == sk.length) {
+        return paths;
+      }
+
+      if (res[2] >= 0) {
+        paths.add(curNode);
+        return getPrefixPaths(curNode.getChildByPtrIndex(res[2]), sk, offset+res[0]+1, paths);
+      }
+
+      throw new RuntimeException("Key not exists");
+    }
+
+    return paths;
   }
 
   public static long search(final ISEARTNode root, final byte[] sk, final int offset) {
@@ -160,6 +255,18 @@ public class SEARTree {
     throw new RuntimeException("Key not exists: " + new String(sk, StandardCharsets.UTF_8));
   }
 
+
+  public static void checkKeysSorted(ISEARTNode node) {
+    // todo debug
+    if (node == null || node.getKeys() == null) return;
+
+    byte[] keys = node.getKeys();
+    for (int i = 0; i < keys.length-1; i++) {
+      if (keys[i] > keys[i+1]) {
+        System.out.println("WRONG.");
+      }
+    }
+  }
 
 
   public static void main(String[] args) {

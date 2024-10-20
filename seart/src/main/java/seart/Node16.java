@@ -40,6 +40,12 @@ public class Node16 extends SEARTNode {
    * shift 4 bytes at most.
    */
   public final void shiftInsertIn4(int pos, byte kb, ISEARTNode child) {
+    if (kb > keys[3]) {
+      keys[4] = kb;
+      ptrs[4] = child;
+      return;
+    }
+
     System.arraycopy(keys, pos, keys, pos + 1, 4 - pos);
     System.arraycopy(ptrs, pos, ptrs, pos + 1, 4 - pos);
     keys[pos] = kb;

@@ -23,6 +23,19 @@ public class MockSubtreeMiner {
   static int templateBranches = 0;
   static Map<String, Integer> templatePaths = new HashMap<>();
 
+  private static byte[] concatenateByteArrays(byte[] ...arrays) {
+    int totalLength = 0;
+    for (byte[] array : arrays) {
+      totalLength += array.length;
+    }
+    byte[] result = new byte[totalLength];
+    int currentIndex = 0;
+    for (byte[] array : arrays) {
+      System.arraycopy(array, 0, result, currentIndex, array.length);
+      currentIndex += array.length;
+    }
+    return result;
+  }
 
   /**
    * construct RefNode for target leaves
@@ -32,14 +45,23 @@ public class MockSubtreeMiner {
   private static ISEARTNode recursionV1(
       ISEARTNode curNode,
       ISEARTNode tr,
-      Deque<String> pstack,
-      BiFunction<ISEARTNode, Deque<String>, Boolean> condition) {
-    Deque<String> stack = pstack == null ? new ArrayDeque<>() : pstack;
+      Deque<byte[]> pstack,
+      BiFunction<ISEARTNode, byte[], Boolean> condition) {
+    Deque<byte[]> stack = pstack == null ? new ArrayDeque<>() : pstack;
 
     if (curNode.isLeaf()) {
-      String curPath = String.join("", pstack) + (curNode.getPartialKey() == null ? "" : new String(curNode.getPartialKey(), StandardCharsets.UTF_8));
-      if (condition.apply(curNode, stack)) {
-        System.out.println("Enable template on:" + curPath);
+      if (curNode instanceof RefNode) {
+        throw new RuntimeException("Shall not replace twice");
+      }
+      // Note(zx) only transform to String when bytes are all collected AS IS before insertion
+      // if the result of concatenation is incomplete (comparing to the original), the string must be wrong
+      byte[] curPathBytes = concatenateByteArrays(
+          concatenateByteArrays(pstack.toArray(new byte[0][0])),
+          curNode.getPartialKey());
+
+      // embedded condition to decide whether to replace
+      if (condition.apply(curNode, curPathBytes)) {
+        // System.out.println("Enable template on:" + curPath);
         RefNode rn = new RefNode();
 
         // the separating dot is added here
@@ -49,9 +71,12 @@ public class MockSubtreeMiner {
         System.arraycopy(tr.getPartialKey(), 0, pk, curNode.getPartialKey().length + 1, tr.getPartialKey().length);
         rn.reassignPartialKey(pk);
 
+        // todo not robust here since curPathBytes may not be character-complete
         long[] vals = new long[templateBranches];
         for (Map.Entry<String, Integer> entry : templatePaths.entrySet()) {
-          vals[entry.getValue()] = (curPath + '.' + entry.getKey()).hashCode();
+          vals[entry.getValue()] = new String(
+              concatenateByteArrays(curPathBytes, new byte[] {46}, entry.getKey().getBytes(StandardCharsets.UTF_8)),
+              StandardCharsets.UTF_8).hashCode();
         }
         rn.setValues(vals);
         rn.setTemplateRoot(tr);
@@ -61,25 +86,22 @@ public class MockSubtreeMiner {
     }
 
 
-    stack.addLast(new String(curNode.getPartialKey(), StandardCharsets.UTF_8));
+    stack.addLast(curNode.getPartialKey() == null ? new byte[0] : curNode.getPartialKey());
     for (byte b : curNode.getKeys()) {
-      stack.addLast(String.valueOf((char) b));
-
+      stack.addLast(new byte[] {b});
       ISEARTNode res = recursionV1(curNode.getChildByKeyByte(b), tr, stack, condition);
       if (res != null) {
         curNode.setChildPtrByIndex(curNode.getPtrIdxByByte(b), res);
       }
-
       stack.removeLast();
     }
     stack.removeLast();
-
     return null;
   }
 
   // iterate template and count branches
   public static void replaceV1(ISEARTNode context, ISEARTNode template,
-                               BiFunction<ISEARTNode, Deque<String>, Boolean> condition) {
+                               BiFunction<ISEARTNode, byte[], Boolean> condition) {
 
     DFSTraversal dfsTraversal = new DFSTraversal(template);
     while (dfsTraversal.hasNext()) {
@@ -96,6 +118,13 @@ public class MockSubtreeMiner {
   }
 
   public static void main(String[] args) {
+    String a = "root.bw.baoshan.九位码待补充001lt.01.外接电源电压";
+    byte[] b = a.getBytes(StandardCharsets.UTF_8);
+    String c = new String(b, StandardCharsets.UTF_8);
+    System.out.println(a.equals(c));
+  }
+
+  public static void main2(String[] args) {
     SEARTree context = new SEARTree();
     SEARTree template = new SEARTree();
 
@@ -106,16 +135,21 @@ public class MockSubtreeMiner {
     template.insert("humidity", 0L);
 
     String[] keys = {
-        "root.sg1.v1.d1",
-        "root.sg1.v1.d2",
-        "root.sg1.v1.d3"
+        "root.bw.baoshan.072029E51.05.低频加速度有效值",
+        "root.bw.baoshan.323536M03009.01.高频加速度有效值",
+        "root.bw.baoshan.840643M02D10.02.轴向冲击平均值",
+        "root.bw.baoshan.640456M01.01.高频加速度峭度",
+        "root.bw.baoshan.九位码待补充001lt.01.外接电源电压"
     };
 
     for (String s : keys) {
       context.insert(s, s.hashCode());
     }
 
-    replaceV1(context.root, template.root, (a, b) -> (String.join("", b).hashCode() & 0x01) == 0);
+    replaceV1(context.root, template.root, (a, b) -> {
+      System.out.println(b);
+      return true;
+    });
     DFSTraversal dfsTraversal = new DFSTraversal(context.root);
     dfsTraversal.printAllPaths();
 

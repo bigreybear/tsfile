@@ -25,7 +25,7 @@ public class RefNode implements ISEARTNode {
 
   /**
    * Override MAGIC return array.
-   * @return [signal for success retrieval (1 for success), the value, ...]
+   * @return [signal (1 for success), the value from template, ...]
    */
   @Override
   public int[] matchPartialKey(byte[] insKey, int ofs) {
@@ -83,5 +83,10 @@ public class RefNode implements ISEARTNode {
   @Override
   public void insertOnByteMap(byte bk, ISEARTNode child) {
 
+  }
+
+  public static void main(String[] args) {
+    System.out.println((byte)'a');
+    System.out.println((byte)'A');
   }
 }

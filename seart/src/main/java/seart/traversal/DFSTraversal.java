@@ -2,6 +2,7 @@ package seart.traversal;
 
 import seart.ISEARTNode;
 import seart.RefNode;
+import seart.SEARTree;
 
 import javax.management.relation.RelationNotFoundException;
 import java.nio.charset.StandardCharsets;
@@ -40,6 +41,30 @@ public class DFSTraversal implements Iterator<ISEARTNode> {
     }
     if (root.getPartialKey() != null) {
       trace.addLast(new String(root.getPartialKey(), StandardCharsets.UTF_8));
+    }
+  }
+
+  public static void printAllPaths2(SEARTree tree) {
+    DFSTraversal dfsTraversal = new DFSTraversal(tree.root);
+    Map<Integer, List<String>> templatePaths = new HashMap<>();
+    ISEARTNode node;
+    while (dfsTraversal.hasNext()) {
+      node = dfsTraversal.next();
+      if (node.isLeaf()) {
+        if (node instanceof RefNode) {
+          ISEARTNode t1 = ((RefNode)node).templateRoot;
+          List<String> tb = templatePaths.getOrDefault(t1.hashCode(), null);
+          if (tb == null) {
+            tb = getAllPathsWithoutTemplate(t1);
+            templatePaths.put(t1.hashCode(), tb);
+          }
+          for (String s : tb) {
+            System.out.println(dfsTraversal.getCurrentPath() + s);
+          }
+        } else {
+          System.out.println(dfsTraversal.getCurrentPath());
+        }
+      }
     }
   }
 
