@@ -17,10 +17,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.TreeMap;
 
 public class SpaceCompare {
 
@@ -58,9 +61,14 @@ public class SpaceCompare {
     return new ArrayList<>(dstSet);
   }
 
+
+  public static SeriesIndexTree[] compareOnDataFile(DataFile fileSet, boolean toMeasureSpace, byte treeFlag) throws Exception {
+    return compareOnDataFile(fileSet, toMeasureSpace, treeFlag, true);
+  }
+
   private static volatile long nanoSec;
   private static List<String> randomizedSearchPaths = new ArrayList<>();
-  public static SeriesIndexTree[] compareOnDataFile(DataFile fileSet, boolean toMeasureSpace, byte treeFlag) throws Exception {
+  public static SeriesIndexTree[] compareOnDataFile(DataFile fileSet, boolean toMeasureSpace, byte treeFlag, boolean prepareSearch) throws Exception {
     PathTxtLoader devLoader = new PathTxtLoader(fileSet.allDevFile);
     PathTxtLoader modLoader = new PathTxtLoader(fileSet.modDevFile);
     PathTxtLoader senLoader = new PathTxtLoader(fileSet.senFile);
@@ -71,33 +79,48 @@ public class SpaceCompare {
     modLoader.close();
     senLoader.close();
 
-    System.out.println("Building trees...");
+    Set<String> nonModDevs = new HashSet<>();
+    for (String d : allDevs) {
+      if (!modDevs.contains(d)) {
+        nonModDevs.add(d);
+      }
+    }
+    List<String> allPaths = joinStringLists(new ArrayList<>(allDevs), new ArrayList<>(sens));
+    List<String> nonTpltPaths = joinStringLists(new ArrayList<>(nonModDevs), new ArrayList<>(sens));
+
     // insert all paths on mtree and art
     SEARTree artTree = new SEARTree(), searTree = new SEARTree(), tpltTree = new SEARTree();
     MTreeMeasure mtree = new MTreeMeasure();
-    String path;
-    for (String d : allDevs) {
-      if (modDevs.contains(d)) {
-        if ((treeFlag & SEART) != 0) searTree.insert(d, d.hashCode());
-      }
-
-      for (String s : sens) {
-        path = d + "." + s;
-        if ((treeFlag & MTREE) != 0) mtree.insert(path, path.hashCode());
-        if ((treeFlag & CART) != 0) artTree.insert(path, path.hashCode());
-        if (!modDevs.contains(d)) {
-          if ((treeFlag & SEART) != 0) searTree.insert(path, path.hashCode());
-        }
-      }
-    }
-
-    // build templated seart: modified
-    Set<String> replaced = new HashSet<>();
     int tpltNum = 0;
-    for (String s : sens) {
-      tpltTree.insert(s, tpltNum++);
+    Set<String> replaced = new HashSet<>();
+
+    if ((treeFlag & MTREE) != 0) {
+      nanoSec = System.nanoTime();
+      for (String p : allPaths) {
+        mtree.insert(p, p.hashCode());
+      }
+      System.out.println(String.format("Building MTree for %d mil-secs.", (System.nanoTime() - nanoSec)/1000000));
     }
-    if ((treeFlag &SEART) != 0) {
+
+    if ((treeFlag & CART) != 0) {
+      nanoSec = System.nanoTime();
+      for (String p : allPaths) {
+        artTree.insert(p, p.hashCode());
+      }
+      System.out.println(String.format("Building ARTree for %d mil-secs.", (System.nanoTime() - nanoSec)/1000000));
+    }
+
+    if ((treeFlag & SEART) != 0) {
+      nanoSec = System.nanoTime();
+      for (String p : nonTpltPaths) {
+        searTree.insert(p, p.hashCode());
+      }
+      for (String td : modDevs) {
+        searTree.insert(td, td.hashCode());
+      }
+      for (String s : sens) {
+        tpltTree.insert(s, tpltNum++);
+      }
       MockSubtreeMiner.replaceV1(searTree.root, tpltTree.root, (a,b)-> {
         String p = new String(b, StandardCharsets.UTF_8);
         if (modDevs.contains(p)) {
@@ -107,10 +130,42 @@ public class SpaceCompare {
           return false;
         }
       });
+      System.out.println(String.format("Building SEART for %d mil-secs.", (System.nanoTime() - nanoSec)/1000000));
     }
 
-    System.out.println(String.format("Report, all device: %d, device with template: %d, sen: %d",
-        allDevs.size(), replaced.size() ,sens.size()));
+    // String path;
+    // for (String d : allDevs) {
+    //   if (modDevs.contains(d)) {
+    //     if ((treeFlag & SEART) != 0) searTree.insert(d, d.hashCode());
+    //   }
+    //
+    //   for (String s : sens) {
+    //     path = d + "." + s;
+    //     if ((treeFlag & MTREE) != 0) mtree.insert(path, path.hashCode());
+    //     if ((treeFlag & CART) != 0) artTree.insert(path, path.hashCode());
+    //     if (!modDevs.contains(d)) {
+    //       if ((treeFlag & SEART) != 0) searTree.insert(path, path.hashCode());
+    //     }
+    //   }
+    // }
+    //
+    // for (String s : sens) {
+    //   tpltTree.insert(s, tpltNum++);
+    // }
+    // if ((treeFlag &SEART) != 0) {
+    //   MockSubtreeMiner.replaceV1(searTree.root, tpltTree.root, (a,b)-> {
+    //     String p = new String(b, StandardCharsets.UTF_8);
+    //     if (modDevs.contains(p)) {
+    //       replaced.add(p);
+    //       return true;
+    //     } else {
+    //       return false;
+    //     }
+    //   });
+    // }
+
+    // System.out.println(String.format("Report, all device: %d, device with template: %d, sen: %d",
+    //     allDevs.size(), replaced.size() ,sens.size()));
 
     if (toMeasureSpace) {
       System.out.println("Measuring spaces...");
@@ -120,20 +175,22 @@ public class SpaceCompare {
           GraphLayout.parseInstance(searTree).totalSize()));
     }
 
-    System.out.println("Preparing search paths...");
-    // search only on templated paths
-    String[] tarPathArray = new String[modDevs.size() * sens.size()];
-    int pNum = 0;
-    for (String d : modDevs) {
-      for (String s : sens) {
-        tarPathArray[pNum++] = d + "." + s;
+    if (prepareSearch) {
+      System.out.println("Preparing search paths...");
+      // search only on templated paths
+      String[] tarPathArray = new String[modDevs.size() * sens.size()];
+      int pNum = 0;
+      for (String d : modDevs) {
+        for (String s : sens) {
+          tarPathArray[pNum++] = d + "." + s;
+        }
       }
-    }
 
-    randomizedSearchPaths.clear();
-    for (int i = 0; i < tarPathArray.length; i++) {
-      if ((tarPathArray[i].hashCode() & 0xff) > 64) {
-        randomizedSearchPaths.add(tarPathArray[i]);
+      randomizedSearchPaths.clear();
+      for (int i = 0; i < tarPathArray.length; i++) {
+        if ((tarPathArray[i].hashCode() & 0xff) > 64) {
+          randomizedSearchPaths.add(tarPathArray[i]);
+        }
       }
     }
 
@@ -152,11 +209,70 @@ public class SpaceCompare {
     return (int) (res/cnt);
   }
 
+  // measure building latency
+  public static void mainLatency(String[] args) throws Exception{
+    System.out.println("8");
+    compareOnDataFile(DataFile.MD75_S8, NO_MEASURE_SPACE, (byte) (CART), false);
+    compareOnDataFile(DataFile.MD75_S8, NO_MEASURE_SPACE, (byte) (CART), false);
+    compareOnDataFile(DataFile.MD75_S8, NO_MEASURE_SPACE, (byte) (MTREE), false);
+    compareOnDataFile(DataFile.MD75_S8, NO_MEASURE_SPACE, (byte) (MTREE), false);
+
+    System.out.println("6");
+    compareOnDataFile(DataFile.MD75_S6, NO_MEASURE_SPACE, (byte) (CART), false);
+    compareOnDataFile(DataFile.MD75_S6, NO_MEASURE_SPACE, (byte) (CART), false);
+    compareOnDataFile(DataFile.MD75_S6, NO_MEASURE_SPACE, (byte) (MTREE), false);
+    compareOnDataFile(DataFile.MD75_S6, NO_MEASURE_SPACE, (byte) (MTREE), false);
+
+    System.out.println("4");
+    compareOnDataFile(DataFile.MD75_S4, NO_MEASURE_SPACE, (byte) (CART), false);
+    compareOnDataFile(DataFile.MD75_S4, NO_MEASURE_SPACE, (byte) (CART), false);
+    compareOnDataFile(DataFile.MD75_S4, NO_MEASURE_SPACE, (byte) (MTREE), false);
+    compareOnDataFile(DataFile.MD75_S4, NO_MEASURE_SPACE, (byte) (MTREE), false);
+
+    System.out.println("2");
+    compareOnDataFile(DataFile.MD75_S2, NO_MEASURE_SPACE, (byte) (CART), false);
+    compareOnDataFile(DataFile.MD75_S2, NO_MEASURE_SPACE, (byte) (CART), false);
+    compareOnDataFile(DataFile.MD75_S2, NO_MEASURE_SPACE, (byte) (MTREE), false);
+    compareOnDataFile(DataFile.MD75_S2, NO_MEASURE_SPACE, (byte) (MTREE), false);
+
+  }
+
+  // measure all bytes original size
+  public static void main(String[] args) throws Exception{
+    PathTxtLoader devLoader = new PathTxtLoader(DataFile.MD75_S6.allDevFile);
+    PathTxtLoader modLoader = new PathTxtLoader(DataFile.MD75_S6.modDevFile);
+    PathTxtLoader senLoader = new PathTxtLoader(DataFile.MD75_S6.senFile);
+    Set<String> allDevs = new HashSet<>(devLoader.getAllLines());
+    Set<String> modDevs = new HashSet<>(modLoader.getAllLines());
+    Set<String> sens = new HashSet<>(senLoader.getAllLines());
+    devLoader.close();
+    modLoader.close();
+    senLoader.close();
+
+    long len = 0;
+    List<String> allPaths = joinStringLists(new ArrayList<>(allDevs), new ArrayList<>(sens));
+    Map<String, Long> rbTree = new TreeMap<>();
+    Map<String, Long> hashMap = new HashMap<>();
+    for (String p : allPaths) {
+      len += p.getBytes(StandardCharsets.UTF_8).length + 8;
+      rbTree.put(p, (long) p.hashCode());
+      hashMap.put(p, (long) p.hashCode());
+    }
+
+    System.out.println(allPaths.size());
+    System.out.println(len);
+    System.out.println(GraphLayout.parseInstance(rbTree).totalSize());
+    System.out.println(GraphLayout.parseInstance(hashMap).totalSize());
+
+    compareOnDataFile(DataFile.MD75_S6, MEASURE_SPACE, (byte) (SEART | CART | MTREE));
+
+    // measure all
+  }
 
   final static byte MTREE = 0x01, CART = 0x02, SEART = 0x04;
   final static boolean MEASURE_SPACE = true, NO_MEASURE_SPACE = false;
   // complete test
-  public static void main(String[] args) throws Exception{
+  public static void main_2(String[] args) throws Exception{
     SeriesIndexTree[] indexTrees;
     String[] names = new String[] {"mtree", "cart", "seart"};
     // indexTrees = compareOnDataFile(DataFile.MD25_S6, MEASURE_SPACE, (byte) (SEART | CART | MTREE));
