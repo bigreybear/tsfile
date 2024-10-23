@@ -1,6 +1,8 @@
 package mtree;
 
-public interface IMNode {
+import java.io.Serializable;
+
+public interface IMNode extends Serializable {
 
   long getValue();
 

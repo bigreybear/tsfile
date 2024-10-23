@@ -2,9 +2,10 @@ package mtree;
 
 import seart.SeriesIndexTree;
 
+import java.io.Serializable;
 import java.util.List;
 
-public class MTreeMeasure implements SeriesIndexTree {
+public class MTreeMeasure implements SeriesIndexTree, Serializable {
   public IMNode root = new MNode();
 
   @Override

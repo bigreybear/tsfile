@@ -1,6 +1,8 @@
 package seart;
 
-public interface ISEARTNode {
+import java.io.Serializable;
+
+public interface ISEARTNode extends Serializable {
 
   // region Common
   byte[] getPartialKey();

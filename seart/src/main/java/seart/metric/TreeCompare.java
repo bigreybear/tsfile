@@ -1,6 +1,11 @@
 package seart.metric;
 
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -76,26 +81,16 @@ public class TreeCompare {
     return new ArrayList<>(dstSet);
   }
 
-  public static SeriesIndexTree[] compareOnDataFile(
-      DataFile fileSet, byte treeFlag, boolean toMeasureSpace) throws Exception {
-    return compareOnDataFile(fileSet, treeFlag, toMeasureSpace, true);
-  }
-
   private static volatile long nanoSec;
-  private static List<String> randomizedSearchPaths = new ArrayList<>();
+  private static String[][] searchPathArray;
 
-  public static SeriesIndexTree[] compareOnDataFile(
-      DataFile fileSet, byte treeFlag, boolean toMeasureSpace, boolean prepareSearch)
+  private static Set<String> modDevs, sens;
+  public static SeriesIndexTree[] loadTreeMeasureSpace(
+      DataFile fileSet, byte treeFlag, boolean toMeasureSpace)
       throws Exception {
     PathTxtLoader devLoader = new PathTxtLoader(fileSet.allDevFile);
-    PathTxtLoader modLoader = new PathTxtLoader(fileSet.modDevFile);
-    PathTxtLoader senLoader = new PathTxtLoader(fileSet.senFile);
     Set<String> allDevs = new HashSet<>(devLoader.getAllLines());
-    Set<String> modDevs = new HashSet<>(modLoader.getAllLines());
-    Set<String> sens = new HashSet<>(senLoader.getAllLines());
     devLoader.close();
-    modLoader.close();
-    senLoader.close();
 
     Set<String> nonModDevs = new HashSet<>();
     for (String d : allDevs) {
@@ -175,28 +170,65 @@ public class TreeCompare {
               GraphLayout.parseInstance(searTree).totalSize()));
     }
 
-    if (prepareSearch) {
-      System.out.println("Preparing search paths...");
-      // search only on templated paths
-      String[] tarPathArray = new String[modDevs.size() * sens.size()];
-      int pNum = 0;
-      for (String d : modDevs) {
-        for (String s : sens) {
-          tarPathArray[pNum++] = d + "." + s;
-        }
-      }
-
-      randomizedSearchPaths.clear();
-      for (int i = 0; i < tarPathArray.length; i++) {
-        if ((tarPathArray[i].hashCode() & 0xff) > 64) {
-          randomizedSearchPaths.add(tarPathArray[i]);
-        }
-      }
-    }
-
     return new SeriesIndexTree[] {mtree, artTree, searTree, tpltTree};
   }
 
+  private static void buildSearchPaths() throws Exception {
+    List<String> uniquePaths = new ArrayList<>();
+    for (String d : modDevs) {
+      for (String s : sens) {
+        uniquePaths.add(d + "." + s);
+      }
+    }
+
+    searchPathArray = new String[SEARCH_EPOCH][];
+    for (int i = 0; i < SEARCH_EPOCH; i++) {
+      Collections.shuffle(uniquePaths);
+      searchPathArray[i] = new String[uniquePaths.size()];
+      for (int j = 0; j < uniquePaths.size(); j++) {
+        searchPathArray[i][j] = uniquePaths.get(j);
+      }
+    }
+  }
+
+  private static void initModDevAndSens(DataFile fileSet) throws Exception{
+    PathTxtLoader modLoader = new PathTxtLoader(fileSet.modDevFile);
+    PathTxtLoader senLoader = new PathTxtLoader(fileSet.senFile);
+    modDevs = new HashSet<>(modLoader.getAllLines());
+    sens = new HashSet<>(senLoader.getAllLines());
+    modLoader.close();
+    senLoader.close();
+  }
+
+
+  private static void serializeTrees(SeriesIndexTree[] trees, byte treeFlag) throws IOException {
+    String[] objFileName = new String[] {"mtree.obj", "cart.obj", "seart.obj"};
+    byte[] flags = new byte[] {MTREE, CART, SEART};
+    for (int i = 0; i < objFileName.length; i++) {
+      if ((flags[i] & treeFlag) != 0) {
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(objFileName[i]))) {
+          oos.writeObject(trees[i]);
+        }
+      }
+    }
+  }
+
+  public static SeriesIndexTree[] deserializeTrees(byte treeFlag) throws IOException, ClassNotFoundException {
+    SeriesIndexTree[] res = new SeriesIndexTree[3];
+    String[] objFileName = new String[] {"mtree.obj", "cart.obj", "seart.obj"};
+    byte[] flags = new byte[] {MTREE, CART, SEART};
+    for (int i = 0; i < objFileName.length; i++) {
+      if ((flags[i] & treeFlag) != 0) {
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(objFileName[i]))) {
+          System.out.println(String.format("Deserializing %s...", objFileName[i]));
+          res[i] = (SeriesIndexTree) ois.readObject();
+        }
+      }
+    }
+    return res;
+  }
+  static final byte MTREE = 0x01, CART = 0x02, SEART = 0x04;
+  static final boolean MEASURE_SPACE = true, NO_MEASURE_SPACE = false;
   // main for jar entrance
   public static void main(String[] args) throws Exception {
     System.out.println("Build Time:" + getBuildTimestamp());
@@ -224,61 +256,101 @@ public class TreeCompare {
       }
     }
 
-    System.out.println(
-        String.format(
-            "Parameters: %s, %s, %s, %s", fileSet.name(), treeFlag, measureSpace, toSearch));
-    SeriesIndexTree[] indexTrees = compareOnDataFile(fileSet, treeFlag, measureSpace, toSearch);
+    SeriesIndexTree[] indexTrees;
+    initModDevAndSens(fileSet);
+    if (options.contains("build")) {
+      System.out.println("Building trees and serialization.");
+      System.out.println(
+          String.format(
+              "Parameters: %s, %s, %s, %s", fileSet.name(), treeFlag, measureSpace, toSearch));
+      indexTrees = loadTreeMeasureSpace(fileSet, treeFlag, measureSpace);
+      serializeTrees(indexTrees, treeFlag);
+      return;
+    } else {
+      System.out.println(String.format("Loading trees for %s.", fileSet.name()));
+      indexTrees = deserializeTrees(treeFlag);
+    }
 
-    List<SeriesIndexTree> searchTrees = new ArrayList<>();
-    List<String> searchNames = new ArrayList<>();
-    if ((treeFlag & MTREE) != 0) {
-      searchNames.add("mtree");
-      searchTrees.add(indexTrees[0]);
-    }
-    if ((treeFlag & CART) != 0) {
-      searchNames.add("cart");
-      searchTrees.add(indexTrees[1]);
-    }
-    if ((treeFlag & SEART) != 0) {
-      searchNames.add("seart");
-      searchTrees.add(indexTrees[2]);
-    }
+    System.out.println(String.format("Building search paths for %d epochs.", SEARCH_EPOCH));
+    buildSearchPaths();
+
+    System.out.println("Press any key to continue.");
+    int a = System.in.read();
 
     if (toSearch) {
+
+      List<SeriesIndexTree> searchTrees = new ArrayList<>();
+      List<String> searchNames = new ArrayList<>();
+      if ((treeFlag & MTREE) != 0) {
+        searchNames.add("mtree");
+        searchTrees.add(indexTrees[0]);
+      }
+      if ((treeFlag & CART) != 0) {
+        searchNames.add("cart");
+        searchTrees.add(indexTrees[1]);
+      }
+      if ((treeFlag & SEART) != 0) {
+        searchNames.add("seart");
+        searchTrees.add(indexTrees[2]);
+      }
+
       searchAndPrint(searchNames, searchTrees);
     }
   }
 
   // to test parameter parser
   public static void mainx(String[] args) throws Exception {
-    // main2(new String[] {"MD25_S6", "tos", "CART", "MTREE", "SEART", "MD50_S6"});
+    // mainx(new String[] {"MD25_S6", "tos", "SEART"});
+  }
+
+  private static int SEARCH_EPOCH = 10;
+  // search on each tree 5 times and print all results
+  private static void searchAndPrint(List<String> names, List<SeriesIndexTree> indexTrees) {
+    for (int i = 0; i < indexTrees.size(); i++) {
+      long[] totalTime = new long[SEARCH_EPOCH];
+      for (int j = 0; j < SEARCH_EPOCH; j++) {
+        nanoSec = System.nanoTime();
+        int size = searchPathArray[j].length;
+        for (int k = 0; k < size; k++) {
+          long res = indexTrees.get(i).search(searchPathArray[j][k]);
+          // if (res != searchPathArray[j][k].hashCode()) {
+          //   throw new RuntimeException("Search result error.");
+          // }
+        }
+        totalTime[j] = (System.nanoTime() - nanoSec)/1000000;
+      }
+      System.out.println(
+          String.format(
+              "Search %s for %s nano-secs per path", names.get(i), Arrays.toString(totalTime)));
+    }
+    System.gc();
   }
 
   // measure building latency
   public static void mainLatency(String[] args) throws Exception {
     System.out.println("8");
-    compareOnDataFile(DataFile.MD75_S8, (byte) (CART), NO_MEASURE_SPACE, false);
-    compareOnDataFile(DataFile.MD75_S8, (byte) (CART), NO_MEASURE_SPACE, false);
-    compareOnDataFile(DataFile.MD75_S8, (byte) (MTREE), NO_MEASURE_SPACE, false);
-    compareOnDataFile(DataFile.MD75_S8, (byte) (MTREE), NO_MEASURE_SPACE, false);
+    loadTreeMeasureSpace(DataFile.MD75_S8, (byte) (CART), NO_MEASURE_SPACE);
+    loadTreeMeasureSpace(DataFile.MD75_S8, (byte) (CART), NO_MEASURE_SPACE);
+    loadTreeMeasureSpace(DataFile.MD75_S8, (byte) (MTREE), NO_MEASURE_SPACE);
+    loadTreeMeasureSpace(DataFile.MD75_S8, (byte) (MTREE), NO_MEASURE_SPACE);
 
     System.out.println("6");
-    compareOnDataFile(DataFile.MD75_S6, (byte) (CART), NO_MEASURE_SPACE, false);
-    compareOnDataFile(DataFile.MD75_S6, (byte) (CART), NO_MEASURE_SPACE, false);
-    compareOnDataFile(DataFile.MD75_S6, (byte) (MTREE), NO_MEASURE_SPACE, false);
-    compareOnDataFile(DataFile.MD75_S6, (byte) (MTREE), NO_MEASURE_SPACE, false);
+    loadTreeMeasureSpace(DataFile.MD75_S6, (byte) (CART), NO_MEASURE_SPACE);
+    loadTreeMeasureSpace(DataFile.MD75_S6, (byte) (CART), NO_MEASURE_SPACE);
+    loadTreeMeasureSpace(DataFile.MD75_S6, (byte) (MTREE), NO_MEASURE_SPACE);
+    loadTreeMeasureSpace(DataFile.MD75_S6, (byte) (MTREE), NO_MEASURE_SPACE);
 
     System.out.println("4");
-    compareOnDataFile(DataFile.MD75_S4, (byte) (CART), NO_MEASURE_SPACE, false);
-    compareOnDataFile(DataFile.MD75_S4, (byte) (CART), NO_MEASURE_SPACE, false);
-    compareOnDataFile(DataFile.MD75_S4, (byte) (MTREE), NO_MEASURE_SPACE, false);
-    compareOnDataFile(DataFile.MD75_S4, (byte) (MTREE), NO_MEASURE_SPACE, false);
+    loadTreeMeasureSpace(DataFile.MD75_S4, (byte) (CART), NO_MEASURE_SPACE);
+    loadTreeMeasureSpace(DataFile.MD75_S4, (byte) (CART), NO_MEASURE_SPACE);
+    loadTreeMeasureSpace(DataFile.MD75_S4, (byte) (MTREE), NO_MEASURE_SPACE);
+    loadTreeMeasureSpace(DataFile.MD75_S4, (byte) (MTREE), NO_MEASURE_SPACE);
 
     System.out.println("2");
-    compareOnDataFile(DataFile.MD75_S2, (byte) (CART), NO_MEASURE_SPACE, false);
-    compareOnDataFile(DataFile.MD75_S2, (byte) (CART), NO_MEASURE_SPACE, false);
-    compareOnDataFile(DataFile.MD75_S2, (byte) (MTREE), NO_MEASURE_SPACE, false);
-    compareOnDataFile(DataFile.MD75_S2, (byte) (MTREE), NO_MEASURE_SPACE, false);
+    loadTreeMeasureSpace(DataFile.MD75_S2, (byte) (CART), NO_MEASURE_SPACE);
+    loadTreeMeasureSpace(DataFile.MD75_S2, (byte) (CART), NO_MEASURE_SPACE);
+    loadTreeMeasureSpace(DataFile.MD75_S2, (byte) (MTREE), NO_MEASURE_SPACE);
+    loadTreeMeasureSpace(DataFile.MD75_S2, (byte) (MTREE), NO_MEASURE_SPACE);
   }
 
   // measure all bytes original size
@@ -308,22 +380,20 @@ public class TreeCompare {
     System.out.println(GraphLayout.parseInstance(rbTree).totalSize());
     System.out.println(GraphLayout.parseInstance(hashMap).totalSize());
 
-    compareOnDataFile(DataFile.MD75_S6, (byte) (SEART | CART | MTREE), MEASURE_SPACE);
+    loadTreeMeasureSpace(DataFile.MD75_S6, (byte) (SEART | CART | MTREE), MEASURE_SPACE);
 
     // measure all
   }
 
-  static final byte MTREE = 0x01, CART = 0x02, SEART = 0x04;
-  static final boolean MEASURE_SPACE = true, NO_MEASURE_SPACE = false;
   // complete test
   public static void main_2(String[] args) throws Exception {
     SeriesIndexTree[] indexTrees;
     String[] names = new String[] {"mtree", "cart", "seart"};
 
-    indexTrees = compareOnDataFile(DataFile.MD25_S2, (byte) (SEART | CART), MEASURE_SPACE);
-    indexTrees = compareOnDataFile(DataFile.MD50_S2, (byte) (SEART | CART), MEASURE_SPACE);
-    indexTrees = compareOnDataFile(DataFile.MD75_S2, (byte) (SEART | CART), MEASURE_SPACE);
-    indexTrees = compareOnDataFile(DataFile.MD100_S2, (byte) (SEART | CART), MEASURE_SPACE);
+    indexTrees = loadTreeMeasureSpace(DataFile.MD25_S2, (byte) (SEART | CART), MEASURE_SPACE);
+    indexTrees = loadTreeMeasureSpace(DataFile.MD50_S2, (byte) (SEART | CART), MEASURE_SPACE);
+    indexTrees = loadTreeMeasureSpace(DataFile.MD75_S2, (byte) (SEART | CART), MEASURE_SPACE);
+    indexTrees = loadTreeMeasureSpace(DataFile.MD100_S2, (byte) (SEART | CART), MEASURE_SPACE);
 
     System.out.println("HEAD");
   }
@@ -421,32 +491,6 @@ public class TreeCompare {
       }
     }
     return res;
-  }
-
-  private static int searchOnce(SeriesIndexTree tree, String name) {
-    Collections.shuffle(randomizedSearchPaths);
-    nanoSec = System.nanoTime();
-    int cnt = randomizedSearchPaths.size();
-    for (int i = 0; i < cnt; i++) {
-      tree.search(randomizedSearchPaths.get(i));
-    }
-    long res = System.nanoTime() - nanoSec;
-
-    return (int) (res / cnt);
-  }
-
-  // search on each tree 5 times and print all results
-  private static void searchAndPrint(List<String> names, List<SeriesIndexTree> indexTrees) {
-    for (int i = 0; i < indexTrees.size(); i++) {
-      long[] totalTime = new long[5];
-      for (int j = 0; j < 5; j++) {
-        totalTime[j] = searchOnce(indexTrees.get(i), names.get(i));
-      }
-      System.out.println(
-          String.format(
-              "Search %s for %s nano-secs per path", names.get(i), Arrays.toString(totalTime)));
-    }
-    System.gc();
   }
 
   private enum DataFile {

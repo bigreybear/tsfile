@@ -3,13 +3,14 @@ package seart;
 import seart.exception.PrefixPropertyException;
 import seart.traversal.DFSTraversal;
 
+import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.sql.Ref;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class SEARTree implements SeriesIndexTree {
+public class SEARTree implements SeriesIndexTree, Serializable {
   public ISEARTNode root;
 
   public SEARTree() {
