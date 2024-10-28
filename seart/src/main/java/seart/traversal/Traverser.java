@@ -1,10 +1,9 @@
 package seart.traversal;
 
-import seart.ISEARTNode;
-
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import seart.ISEARTNode;
 
 public class Traverser {
 
@@ -13,9 +12,10 @@ public class Traverser {
 
     if (node.isLeaf()) {
       System.out.println(
-          String.join("", path) + new String(node.getPartialKey(), StandardCharsets.UTF_8)
-              + "," + node.getValue()
-      );
+          String.join("", path)
+              + new String(node.getPartialKey(), StandardCharsets.UTF_8)
+              + ","
+              + node.getValue());
       return;
     }
 

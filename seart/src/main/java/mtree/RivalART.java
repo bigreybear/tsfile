@@ -2,16 +2,15 @@ package mtree;
 
 import ankur.art.ArtNode;
 import ankur.art.ArtTree;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
-
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 public class RivalART {
 
-  public static void main(String[] args) throws Exception{
+  public static void main(String[] args) throws Exception {
     PathTxtLoader loader = new PathTxtLoader(PathTxtLoader.FILE_PATH);
     ArtTree tree = new ArtTree();
 
@@ -25,7 +24,6 @@ public class RivalART {
         cnt++;
       }
     }
-
 
     ArtTree.calculateDepth(tree);
     //    System.out.println(tree);

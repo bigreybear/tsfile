@@ -1,10 +1,5 @@
 package seart.traversal;
 
-import seart.ISEARTNode;
-import seart.RefNode;
-import seart.SEARTree;
-
-import javax.management.relation.RelationNotFoundException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -14,7 +9,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
+import seart.ISEARTNode;
+import seart.RefNode;
+import seart.SEARTree;
 
 public class DFSTraversal implements Iterator<ISEARTNode> {
   ISEARTNode root;
@@ -25,8 +22,8 @@ public class DFSTraversal implements Iterator<ISEARTNode> {
   public DFSTraversal(ISEARTNode node) {
     root = node;
     byte[] ks = root.getKeys();
-    for (int i = ks.length - 1; i >= 0; i-- ) {
-      stack.addLast(getKN(ks[i], root.getChildByKeyByte(ks[i])));
+    for (int i = ks.length - 1; i >= 0; i--) {
+      stack.addLast(new KeyedNode(ks[i], root.getChildByKeyByte(ks[i])));
     }
     if (root.getPartialKey() != null) {
       trace.addLast(new String(root.getPartialKey(), StandardCharsets.UTF_8));
@@ -34,25 +31,30 @@ public class DFSTraversal implements Iterator<ISEARTNode> {
   }
 
   public void reset() {
-    trace.clear(); stack.clear();
+    trace.clear();
+    stack.clear();
     byte[] ks = root.getKeys();
-    for (int i = ks.length - 1; i >= 0; i-- ) {
-      stack.addLast(getKN(ks[i], root.getChildByKeyByte(ks[i])));
+    for (int i = ks.length - 1; i >= 0; i--) {
+      stack.addLast(new KeyedNode(ks[i], root.getChildByKeyByte(ks[i])));
     }
     if (root.getPartialKey() != null) {
       trace.addLast(new String(root.getPartialKey(), StandardCharsets.UTF_8));
     }
   }
 
-  public static void printAllPaths2(SEARTree tree) {
-    DFSTraversal dfsTraversal = new DFSTraversal(tree.root);
+  public static void printAllPathsInStatic(SEARTree tree) {
+    printAllPathsInStatic(tree.root);
+  }
+
+  public static void printAllPathsInStatic(ISEARTNode root) {
+    DFSTraversal dfsTraversal = new DFSTraversal(root);
     Map<Integer, List<String>> templatePaths = new HashMap<>();
     ISEARTNode node;
     while (dfsTraversal.hasNext()) {
       node = dfsTraversal.next();
       if (node.isLeaf()) {
         if (node instanceof RefNode) {
-          ISEARTNode t1 = ((RefNode)node).templateRoot;
+          ISEARTNode t1 = ((RefNode) node).templateRoot;
           List<String> tb = templatePaths.getOrDefault(t1.hashCode(), null);
           if (tb == null) {
             tb = getAllPathsWithoutTemplate(t1);
@@ -75,7 +77,7 @@ public class DFSTraversal implements Iterator<ISEARTNode> {
       node = next();
       if (node.isLeaf()) {
         if (node instanceof RefNode) {
-          ISEARTNode t1 = ((RefNode)node).templateRoot;
+          ISEARTNode t1 = ((RefNode) node).templateRoot;
           List<String> tb = templatePaths.getOrDefault(t1.hashCode(), null);
           if (tb == null) {
             tb = getAllPathsWithoutTemplate(t1);
@@ -91,7 +93,34 @@ public class DFSTraversal implements Iterator<ISEARTNode> {
     }
   }
 
-  public static List<String> getAllPathsWithoutTemplate(ISEARTNode root) {
+  public static List<String> getAllPaths(ISEARTNode root) {
+    List<String> res = new ArrayList<>();
+    DFSTraversal dfsTraversal = new DFSTraversal(root);
+    Map<Integer, List<String>> templatePaths = new HashMap<>();
+    ISEARTNode node;
+    while (dfsTraversal.hasNext()) {
+      node = dfsTraversal.next();
+      if (node.isLeaf()) {
+        if (node instanceof RefNode) {
+          ISEARTNode t1 = ((RefNode) node).templateRoot;
+          List<String> tb = templatePaths.getOrDefault(t1.hashCode(), null);
+          if (tb == null) {
+            tb = getAllPathsWithoutTemplate(t1);
+            templatePaths.put(t1.hashCode(), tb);
+          }
+          for (String s : tb) {
+            res.add(dfsTraversal.getCurrentPath() + s);
+          }
+        } else {
+          res.add(dfsTraversal.getCurrentPath());
+        }
+      }
+    }
+    return res;
+  }
+
+  // note template paths have already contained separating dot after the transaction path.
+  private static List<String> getAllPathsWithoutTemplate(ISEARTNode root) {
     DFSTraversal dfsTraversal = new DFSTraversal(root);
     List<String> res = new ArrayList<>();
     ISEARTNode node;
@@ -136,18 +165,21 @@ public class DFSTraversal implements Iterator<ISEARTNode> {
       throw new RuntimeException();
     }
 
-    String label = (char) cur.key.byteValue()
-        + (cur.node.getPartialKey() == null ? "" : new String(cur.node.getPartialKey(), StandardCharsets.UTF_8));
+    String label =
+        (char) cur.key.byteValue()
+            + (cur.node.getPartialKey() == null
+                ? ""
+                : new String(cur.node.getPartialKey(), StandardCharsets.UTF_8));
     trace.addLast(label);
-    stack.addLast(getKN(null, null));
+    stack.addLast(new KeyedNode(null, null));
 
     if (cur.node.isLeaf()) {
       return cur.node;
     }
 
-    byte[]kes = cur.node.getKeys();
+    byte[] kes = cur.node.getKeys();
     for (int i = kes.length - 1; i >= 0; i--) {
-      stack.addLast(getKN(kes[i], cur.node.getChildByKeyByte(kes[i])));
+      stack.addLast(new KeyedNode(kes[i], cur.node.getChildByKeyByte(kes[i])));
     }
     return cur.node;
   }
@@ -156,16 +188,22 @@ public class DFSTraversal implements Iterator<ISEARTNode> {
     return String.join("", trace);
   }
 
-  KeyedNode getKN(Byte b, ISEARTNode n) {
-    return new KeyedNode(b, n);
-  }
-
-  private static class KeyedNode {
+  /** To support traversal as a pair-object. */
+  public static class KeyedNode {
     Byte key;
     ISEARTNode node;
 
-    KeyedNode(Byte k, ISEARTNode n) {
-      key = k; node = n;
+    public KeyedNode(Byte k, ISEARTNode n) {
+      key = k;
+      node = n;
+    }
+
+    public byte getKey() {
+      return key;
+    }
+
+    public ISEARTNode getNode() {
+      return node;
     }
 
     @Override
@@ -173,5 +211,4 @@ public class DFSTraversal implements Iterator<ISEARTNode> {
       return (char) key.byteValue() + node.toString();
     }
   }
-
 }

@@ -4,40 +4,18 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 public abstract class SEARTNode implements ISEARTNode {
+  // shared structure of Node4/16/48
   byte[] partialKey;
   byte[] keys;
   ISEARTNode[] ptrs;
 
+  public static int ubyte(byte b) {
+    return b & 0xff;
+  }
+
   @Override
   public byte[] getPartialKey() {
     return partialKey;
-  }
-
-  /**
-   * MAGIC array for efficiency.
-   *
-   * @return [length of the overlapped bytes, pk.len, index of pointer array]
-   */
-  @Override
-  public final int[] matchPartialKey(byte[] insKey, final int ofs) {
-    if (partialKey == null || partialKey.length == 0) {
-      return new int[]{0, 0, getPtrIdxByByte(insKey[ofs])};
-    }
-
-    int i = 0;
-    while (i + ofs < insKey.length
-        && i < partialKey.length
-        && partialKey[i] == insKey[ofs + i]) {
-      i++;
-    }
-
-    // pk is exhausted while ins key is not, try to find ptr
-    if (i == partialKey.length && i + ofs < insKey.length) {
-      return new int[]{i, partialKey.length, getPtrIdxByByte(insKey[i + ofs])};
-    }
-
-    // pk not exhaust, return matched/overlapped len as in array[0]
-    return new int[]{i, partialKey.length, -1};
   }
 
   @Override
@@ -77,12 +55,6 @@ public abstract class SEARTNode implements ISEARTNode {
     return Arrays.copyOfRange(keys, 0, num);
   }
 
-  // todo optimize with virtualization
-  @Override
-  public void insertOnByteMap(byte bk, ISEARTNode child) {
-    throw new UnsupportedOperationException();
-  }
-
   // only for initialization
   @Override
   public final void reassignPartialKey(byte[] pk) {
@@ -101,7 +73,6 @@ public abstract class SEARTNode implements ISEARTNode {
     }
     return String.format(
         " %s : {%s}",
-        partialKey == null ? "(null)" : new String(partialKey, StandardCharsets.UTF_8),
-        sb);
+        partialKey == null ? "(null)" : new String(partialKey, StandardCharsets.UTF_8), sb);
   }
 }

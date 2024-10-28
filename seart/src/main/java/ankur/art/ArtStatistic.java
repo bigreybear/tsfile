@@ -25,8 +25,7 @@ public class ArtStatistic {
   public int compactedSize = 0;
   public Map<String, Integer> prefixCount = new HashMap<>();
 
-  public ArtStatistic() {
-  }
+  public ArtStatistic() {}
 
   public List<Map.Entry<String, Integer>> mostFrequentPartial() {
     return partialKeyOccur.entrySet().stream()
@@ -35,11 +34,10 @@ public class ArtStatistic {
   }
 
   public int totalPrefixCompressed() {
-    return partialKeyEffects.entrySet().stream().mapToInt(e -> e.getKey().length() * e.getValue()).sum();
+    return partialKeyEffects.entrySet().stream()
+        .mapToInt(e -> e.getKey().length() * e.getValue())
+        .sum();
   }
 
-  public void showPartialKeyDistribute() {
-
-  }
-
+  public void showPartialKeyDistribute() {}
 }

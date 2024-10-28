@@ -32,7 +32,6 @@ class ArtNode4 extends ArtNode {
 
   // region Mod Methods
 
-
   @Override
   public int compactedSize() {
     // prefix + key_array + pointers

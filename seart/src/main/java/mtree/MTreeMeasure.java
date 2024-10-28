@@ -1,9 +1,8 @@
 package mtree;
 
-import seart.SeriesIndexTree;
-
 import java.io.Serializable;
 import java.util.List;
+import seart.SeriesIndexTree;
 
 public class MTreeMeasure implements SeriesIndexTree, Serializable {
   public IMNode root = new MNode();
@@ -19,7 +18,7 @@ public class MTreeMeasure implements SeriesIndexTree, Serializable {
     for (int i = 1; i < path.length; i++) {
       child = cur.getChild(path[i]);
       if (child == null) {
-        child = (i == path.length -1 ? new MLeaf(value) : new MNode());
+        child = (i == path.length - 1 ? new MLeaf(value) : new MNode());
         cur.addChild(path[i], child);
       }
       cur = child;
@@ -39,7 +38,7 @@ public class MTreeMeasure implements SeriesIndexTree, Serializable {
       for (int i = 1; i < path.length; i++) {
         child = cur.getChild(path[i]);
         if (child == null) {
-          child = (i == path.length -1 ? new MLeaf() : new MNode());
+          child = (i == path.length - 1 ? new MLeaf() : new MNode());
           cur.addChild(path[i], child);
         }
         cur = child;

@@ -18,11 +18,9 @@
  */
 package ankur.art;
 
-import ankur.art.util.MockARTFileOutputStream;
 import ankur.art.util.BoxPlotData;
+import ankur.art.util.MockARTFileOutputStream;
 import ankur.art.util.Pair;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
@@ -35,6 +33,7 @@ import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 public class ArtTree extends ChildPtr implements Serializable {
 
@@ -87,13 +86,12 @@ public class ArtTree extends ChildPtr implements Serializable {
     return this.root.computeDescentLeaf();
   }
 
-  public void computeSiblingOverlapPartialKey() {
-
-  }
+  public void computeSiblingOverlapPartialKey() {}
 
   private static class BroadFirstTraveler {
     Node root;
     Deque<Node> nodes = new ArrayDeque<>();
+
     public BroadFirstTraveler(Node root) {
       this.root = root;
       nodes.add(root);
@@ -125,13 +123,10 @@ public class ArtTree extends ChildPtr implements Serializable {
     String pk;
     nodes.add(root);
 
-    Class[] nodeTypes = new Class[] {
-        Leaf.class,
-        ArtNode4.class,
-        ArtNode16.class,
-        ArtNode48.class,
-        ArtNode256.class
-    };
+    Class[] nodeTypes =
+        new Class[] {
+          Leaf.class, ArtNode4.class, ArtNode16.class, ArtNode48.class, ArtNode256.class
+        };
 
     List<Float>[] typePlenitude = new List[5];
     for (int i = 0; i < 5; i++) {
@@ -143,16 +138,16 @@ public class ArtTree extends ChildPtr implements Serializable {
       // type statistic and traverse
       for (int i = 0; i < nodeTypes.length; i++) {
         if (nodeTypes[i].isInstance(n)) {
-          this.statistic.nodeCount[i] ++;
+          this.statistic.nodeCount[i]++;
 
           if (i >= 1) {
-            ite = ((ArtNode)n).getChildren();
+            ite = ((ArtNode) n).getChildren();
             int j = 0;
             while (ite.hasNext()) {
               nodes.add(ite.next());
               j++;
             }
-            typePlenitude[i].add(j*1F);
+            typePlenitude[i].add(j * 1F);
 
             aNode = (ArtNode) n;
             if (aNode.partial_len > 0) {
@@ -169,11 +164,11 @@ public class ArtTree extends ChildPtr implements Serializable {
     int[] divs = {0, 4, 16, 48, 256};
     for (int i = 1; i < 5; i++) {
       int finalI = i;
-      statistic.plenitude[i] = typePlenitude[i].stream().map(e -> e/divs[finalI]).collect(Collectors.toList());
+      statistic.plenitude[i] =
+          typePlenitude[i].stream().map(e -> e / divs[finalI]).collect(Collectors.toList());
       statistic.boxPlotData.add(BoxPlotData.calculateBoxPlotData(statistic.plenitude[i]));
     }
   }
-
 
   public int totalNodes() {
     Deque<Node> nodes = new ArrayDeque<>();

@@ -37,7 +37,7 @@ public class PathTxtLoader {
   }
 
   public static String removeBacktick(String src) {
-    return src. replace("`", "");
+    return src.replace("`", "");
   }
 
   public static String[] getNodes(String src) {

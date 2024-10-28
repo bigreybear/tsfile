@@ -18,13 +18,12 @@
  */
 package ankur.art;
 
-import org.apache.tsfile.utils.ReadWriteIOUtils;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 // NOTE keys set in corresponding slot, children set at first null slot
 class ArtNode48 extends ArtNode {
@@ -35,7 +34,6 @@ class ArtNode48 extends ArtNode {
   public Node[] children = new Node[48];
 
   // region Mod Methods
-
 
   @Override
   public int compactedSize() {

@@ -1,12 +1,22 @@
 package seart;
 
-import java.nio.charset.StandardCharsets;
+import static seart.SEARTNode.ubyte;
 
-public class Node256 extends SEARTNode {
+import java.nio.charset.StandardCharsets;
+import org.openjdk.jol.info.ClassLayout;
+
+public class Node256 implements ISEARTNode {
+  byte[] partialKey;
+  ISEARTNode[] ptrs;
   byte ptrNum = 0;
 
-  public Node256() {
+  public Node256(int pNum) {
     ptrs = new ISEARTNode[256];
+    ptrNum = (byte) pNum;
+  }
+
+  public Node256() {
+    this(0);
   }
 
   public Node256(Node48 n48) {
@@ -23,17 +33,18 @@ public class Node256 extends SEARTNode {
 
   @Override
   public int getPtrIdxByByte(byte k) {
-    return ptrs[k] == null ? -k-1 : k;
+    return ptrs[ubyte(k)] == null ? -ubyte(k) - 1 : ubyte(k);
   }
 
   @Override
-  public ISEARTNode insertWithExpand(byte[] insKey, int ofs, int[] res, ISEARTNode child) {
+  public ISEARTNode insert(byte key, int insPos, ISEARTNode child) {
     // todo remove redundant guardian in release ver.
-    if (ptrs[insKey[ofs + res[0]]] != null) {
-      throw new RuntimeException("Inserting duplicate key:" + (char) insKey[ofs + res[0]] + "," + child);
+    if (ptrs[ubyte(key)] != null) {
+      throw new RuntimeException(
+          "Inserting duplicate key:" + (char) key + "," + child);
     }
 
-    ptrs[insKey[ofs + res[0]]] = child;
+    ptrs[ubyte(key)] = child;
     ptrNum++;
     return null;
   }
@@ -41,17 +52,17 @@ public class Node256 extends SEARTNode {
   @Override
   public void insertOnByteMap(byte bk, ISEARTNode child) {
     // todo remove redundant guardian in release ver.
-    if (ptrs[bk] != null) {
-      throw new RuntimeException("Inserting duplicate key:" + (char) bk + "," + ptrs[bk]);
+    if (ptrs[ubyte(bk)] != null) {
+      throw new RuntimeException("Inserting duplicate key:" + (char) bk + "," + ptrs[ubyte(bk)]);
     }
 
-    ptrs[bk] = child;
+    ptrs[ubyte(bk)] = child;
     ptrNum++;
   }
 
   @Override
   public byte[] getKeys() {
-    byte[] res = new byte[ptrNum];
+    byte[] res = new byte[ubyte(ptrNum)];
     int resNum = 0;
     for (int i = 0; ; i++) {
       if (ptrs[i] != null) {
@@ -59,10 +70,35 @@ public class Node256 extends SEARTNode {
         resNum++;
       }
 
-      if (resNum == ptrNum) {
+      if (resNum == ubyte(ptrNum)) {
         return res;
       }
     }
+  }
+
+  @Override
+  public byte[] getPartialKey() {
+    return partialKey;
+  }
+
+  @Override
+  public void reassignPartialKey(byte[] pk) {
+    partialKey = pk;
+  }
+
+  @Override
+  public ISEARTNode getChildByPtrIndex(int idx) {
+    return ptrs[idx];
+  }
+
+  @Override
+  public final ISEARTNode getChildByKeyByte(byte b) {
+    return ptrs[ubyte(b)];
+  }
+
+  @Override
+  public void setChildPtrByIndex(int idx, ISEARTNode n) {
+    ptrs[idx] = n;
   }
 
   @Override
@@ -76,5 +112,13 @@ public class Node256 extends SEARTNode {
       }
     }
     return new String(partialKey, StandardCharsets.UTF_8) + ":{" + builder + "}";
+  }
+
+  public static void main(String[] args) {
+    Node256 node256 = new Node256();
+    for (int i = 0; i < 256; i++) {
+      node256.ptrs[i] = node256;
+    }
+    System.out.println(ClassLayout.parseInstance(node256).toPrintable());
   }
 }

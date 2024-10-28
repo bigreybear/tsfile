@@ -1,11 +1,9 @@
 package mtree;
 
-public class MLeaf implements IMNode{
+public class MLeaf implements IMNode {
   long value;
 
-  public MLeaf() {
-
-  }
+  public MLeaf() {}
 
   public MLeaf(long val) {
     value = val;

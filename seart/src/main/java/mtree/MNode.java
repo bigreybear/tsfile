@@ -1,18 +1,12 @@
 package mtree;
 
-import seart.SeriesIndexTree;
-
-import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class MNode implements IMNode {
   Map<String, IMNode> children;
 
-  public MNode() {
-  }
+  public MNode() {}
 
   public boolean hasChild(String name) {
     return children != null && children.containsKey(name);
@@ -27,7 +21,6 @@ public class MNode implements IMNode {
   public IMNode getChild(String name) {
     return children == null ? null : children.getOrDefault(name, null);
   }
-
 
   @Override
   public void addChild(String name, IMNode child) {

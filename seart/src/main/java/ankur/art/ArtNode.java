@@ -18,8 +18,6 @@
  */
 package ankur.art;
 
-import org.apache.tsfile.utils.ReadWriteIOUtils;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -27,23 +25,21 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * Note(zx) Let us define the most important concepts
  *
- * Key is the dividing byte that holds a corresponding pointer, either to a node or the value.
+ * <p>Key is the dividing byte that holds a corresponding pointer, either to a node or the value.
  *
- * Partial (key) in this class represents the prefix in ART paper, which is concatenated by single-child keys up the
- *  holding node.
- * The most space-efficient is to allocate exact same bytes as needed, however this may incur more allocation when
- *  the partial key changes.
- * There are two more alternative approaches as follows:
- *  1) allocate fixed length bytes, with a valid length indicator, i.e., an extra byte;
- *  2) keep a pointer in nodes, pointing to the actual partial key.
+ * <p>Partial (key) in this class represents the prefix in ART paper, which is concatenated by
+ * single-child keys up the holding node. The most space-efficient is to allocate exact same bytes
+ * as needed, however this may incur more allocation when the partial key changes. There are two
+ * more alternative approaches as follows: 1) allocate fixed length bytes, with a valid length
+ * indicator, i.e., an extra byte; 2) keep a pointer in nodes, pointing to the actual partial key.
  *
- * Compacted size for sequentially piling up nodes, as serialization or bytes array size, may suffer false share.
- * Aligned size for each node aligns with cache line, and then piles up.
- *
+ * <p>Compacted size for sequentially piling up nodes, as serialization or bytes array size, may
+ * suffer false share. Aligned size for each node aligns with cache line, and then piles up.
  */
 public abstract class ArtNode extends Node {
   public int num_children = 0;

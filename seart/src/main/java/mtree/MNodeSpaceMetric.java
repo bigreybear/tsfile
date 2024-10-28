@@ -47,5 +47,4 @@ public class MNodeSpaceMetric {
 
     return builder.toString();
   }
-
 }

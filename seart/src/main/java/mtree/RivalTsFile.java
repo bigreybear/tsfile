@@ -1,13 +1,5 @@
 package mtree;
 
-import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.enums.CompressionType;
-import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.read.common.Path;
-import org.apache.tsfile.write.TsFileWriter;
-import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.MeasurementSchema;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -16,6 +8,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.write.TsFileWriter;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 public class RivalTsFile {
 
@@ -54,7 +53,9 @@ public class RivalTsFile {
 
       schemaList.clear();
       for (String s : sens) {
-        schemaList.add(new MeasurementSchema(s, TSDataType.INT32, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED));
+        schemaList.add(
+            new MeasurementSchema(
+                s, TSDataType.INT32, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED));
       }
 
       tablet = new Tablet(dev, schemaList, 100);

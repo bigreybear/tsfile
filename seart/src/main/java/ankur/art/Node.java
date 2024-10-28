@@ -18,13 +18,12 @@
  */
 package ankur.art;
 
-import org.apache.tsfile.utils.ReadWriteIOUtils;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 public abstract class Node implements Serializable {
   static final int MAX_PREFIX_LEN = 128;
@@ -138,7 +137,7 @@ public abstract class Node implements Serializable {
   }
 
   // size if implemented in c/c++
-  abstract public int compactedSize();
+  public abstract int compactedSize();
 
   int refcount;
 }

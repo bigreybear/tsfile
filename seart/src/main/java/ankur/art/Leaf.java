@@ -18,11 +18,10 @@
  */
 package ankur.art;
 
-import org.apache.tsfile.utils.ReadWriteIOUtils;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 public class Leaf extends Node {
   public static int count;
@@ -31,7 +30,6 @@ public class Leaf extends Node {
   public static byte type = 0;
 
   // region Mod Methods
-
 
   @Override
   public boolean isLeaf() {
