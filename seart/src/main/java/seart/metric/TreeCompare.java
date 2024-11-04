@@ -212,7 +212,7 @@ public class TreeCompare {
     param += " search";
     param += " check";
     param += " persist";
-    // param += " build";
+    param += " build";
     // param += " measure";
     return param.split(" ");
   }

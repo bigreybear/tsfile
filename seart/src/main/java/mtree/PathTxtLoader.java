@@ -7,7 +7,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class PathTxtLoader {
+class PathTxtLoader {
 
   public static String FILE_PATH = "mtreedata/text_series.txt";
 
@@ -45,12 +45,5 @@ public class PathTxtLoader {
   }
 
   public static void main(String[] args) throws IOException {
-    PathTxtLoader loader = new PathTxtLoader("mtreedata/text_series.txt");
-    List<String> bat;
-    while (!(bat = loader.getLines()).isEmpty()) {
-      for (String p : bat) {
-        System.out.println(PathTxtLoader.removeBacktick(p));
-      }
-    }
   }
 }

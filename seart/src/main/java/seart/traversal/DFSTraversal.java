@@ -16,7 +16,8 @@ import seart.SEARTree;
 public class DFSTraversal implements Iterator<ISEARTNode> {
   ISEARTNode root;
 
-  Deque<String> trace = new ArrayDeque<>();
+  Deque<byte[]> traceBytes = new ArrayDeque<>();
+  int tbl = 0;  // Trace Byte Length
   Deque<KeyedNode> stack = new ArrayDeque<>();
 
   public DFSTraversal(ISEARTNode node) {
@@ -26,19 +27,22 @@ public class DFSTraversal implements Iterator<ISEARTNode> {
       stack.addLast(new KeyedNode(ks[i], root.getChildByKeyByte(ks[i])));
     }
     if (root.getPartialKey() != null) {
-      trace.addLast(new String(root.getPartialKey(), StandardCharsets.UTF_8));
+      traceBytes.addLast(root.getPartialKey());
+      tbl = root.getPartialKey().length;
     }
   }
 
   public void reset() {
-    trace.clear();
+    traceBytes.clear();
+    tbl = 0;
     stack.clear();
     byte[] ks = root.getKeys();
     for (int i = ks.length - 1; i >= 0; i--) {
       stack.addLast(new KeyedNode(ks[i], root.getChildByKeyByte(ks[i])));
     }
     if (root.getPartialKey() != null) {
-      trace.addLast(new String(root.getPartialKey(), StandardCharsets.UTF_8));
+      traceBytes.addLast(root.getPartialKey());
+      tbl = root.getPartialKey().length;
     }
   }
 
@@ -47,44 +51,26 @@ public class DFSTraversal implements Iterator<ISEARTNode> {
   }
 
   public static void printAllPathsInStatic(ISEARTNode root) {
-    DFSTraversal dfsTraversal = new DFSTraversal(root);
-    Map<Integer, List<String>> templatePaths = new HashMap<>();
-    ISEARTNode node;
-    while (dfsTraversal.hasNext()) {
-      node = dfsTraversal.next();
-      if (node.isLeaf()) {
-        if (node instanceof RefNode) {
-          ISEARTNode t1 = ((RefNode) node).templateRoot;
-          List<String> tb = templatePaths.getOrDefault(t1.hashCode(), null);
-          if (tb == null) {
-            tb = getAllPathsWithoutTemplate(t1);
-            templatePaths.put(t1.hashCode(), tb);
-          }
-          for (String s : tb) {
-            System.out.println(dfsTraversal.getCurrentPath() + s);
-          }
-        } else {
-          System.out.println(dfsTraversal.getCurrentPath());
-        }
-      }
+    for (String s : getAllPaths(root)) {
+      System.out.println(s);
     }
   }
 
   public void printAllPaths() {
-    Map<Integer, List<String>> templatePaths = new HashMap<>();
+    Map<Integer, List<byte[]>> templatePathBytes = new HashMap<>();
     ISEARTNode node;
     while (hasNext()) {
       node = next();
       if (node.isLeaf()) {
         if (node instanceof RefNode) {
           ISEARTNode t1 = ((RefNode) node).templateRoot;
-          List<String> tb = templatePaths.getOrDefault(t1.hashCode(), null);
-          if (tb == null) {
-            tb = getAllPathsWithoutTemplate(t1);
-            templatePaths.put(t1.hashCode(), tb);
+          List<byte[]> pb = templatePathBytes.getOrDefault(t1.hashCode(), null);
+          if (pb == null) {
+            pb = getAllPathsBytesWithoutTemplate(t1);
+            templatePathBytes.put(t1.hashCode(), pb);
           }
-          for (String s : tb) {
-            System.out.println(getCurrentPath() + s);
+          for (byte[] ba : pb) {
+            System.out.println(new String(conBytes(getCurrentPathBytes(), ba), StandardCharsets.UTF_8));
           }
         } else {
           System.out.println(getCurrentPath());
@@ -96,20 +82,20 @@ public class DFSTraversal implements Iterator<ISEARTNode> {
   public static List<String> getAllPaths(ISEARTNode root) {
     List<String> res = new ArrayList<>();
     DFSTraversal dfsTraversal = new DFSTraversal(root);
-    Map<Integer, List<String>> templatePaths = new HashMap<>();
+    Map<Integer, List<byte[]>> templatePathBytes = new HashMap<>();
     ISEARTNode node;
     while (dfsTraversal.hasNext()) {
       node = dfsTraversal.next();
       if (node.isLeaf()) {
         if (node instanceof RefNode) {
           ISEARTNode t1 = ((RefNode) node).templateRoot;
-          List<String> tb = templatePaths.getOrDefault(t1.hashCode(), null);
-          if (tb == null) {
-            tb = getAllPathsWithoutTemplate(t1);
-            templatePaths.put(t1.hashCode(), tb);
+          List<byte[]> pathBytes = templatePathBytes.getOrDefault(t1.hashCode(), null);
+          if (pathBytes == null) {
+            pathBytes = getAllPathsBytesWithoutTemplate(t1);
+            templatePathBytes.put(t1.hashCode(), pathBytes);
           }
-          for (String s : tb) {
-            res.add(dfsTraversal.getCurrentPath() + s);
+          for (byte[] ba : pathBytes) {
+            res.add(new String(conBytes(dfsTraversal.getCurrentPathBytes(), ba), StandardCharsets.UTF_8));
           }
         } else {
           res.add(dfsTraversal.getCurrentPath());
@@ -120,9 +106,9 @@ public class DFSTraversal implements Iterator<ISEARTNode> {
   }
 
   // note template paths have already contained separating dot after the transaction path.
-  private static List<String> getAllPathsWithoutTemplate(ISEARTNode root) {
+  private static List<byte[]> getAllPathsBytesWithoutTemplate(ISEARTNode root) {
     DFSTraversal dfsTraversal = new DFSTraversal(root);
-    List<String> res = new ArrayList<>();
+    List<byte[]> res = new ArrayList<>();
     ISEARTNode node;
     while (dfsTraversal.hasNext()) {
       node = dfsTraversal.next();
@@ -131,7 +117,7 @@ public class DFSTraversal implements Iterator<ISEARTNode> {
       }
 
       if (node.isLeaf()) {
-        res.add(dfsTraversal.getCurrentPath());
+        res.add(dfsTraversal.getCurrentPathBytes());
       }
     }
     return res;
@@ -149,7 +135,8 @@ public class DFSTraversal implements Iterator<ISEARTNode> {
     while (!stack.isEmpty()) {
       if (stack.getLast().key == null) {
         stack.removeLast();
-        trace.removeLast();
+        tbl -= traceBytes.getLast().length;
+        traceBytes.removeLast();
         continue;
       }
       return true;
@@ -170,7 +157,16 @@ public class DFSTraversal implements Iterator<ISEARTNode> {
             + (cur.node.getPartialKey() == null
                 ? ""
                 : new String(cur.node.getPartialKey(), StandardCharsets.UTF_8));
-    trace.addLast(label);
+    byte[] lb;
+    if (cur.node.getPartialKey() == null) {
+      lb = new byte[] {cur.key};
+    } else {
+      lb = new byte[1 + (cur.node.getPartialKey() == null ? 0 : cur.node.getPartialKey().length)];
+      lb[0] = cur.key;
+      System.arraycopy(cur.node.getPartialKey(), 0, lb, 1, cur.node.getPartialKey().length);
+    }
+    traceBytes.addLast(lb);
+    tbl += lb.length;
     stack.addLast(new KeyedNode(null, null));
 
     if (cur.node.isLeaf()) {
@@ -185,7 +181,34 @@ public class DFSTraversal implements Iterator<ISEARTNode> {
   }
 
   public String getCurrentPath() {
-    return String.join("", trace);
+    return new String(getCurrentPathBytes(), StandardCharsets.UTF_8);
+  }
+
+  public byte[] getCurrentPathBytes() {
+    byte[] res = new byte[tbl];
+    int ofs = 0;
+    for (byte[] slice : traceBytes) {
+      System.arraycopy(slice, 0, res, ofs, slice.length);
+      ofs += slice.length;
+    }
+    return res;
+  }
+
+  // concatenate byte arrays
+  public static byte[] conBytes(byte[] ...bal) {
+    int len = 0;
+    for (byte[] ba: bal) {
+      len += ba.length;
+    }
+
+    byte[] res = new byte[len];
+    len = 0;
+    for (byte[] ba: bal) {
+      System.arraycopy(ba, 0, res, len, ba.length);
+      len += ba.length;
+    }
+
+    return res;
   }
 
   /** To support traversal as a pair-object. */

@@ -4,8 +4,10 @@ import static seart.ISEARTNode.getMatchLength;
 
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Deque;
 import java.util.List;
 import seart.exception.PrefixPropertyException;
 import seart.traversal.DFSTraversal;
@@ -275,6 +277,39 @@ public class SEARTree implements SeriesIndexTree, Serializable {
     }
   }
 
+  // region Observer
+
+  public ISEARTNode displayPrefixDesc(String prefix) {
+    return displayPrefixDesc(root, prefix);
+  }
+
+  public static ISEARTNode displayPrefixDesc(ISEARTNode root, String prefix) {
+    byte[] kb = prefix.getBytes(StandardCharsets.UTF_8);
+    Deque<ISEARTNode> trace = new ArrayDeque<>();
+    int ofs = 0, cover = 0;
+    ISEARTNode cur = root;
+
+    while ((cover = getMatchLength(cur.getPartialKey(), kb, ofs)) != 0) {
+      if (cover + ofs == kb.length) {
+        break;
+      }
+
+      if (cover == cur.getPartialKey().length) {
+        trace.addLast(cur);
+        ofs += cover;
+        cur = cur.getChildByKeyByte(kb[ofs]);
+        ofs ++;
+      }
+    }
+
+    for (String dp : DFSTraversal.getAllPaths(cur)) {
+      System.out.println(prefix + dp);
+    }
+    return cur;
+  }
+
+  // endregion
+
   public static void main(String[] args) {
     SEARTree tree = new SEARTree();
     tree.insert("root.sg1.d2.v2".getBytes(StandardCharsets.UTF_8), 1L);
@@ -301,25 +336,8 @@ public class SEARTree implements SeriesIndexTree, Serializable {
     tree.insert("root.sgk.d1.v1".getBytes(StandardCharsets.UTF_8), 7L);
     tree.insert("root.sgl.d1.v1".getBytes(StandardCharsets.UTF_8), 73121L);
 
-    // tree.insert("root.sg8.d1.v12".getBytes(StandardCharsets.UTF_8), 7L);
-    System.out.println(tree);
 
-    List<String> res = DFSTraversal.getAllPaths(tree.root);
-
-    System.out.println(tree.search("root.sgl.d1.v1"));
-    // Traverser.traverseDFS(tree.root, null);
-
-    DFSTraversal dfsTraversal = new DFSTraversal(tree.root);
-    ISEARTNode node;
-    while (dfsTraversal.hasNext()) {
-      node = dfsTraversal.next();
-      if (node.isLeaf()) {
-        // System.out.println(dfsTraversal.getCurrentPath());
-      }
-
-      if (node instanceof Node4) {
-        System.out.println(dfsTraversal.getCurrentPath());
-      }
-    }
+    System.out.println("--------------");
+    displayPrefixDesc(tree.root, "root.sg2");
   }
 }
