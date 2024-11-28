@@ -1,0 +1,6 @@
+maps are embedded in nodes
+
+LNodes for logical Nodes
+SNodes for simple-merged nodes, indeed a LNode with a partial key
+FNodes for fdm nodes, indeed a single ART node (which could point to other type nodes)
+CNodes for cdn nodes, default for 4 diff positions, and related strings

@@ -9,7 +9,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
-public class PathTxtLoader {
+public class PathTxtLoader implements AutoCloseable {
 
   public static String FILE_PATH = "mtreedata/text_series.txt";
 

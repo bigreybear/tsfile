@@ -1,0 +1,17 @@
+1. build hash that can be prefix-extracted
+
+
+
+to improve:
+
+11.29
+1. in jdk8 String uses char[] other than byte[]
+2. 替换和遍历的顺序？会不会影响到
+
+
+// before 1129
+1. choose longest or commonest prefix?
+: see CNodeHelp ValuedPrefixArray, the principle:
+ - the prefix for all, it must be merged
+ - the prefix for a group, evaluate it by the product of the length and sharing cardinality
+2. encode strings in CDM: finished
