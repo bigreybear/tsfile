@@ -347,7 +347,7 @@ public class CNodeHelper {
         .collect(Collectors.groupingByConcurrent(
             arr -> {
               List<Byte> prefix = new ArrayList<>(grpLen);
-              for (int i = start; i < grpLen; i++) {
+              for (int i = start; i < grpLen + start; i++) {
                 prefix.add(arr[i]);
               }
               return prefix;

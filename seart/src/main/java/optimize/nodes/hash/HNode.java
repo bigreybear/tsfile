@@ -16,16 +16,24 @@ public class HNode implements IStaticNode, IInternal {
   public byte[] pk;
   public Map<String, INode> children;
 
+  public HNode() {}
+
+  public HNode(String pk) {
+    this.pk = pk.getBytes(StandardCharsets.UTF_8);
+  }
+
   // 和 lnode 等效替换，所以 string 入参都是 utf 的，内部记 iso 编码的
   @Override
   public INode getChild(String name) {
     byte[] qk = name.getBytes(StandardCharsets.UTF_8);
 
-    for (int i = 0; i < pk.length; i++) {
+    for (int i = 0; pk != null && i < pk.length; i++) {
       if (qk[i] != pk[i]) return null;
     }
 
-    String rs = new String(Arrays.copyOfRange(qk, pk.length, qk.length), StandardCharsets.ISO_8859_1);
+    String rs = pk == null
+        ? name
+        : new String(Arrays.copyOfRange(qk, pk.length, qk.length), StandardCharsets.ISO_8859_1);
     return children.get(rs);
   }
 
