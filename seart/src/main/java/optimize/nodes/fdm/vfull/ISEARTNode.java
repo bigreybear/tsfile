@@ -6,6 +6,11 @@ import java.io.Serializable;
 
 public interface ISEARTNode extends Serializable {
 
+  // fixme: hotfix
+  default SEARTNode getPrefixed(ISEARTNode leaf) {
+    throw new UnsupportedOperationException();
+  }
+
   // region Common
   byte[] getPartialKey();
 

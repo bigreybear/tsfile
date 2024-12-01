@@ -20,7 +20,15 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
 
 public class CNodeHelper {
-  public static final int POS_SIZE = 44444;
+  public static final int POS_SIZE = 4;
+
+  public static byte[] extractBytes(byte[] arr, int[] pos) {
+    byte[] res = new byte[pos.length];
+    for (int i = 0 ; i < pos.length; i++) {
+      res[i] = arr.length > i ? arr[pos[i]] : 0;
+    }
+    return res;
+  }
 
   // region Basics
   public static byte[][] extBytes(byte[][] rsc, int[] pos) {
@@ -163,6 +171,10 @@ public class CNodeHelper {
         .map(s -> s.getBytes(StandardCharsets.UTF_8))
         .collect(Collectors.toList());
 
+    return getBranchingPosParallel(byteKeys, limit);
+  }
+
+  public static Set<Integer> getBranchingPosParallel(List<byte[]> byteKeys, int limit) {
     Set<Integer> positions = ConcurrentHashMap.newKeySet();
     Queue<List<byte[]>> cur = new ConcurrentLinkedQueue<>();
 
@@ -238,6 +250,8 @@ public class CNodeHelper {
     if (arrays == null || arrays.length == 0) {
       return 0;
     }
+
+    if (arrays.length == 1) return arrays[0].length;
 
     int minLength = Arrays.stream(arrays)
         .mapToInt(arr -> arr.length)
@@ -406,12 +420,11 @@ public class CNodeHelper {
   }
 
   public static int bytes2Int(byte[] b) {
-    assert b.length == 4;
-
-    return ((b[0] & 0xFF) << 24) |
-        ((b[1] & 0xFF) << 16) |
-        ((b[2] & 0xFF) << 8)  |
-        (b[3] & 0xFF);
+    // higher bits first
+    return (( (b.length >= 1 ? b[0] : 0) & 0xFF) << 24) |
+        (((b.length >= 2 ? b[1] : 0) & 0xFF) << 16) |
+        (((b.length >= 3 ? b[2] : 0) & 0xFF) << 8)  |
+        ((b.length >= 4 ? b[3] : 0) & 0xFF);
   }
 
   public static byte[] int2Bytes(int i) {

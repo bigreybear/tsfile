@@ -25,10 +25,7 @@ public class TSTree {
     for (int i = 1; i < path.length; i++) {
 
       cur = cur.getChild(path[i]);
-      // fixme remove debug line
-      if (cur == null) return p.hashCode();
-
-      if (cur instanceof ILeaf) break;
+      if (cur == null) throw new RuntimeException("Key not found");
     }
     return cur.getValue();
   }

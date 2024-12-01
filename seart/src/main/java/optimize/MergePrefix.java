@@ -1,14 +1,18 @@
 package optimize;
 
 import optimize.nodes.INode;
-import optimize.nodes.cdm.CNodeHelper;
+import optimize.nodes.fdm.FLeaf;
+import optimize.nodes.fdm.FNode16;
+import optimize.nodes.fdm.FNode256;
+import optimize.nodes.fdm.FNode48;
+import optimize.nodes.fdm.FNode4;
+import optimize.nodes.fdm.IFNode;
 import optimize.nodes.fdm.VirtualFNode;
 import optimize.nodes.hash.HNode;
 import optimize.nodes.hash.PrefixedHNode;
-import org.eclipse.collections.impl.list.fixed.ArrayAdapter;
+import optimize.nodes.logic.LLeaf;
 import org.openjdk.jol.info.ClassLayout;
 import org.openjdk.jol.info.GraphLayout;
-import seart.exception.PrefixPropertyException;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -19,9 +23,10 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import static optimize.CDMPrefixMerge.recNextMergeOnCDM;
 import static optimize.Evaluator.MergeStrategy;
 import static optimize.Evaluator.MapType;
-import static optimize.nodes.cdm.CNodeHelper.evaluatePrefixes;
+import static optimize.Evaluator.calcSpace;
 import static optimize.nodes.cdm.CNodeHelper.findLCPLength;
 import static optimize.nodes.cdm.CNodeHelper.groupPrefixes;
 import static optimize.nodes.cdm.CNodeHelper.strings2ByteArrays;
@@ -38,93 +43,184 @@ public class MergePrefix {
         occ.get(), ttlLen.get(), inc.get()));
   }
 
-  public static INode initNodeWithPartialKey(byte[] key, int len, MapType mapType, INode prefixedChild) {
-    if (prefixedChild == null) {
-      HNode res = new HNode();
-      res.pk = Arrays.copyOfRange(key, 0, len);
-      return res;
+  public static INode initNodeWithPartialKey(byte[] key, int preLen, int len, MapType mapType,
+                                             INode prefixedChild,
+                                             int branchingNum) {
+    switch (mapType) {
+      case HASH: {
+        if (prefixedChild == null) {
+          HNode res = new HNode();
+          res.pk = len == 0 ? null : Arrays.copyOfRange(key, preLen, len + preLen);
+          return res;
+        }
+        PrefixedHNode res = new PrefixedHNode();
+        res.pk = Arrays.copyOfRange(key, preLen, len + preLen);
+        res.prePtr = prefixedChild;
+        return res;
+      }
+      case FDM: {
+        return null;
+      }
     }
-    PrefixedHNode res = new PrefixedHNode();
-    res.prePtr = prefixedChild;
-    return res;
+
+    return null;
   }
 
-  public static boolean evaluateMerge(ValuedPrefixArray vpa, int h) {
-    return h > 0;
+  public static IFNode generateFNode(int need) {
+    if (need <=4) return new FNode4();
+    else if (need <=16) return new FNode16();
+    else if (need <=48) return new FNode48();
+    else return new FNode256();
   }
 
+  // todo merge with hash ones
+  public static INode recNextMergeOnFDM(INode oriNode, byte[][] keys, int preLen,
+                                   MergeStrategy ms, MapType mt, int height) {
+    if (ms.equals(MergeStrategy.SIMPLE) || ms.equals(MergeStrategy.PARTIAL)) {
+      throw new UnsupportedOperationException();
+    }
 
+    if (keys.length == 1) {
+      IFNode leaf = new FLeaf();
+      leaf.setValue(oriNode.getChild(new String(keys[0], StandardCharsets.UTF_8)));
+      leaf.setPartialKey(Arrays.copyOfRange(keys[0], preLen, keys[0].length));
+      return leaf;
+    }
+
+    // get the ptr of 0
+    final int len = findLCPLength(keys, preLen);
+    // find the key exactly IS the common prefix
+    INode prefixedPtr = null;
+    List<byte[]> a = Arrays.stream(keys).filter(e -> e.length == len + preLen)
+        .collect(Collectors.toList());
+    if (!a.isEmpty()) {
+      prefixedPtr = oriNode.getChild(new String(a.get(0), StandardCharsets.UTF_8));
+    }
+
+    // the prefixed key not EXCLUDED
+    List<ValuedPrefixArray> groupedPrefix = groupPrefixes(keys, len + preLen, 1);
+    IFNode repNode = generateFNode(groupedPrefix.size() + (prefixedPtr != null ? 1 : 0));
+    if (prefixedPtr != null) {
+      FLeaf leaf = new FLeaf();
+      leaf.value = prefixedPtr;
+      leaf.setPartialKey(Arrays.copyOfRange(a.get(0), preLen + len, a.get(0).length));
+      repNode.add((byte) 0, leaf);
+    }
+    if (len != 0) {
+      repNode.setPartialKey(Arrays.copyOfRange(keys[0], preLen, preLen + len));
+    }
+
+    for (ValuedPrefixArray vpa : groupedPrefix) {
+      repNode.add(vpa.bytes[0][len+preLen], recNextMergeOnFDM(
+          oriNode, vpa.bytes, len + preLen + 1, ms, mt, height
+      ));
+    }
+    return repNode;
+  }
 
   /**
    * PRIMARY; enter with preLen=0
    * @param oriNode the logical node, containing the original key-node mapping
    * @param preLen entry for 0
+   * @param height the logical distance from the whole root
    */
-  public static INode recNextMerge(INode oriNode, byte[][] keys, int preLen,
-                                   MergeStrategy ms, MapType mt, int height) {
-    // fixme height is for Logical Tree which is pretty rough
+  public static INode recNextMergeOnHash(INode oriNode, byte[][] keys, int preLen,
+                                         MergeStrategy ms, MapType mt, int height) {
 
-    int len = findLCPLength(keys);
+    final int len = findLCPLength(keys, preLen);
 
-    // filter prefixed key
-    List<byte[]> prefixedKey = Arrays.stream(keys).filter(e -> e.length == len).collect(Collectors.toList());
-    INode pNode = prefixedKey.size() > 0
-        ? oriNode.getChild(new String(prefixedKey.get(0), StandardCharsets.UTF_8))
-        : null;
+    if (len == 0) {
+      // simple only extract direct common prefix which is none here
+      if (ms.equals(MergeStrategy.SIMPLE)) return oriNode;
+      // where partial and all strategy diff from simple
+
+      // todo remove debug
+      // System.out.println("DIFF");
+    }
+
+    // find the key exactly IS the common prefix
+    INode preNode = null;
+    if (preLen + len != 0) {
+      List<byte[]> a = Arrays.stream(keys).filter(e -> e.length == len + preLen)
+          .collect(Collectors.toList());
+      if (!a.isEmpty()) {
+        preNode = oriNode.getChild(new String(a.get(0), StandardCharsets.UTF_8));
+      }
+    }
 
     // the node is now merging
-    // fixme how thread knows the key if there is a partial merge?
-    //  Ans: use the first diff byte and check with partial key?
-    final INode megNode = initNodeWithPartialKey(keys[0], len, mt, pNode);
-    // todo handle the prefixed key, it should not join later process
+    // todo how thread knows the key if there is a partial merge, for hash?
+    //  the ans is, query twice,
+    //  first for the remaining, then for first byte
+    //  Anyway to improve?
+    // the node must replace the original one
+    final INode repNode = initNodeWithPartialKey(keys[0], preLen, len, mt, preNode, 0);
 
-    List<ValuedPrefixArray> groupedPrefix = groupPrefixes(keys, preLen, 1);
+    if (ms.equals(MergeStrategy.SIMPLE)) {
+      // all keys longer than prefix will be added AS IS
+      List<byte[]> longerKeys = Arrays.stream(keys).filter(e -> e.length > len + preLen).collect(Collectors.toList());
+      for (byte[] nk : longerKeys) {
+        repNode.addChild(new String(Arrays.copyOfRange(nk, preLen + len, nk.length), StandardCharsets.ISO_8859_1),
+            oriNode.getChild(new String(nk, StandardCharsets.UTF_8)));
+      }
+      occ.incrementAndGet();
+      ttlLen.addAndGet(longerKeys.size() * len);
+      return repNode;
+    }
 
+    // for partial or all, recursively group keys after prefix and merge again
+    List<ValuedPrefixArray> groupedPrefix = groupPrefixes(keys, len + preLen, 1);
+    boolean eva;
     for (ValuedPrefixArray vpa : groupedPrefix) {
-      if (evaluateMerge(vpa, height) && vpa.bytes.length > 1) {
-        final INode recNode = recNextMerge(oriNode, vpa.bytes, preLen + vpa.len,
-            ms, mt, height);
+      if (( (eva = Evaluator.evaluateMerge(vpa, preLen, height, keys.length, mt))
+          || ms.equals(MergeStrategy.FULL)) && vpa.bytes.length > 1) {
+        // when to execute: Full merge or evaluated worthy, and shared by more than ONE key
 
+        occ.incrementAndGet();
+        ttlLen.addAndGet(vpa.prd);
+        final INode recNode = recNextMergeOnHash(oriNode, vpa.bytes, len + preLen + 1,
+            ms, mt, height);
         // add the node generated in rec to the current node
-        megNode.addChild(
+        repNode.addChild(
             new String(
-                Arrays.copyOfRange(vpa.bytes[0], preLen, preLen + 1 /* previously: vpa.len, but would dup with the pk on descendant*/ ),
+                // index by first byte after common current prefix (len+preLen)
+                Arrays.copyOfRange(vpa.bytes[0], len + preLen, len + preLen + 1 /* previously: vpa.len, but would dup with the pk on descendant*/ ),
                 StandardCharsets.ISO_8859_1),
             recNode
         );
       } else {
-
         // go-through to the no-branching child
         for (byte[] k : vpa.bytes) {
-          megNode.addChild(
-              new String(Arrays.copyOfRange(k, preLen, k.length), StandardCharsets.ISO_8859_1),
+          repNode.addChild(
+              new String(Arrays.copyOfRange(k, preLen + len, k.length), StandardCharsets.ISO_8859_1),
               oriNode.getChild(new String(k, StandardCharsets.UTF_8))
           );
         }
       }
     }
-    return megNode;
+    return repNode;
   }
 
-  // public static void testSpace(String[] args) {
+   // public static void testRecNextMerge(String[] args) {
   public static void main(String[] args) {
-    
-  }
-
-   public static void testRecNextMerge(String[] args) {
-//  public static void main(String[] args) {
-    HNode n1 = new HNode(), n2 = new HNode("n2"), n3 = new HNode("n3"), n4 = new HNode("n4");
+    HNode n1 = new HNode();
     byte[][] keys = new byte[][] {
         "aaabcg".getBytes(StandardCharsets.UTF_8),
         "aaabc".getBytes(StandardCharsets.UTF_8),
+        "aaabcgxxab".getBytes(StandardCharsets.UTF_8),
+        "aaabcgxxdb".getBytes(StandardCharsets.UTF_8),
         "edf".getBytes(StandardCharsets.UTF_8),
     };
 
-    n1.setChild(new String(keys[0], StandardCharsets.UTF_8), n2);
-    n1.setChild(new String(keys[1], StandardCharsets.UTF_8), n3);
-    n1.setChild(new String(keys[2], StandardCharsets.UTF_8), n4);
+    for (byte[] k : keys) {
+      n1.setChild(new String(k, StandardCharsets.UTF_8), new LLeaf(k.length));
+    }
 
-    INode res = recNextMerge(n1, keys, 0, MergeStrategy.FULL, MapType.HASH, 1);
+    // INode res = recNextMergeOnHash(n1, keys, 0, MergeStrategy.PARTIAL, MapType.HASH, 1);
+    INode res = recNextMergeOnFDM(n1, keys, 0, MergeStrategy.FULL, MapType.FDM, 1);
+    System.out.println(GraphLayout.parseInstance(res).totalSize());
+    reportMergeStatus();
+    INode a = res.getChild("aaabcgxxab");
     System.out.println("HELLO");
   }
 
@@ -163,36 +259,20 @@ public class MergePrefix {
   }
 
   public static final List<String> dupPaths = new ArrayList<>();
-  public static void FDMFull(TSTree tree) {
-    tree.traversePreOrder((par, key, cur, stk) -> {
+  public static void mergeWithFDM(TSTree tree) {
+    tree.traversePostOrderRec((par, key, cur, stk) -> {
         List<String> keys = cur.getKeys();
-        if (keys != null && keys.size() > 1) {
+        if (keys != null && keys.size() > 0) {
           // byte[][] codedKeys = strings2ByteArrays(keys);
           // int len = findLCPLength(codedKeys);
           // if (len == 0) return;
 
           VirtualFNode vfnode = new VirtualFNode();
-          VirtualFNode virtualFNode = new VirtualFNode(); // to measure net space
           occ.incrementAndGet();
 
           for (int i = 0 ; i <keys.size(); i++) {
-            try {
-              vfnode.addChild(keys.get(i), cur.getChild(keys.get(i)));
-            } catch (PrefixPropertyException e) {
-              dupPaths.add(keys.get(i));
-            }
+            vfnode.addChild(keys.get(i), cur.getChild(keys.get(i)));
           }
-
-
-          for (int i = 0 ; i <keys.size(); i++) {
-            try {
-              virtualFNode.addChild(keys.get(i), null);
-            } catch (PrefixPropertyException e) {
-              dupPaths.add(keys.get(i));
-            }
-          }
-
-          inc.addAndGet((int) GraphLayout.parseInstance(virtualFNode).totalSize());
 
           if (par != null) {
             par.replace(key, vfnode);
@@ -200,34 +280,70 @@ public class MergePrefix {
         }
     });
 
-    System.out.println("Total Dup Str len" + dupPaths.stream().mapToInt(String::length).sum());
     reportMergeStatus();
   }
 
   public static void mergePrefixes(TSTree tree, MapType mt, MergeStrategy ms) {
     switch (mt) {
       case CDM:
-        switch (ms) {
-          case FULL:
-          case SIMPLE:
-          case PARTIAL:
-        }
+        tree.traversePostOrderRec((par, key, cur, stk) -> {
+          List<String> keyList = null;
+          if (( keyList = cur.getKeys()) == null) {
+            return;
+          }
+          byte[][] keyBytes = strings2ByteArrays(keyList);
+
+          INode n2 = recNextMergeOnCDM(cur, keyBytes, 0, ms, mt, stk.size());
+
+          if (n2 != cur) {
+            if (par == null) {
+              tree.root = n2;
+            } else {
+              par.replace(key, n2);
+            }
+          }
+        });
+        reportMergeStatus();
+        return;
       case FDM:
-        switch (ms) {
-          case FULL:
-            FDMFull(tree);
+        tree.traversePostOrderRec((par, key, cur, stk) -> {
+          List<String> keyList = null;
+          if (( keyList = cur.getKeys()) == null) {
             return;
-          case SIMPLE:
-          case PARTIAL:
-        }
+          }
+          byte[][] keyBytes = strings2ByteArrays(keyList);
+
+          INode n2 = recNextMergeOnFDM(cur, keyBytes, 0, ms, mt, stk.size());
+
+          if (n2 != cur) {
+            if (par == null) {
+              tree.root = n2;
+            } else {
+              par.replace(key, n2);
+            }
+          }
+        });
+        reportMergeStatus();
+        return;
       case HASH:
-        switch (ms) {
-          case FULL:
-          case SIMPLE:
-            hashSimple(tree);
+        tree.traversePostOrderRec((par, key, cur, stk) -> {
+          List<String> keyList = null;
+          if (( keyList = cur.getKeys()) == null) {
             return;
-          case PARTIAL:
-        }
+          }
+          byte[][] keyBytes = strings2ByteArrays(keyList);
+
+          INode n2 = recNextMergeOnHash(cur, keyBytes, 0, ms, mt, stk.size());
+
+          if (n2 != cur) {
+            if (par == null) {
+              tree.root = n2;
+            } else {
+              par.replace(key, n2);
+            }
+          }
+        });
+        reportMergeStatus();
     }
   }
 

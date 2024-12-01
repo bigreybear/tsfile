@@ -28,6 +28,16 @@ public class Node4 extends SEARTNode {
   }
 
   @Override
+  public SEARTNode getPrefixed(ISEARTNode leaf) {
+    Node4Prefixed n4p = new Node4Prefixed();
+    System.arraycopy(keys, 0, n4p.keys, 0, keys.length);
+    System.arraycopy(ptrs, 0, n4p.ptrs, 0, ptrs.length);
+    n4p.partialKey = partialKey;
+    n4p.prefixedPtr = leaf;
+    return n4p;
+  }
+
+  @Override
   public final int getPtrIdxByByte(byte k) {
     int sk = ubyte(k);
     for (int i = 0; i < 4; i++) {

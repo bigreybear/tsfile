@@ -6,6 +6,10 @@ public interface INode {
 
   long getValue(); // only for leaves
 
+  /**
+   * @param name is a segment of the series identifier, may across multiple nodes
+   * @return the result corresponds to the whole nodes
+   */
   INode getChild(String name);
 
   List<INode> getChildren();

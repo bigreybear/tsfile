@@ -42,8 +42,8 @@
     <properties>
         <!-- Note(zx) version for experimental building -->
         <parquet.exp.version>vTsFile</parquet.exp.version>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
         <argLine/>
         <spotless.skip>false</spotless.skip>
         <hadoop.version>3.3.6</hadoop.version>

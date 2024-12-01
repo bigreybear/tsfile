@@ -52,7 +52,7 @@ public class LNode implements INode {
   @Override
   public INode addChild(String name, INode child) {
     if (children == null) {
-      this.children = new HashMap<>(1);
+      this.children = new HashMap<>(1, 1.0f);
     }
 
     if (hasChild(name)) {

@@ -33,6 +33,15 @@ public class Node256 implements ISEARTNode {
   }
 
   @Override
+  public SEARTNode getPrefixed(ISEARTNode leaf) {
+    Node48Prefixed np = new Node48Prefixed();
+    System.arraycopy(ptrs, 0, np.ptrs, 0, ptrs.length);
+    np.partialKey = partialKey;
+    np.prefixedPtr = leaf;
+    return np;
+  }
+
+  @Override
   public int getPtrIdxByByte(byte k) {
     return ptrs[ubyte(k)] == null ? -ubyte(k) - 1 : ubyte(k);
   }

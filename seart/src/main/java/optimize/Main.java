@@ -1,6 +1,7 @@
 package optimize;
 
 import loader.PathTxtLoader;
+import optimize.nodes.cdm.CNodeHelper;
 import optimize.nodes.fdm.vfull.SEARTree;
 import optimize.nodes.logic.LNode;
 import optimize.nodes.hash.HNode;
@@ -68,17 +69,17 @@ public class Main extends MergePrefix {
 
   public static String[] defaultArgs() {
     String res = "";
-    res += " -mt hash";
-    // res += " -mt fdm";
+    // res += " -mt hash";
+    res += " -mt fdm";
     // res += " -mt cdm";
     // res += " -ms full";
-    // res += " -ms partial";
-    res += " -ms simple";
+    res += " -ms partial";
+    // res += " -ms simple";
     res += " -ds bw";
 
-    // res += " -merge";
-    // res += " -latency";
-    res += " -space";
+    res += " -merge";
+    res += " -latency";
+    // res += " -space";
 
     return res.split(" ");
   }
@@ -91,14 +92,21 @@ public class Main extends MergePrefix {
     args = args.length == 0 ? defaultArgs() : args;
     List<String> argList = Arrays.stream(args).distinct().collect(Collectors.toList());
     int argIdx = 0;
-    if ((argIdx = argList.indexOf("-mt")) != -1) {
-      mapType = Evaluator.MapType.valueOf(argList.get(argIdx + 1).toUpperCase());
-    }
     if ((argIdx = argList.indexOf("-ms")) != -1) {
       mergeStrategy = Evaluator.MergeStrategy.valueOf(argList.get(argIdx + 1).toUpperCase());
     }
     if ((argIdx = argList.indexOf("-ds")) != -1) {
       dataSet = DataSet.valueOf(argList.get(argIdx + 1).toUpperCase());
+    }
+    if ((argIdx = argList.indexOf("-mt")) != -1) {
+      mapType = Evaluator.MapType.valueOf(argList.get(argIdx + 1).toUpperCase());
+      if ( mapType.equals(Evaluator.MapType.FDM)) {
+        mergeStrategy = Evaluator.MergeStrategy.FULL;
+      }
+
+      // if (mapType.equals(Evaluator.MapType.CDM) && mergeStrategy.equals()) {
+      //
+      // }
     }
 
     TSTree tree = buildLogicalTree(BW);

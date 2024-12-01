@@ -17,6 +17,16 @@ public class Node16 extends SEARTNode {
     System.arraycopy(n4.ptrs, 0, ptrs, 0, 4);
   }
 
+  @Override
+  public SEARTNode getPrefixed(ISEARTNode leaf) {
+    Node16Prefixed n16p = new Node16Prefixed();
+    System.arraycopy(keys, 0, n16p.keys, 0, keys.length);
+    System.arraycopy(ptrs, 0, n16p.ptrs, 0, ptrs.length);
+    n16p.partialKey = partialKey;
+    n16p.prefixedPtr = leaf;
+    return n16p;
+  }
+
   /** Copy and modify from {@linkplain Arrays#binarySearch}. */
   private static int binarySearchUnsignedByteArray(byte[] a, int fromIndex, int toIndex, byte key) {
     int low = fromIndex;

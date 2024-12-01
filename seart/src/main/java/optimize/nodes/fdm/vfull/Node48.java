@@ -27,6 +27,16 @@ public class Node48 extends SEARTNode {
   }
 
   @Override
+  public SEARTNode getPrefixed(ISEARTNode leaf) {
+    Node48Prefixed np = new Node48Prefixed();
+    System.arraycopy(keys, 0, np.keys, 0, keys.length);
+    System.arraycopy(ptrs, 0, np.ptrs, 0, ptrs.length);
+    np.partialKey = partialKey;
+    np.prefixedPtr = leaf;
+    return np;
+  }
+
+  @Override
   public final int getPtrIdxByByte(byte k) {
     return keys[ubyte(k)] - 1;
   }

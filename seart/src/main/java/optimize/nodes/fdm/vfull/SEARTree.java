@@ -45,7 +45,11 @@ public class SEARTree implements SeriesIndexTree, Serializable {
     while (!curNode.isLeaf()) {
       matLen = getMatchLength(curNode.getPartialKey(), insKey, ofs);
       if (ofs + matLen == insKey.length) {
-        throw new PrefixPropertyException(insKey);
+        // fixme hotfix
+        Leaf l = new Leaf(new byte[0], value);
+        SEARTNode n4p = curNode.getPrefixed(l);
+        return updateRoot(root, parNode, parNodeIdx, n4p);
+        // throw new PrefixPropertyException(insKey);
       }
 
       // if matLen==0 && pk.len != 0: split and create a Node4 at once
@@ -60,6 +64,11 @@ public class SEARTree implements SeriesIndexTree, Serializable {
         parNode = curNode;
         parNodeIdx = nxtPtrIdx;
         curNode = curNode.getChildByPtrIndex(nxtPtrIdx);
+        continue;
+      }
+
+      if (curNode instanceof Prefixed) {
+        curNode = ((Prefixed) curNode).getPrefixedPtr();
         continue;
       }
 
@@ -85,6 +94,21 @@ public class SEARTree implements SeriesIndexTree, Serializable {
     }
 
     matLen = getMatchLength(curNode.getPartialKey(), insKey, ofs);
+
+    // fixme: hotfix: handle prefix-typed
+    if (matLen == curNode.getPartialKey().length && matLen + ofs < insKey.length) {
+      // ins key covered existed key
+      return updateRoot(
+          root, parNode, parNodeIdx, splitPartialKeyForPrefixProperty(insKey, curNode, ofs, matLen, value)
+      );
+    } else if (matLen + ofs == insKey.length && matLen < curNode.getPartialKey().length) {
+      byte k = curNode.getPartialKey()[matLen];
+      Leaf l = new Leaf(new byte[0], value);
+      Node4Prefixed n4p = new Node4Prefixed(new byte[0], k, curNode, l);
+      curNode.reassignPartialKey(Arrays.copyOfRange(curNode.getPartialKey(), 1, curNode.getPartialKey().length));
+      return updateRoot(root, parNode, parNodeIdx, n4p);
+    }
+
     if (matLen < curNode.getPartialKey().length && matLen + ofs < insKey.length) {
       // split partial key
       return updateRoot(
@@ -110,6 +134,28 @@ public class SEARTree implements SeriesIndexTree, Serializable {
     return n4;
   }
 
+  // serve prefix property
+  private static SEARTNode splitPartialKeyForPrefixProperty(
+      byte[] ik, ISEARTNode existedLeaf, int ofs, int overLen, INode value) {
+    // from ofs+overLen+1 for 1 byte as branching key in the new Node4
+    Leaf leaf = new Leaf(Arrays.copyOfRange(ik, ofs + overLen + 1, ik.length), value);
+    byte keyForLoger = ik[ofs + overLen];
+    SEARTNode n4p = new Node4Prefixed(
+        new byte[0],
+        keyForLoger, leaf, existedLeaf);
+
+    // SEARTNode n4 =
+    //     new Node4(
+    //         Arrays.copyOfRange(ik, ofs, ofs + overLen),
+    //         existedLeaf.getPartialKey()[overLen],
+    //         existedLeaf,
+    //         ik[ofs + overLen],
+    //         leaf);
+    // existedLeaf.reassignPartialKey(
+    //     Arrays.copyOfRange(existedLeaf.getPartialKey(), overLen + 1, existedLeaf.getPartialKey().length));
+    return n4p;
+  }
+
   private static ISEARTNode updateRoot(
       final ISEARTNode root, ISEARTNode par, int parIdx, SEARTNode n4) {
     if (par != null) {
@@ -123,13 +169,7 @@ public class SEARTree implements SeriesIndexTree, Serializable {
   public static int nullKeys = 0;
   @Override
   public INode search(String sk) {
-    try {
-      return search(sk.getBytes(StandardCharsets.UTF_8));
-    } catch (RuntimeException e) {
-      System.out.println("key not exist");
-      nullKeys++;
-      return null;
-    }
+    return search(sk.getBytes(StandardCharsets.UTF_8));
   }
 
   public INode search(byte[] sk) {
@@ -186,6 +226,18 @@ public class SEARTree implements SeriesIndexTree, Serializable {
       if (nxtPtrIdx >= 0) {
         ofs += matLen + 1;
         curNode = curNode.getChildByPtrIndex(nxtPtrIdx);
+
+        if (ofs == sk.length && !curNode.isLeaf()) {
+          curNode = ((Prefixed)curNode).getPrefixedPtr();
+          continue;
+        }
+
+        continue;
+      }
+
+      // fixme: only for those definitely existed keys, we can lookup prefixedPtr directly
+      if (curNode instanceof Prefixed) {
+        curNode = ((Prefixed) curNode).getPrefixedPtr();
         continue;
       }
 
