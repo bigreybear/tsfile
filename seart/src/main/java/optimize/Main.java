@@ -69,8 +69,8 @@ public class Main extends MergePrefix {
 
   public static String[] defaultArgs() {
     String res = "";
-    // res += " -mt hash";
-    res += " -mt fdm";
+    res += " -mt hash";
+    // res += " -mt fdm";
     // res += " -mt cdm";
     // res += " -ms full";
     res += " -ms partial";
@@ -91,6 +91,7 @@ public class Main extends MergePrefix {
   public static void main(String[] args) {
     args = args.length == 0 ? defaultArgs() : args;
     List<String> argList = Arrays.stream(args).distinct().collect(Collectors.toList());
+    if (argList.size() != args.length) throw new RuntimeException("duplicated args.");
     int argIdx = 0;
     if ((argIdx = argList.indexOf("-ms")) != -1) {
       mergeStrategy = Evaluator.MergeStrategy.valueOf(argList.get(argIdx + 1).toUpperCase());

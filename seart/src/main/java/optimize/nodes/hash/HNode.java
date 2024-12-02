@@ -44,6 +44,7 @@ public class HNode implements IStaticNode, IInternal {
         }
       }
 
+      // fixme: should not allow a child from prefixed ptr holding any partial key - chaos must be removed
       // qk not exhausted but no children map, should try prefix-way
       if (cur.children == null && cur instanceof PrefixedHNode) {
         cur = (HNode) ((PrefixedHNode)cur).prePtr;
