@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 // enhanced with Elias-Fano coding
-public class CNode4EF implements INode, IInternal, IStaticNode {
+public class CNode4EF implements INode, IInternal, IStaticNode, ICNode {
   // for only 4 positions
   int posInt;// an int concatenated by 4 unsigned bytes: byte p1, p2, p3, p4;
   byte[] pks; // partial keys

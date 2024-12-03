@@ -2,10 +2,12 @@ package optimize;
 
 import optimize.eliasfano.EliasFano;
 import optimize.nodes.INode;
+import optimize.nodes.cdm.CLeaf;
 import optimize.nodes.cdm.CNode;
 import optimize.nodes.cdm.CNode4;
 import optimize.nodes.cdm.CNode4EF;
 import optimize.nodes.cdm.CNodeHelper;
+import optimize.nodes.cdm.ICNode;
 import org.openjdk.jol.info.ClassLayout;
 import org.openjdk.jol.info.GraphLayout;
 
@@ -35,11 +37,17 @@ public class CDMPrefixMerge {
     InfixGroup group = groupByInfix(byteList, 4, preLen);
     int[] sortedBrKeys = group.sortedBrKeys();
 
-    CNode4EF node4EF = new CNode4EF(group.getBranchingPos());
+    ICNode curNode;
 
-    System.out.println(ClassLayout.parseInstance(node4EF).toPrintable());
+    if (keys.length == 1) {
+      curNode = new CLeaf(keys, preLen, getLChild.apply(keys[0]));
+    } else {
+      curNode = new CNode4EF(group.getBranchingPos());
+    }
+
+    System.out.println(ClassLayout.parseInstance(curNode).toPrintable());
     if (sortedBrKeys.length > 1 /* && evaluate()*/ ) {
-      node4EF.setBranchingKeys(Arrays.stream(sortedBrKeys).boxed().collect(Collectors.toList()));
+      curNode.setBranchingKeys(Arrays.stream(sortedBrKeys).boxed().collect(Collectors.toList()));
       for (int i = 0; i < sortedBrKeys.length; i++) {
         // do not worry about prefixed key: handled by 0x00 key byte
 

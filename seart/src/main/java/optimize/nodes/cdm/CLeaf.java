@@ -5,7 +5,10 @@ import optimize.nodes.INode;
 
 import java.util.List;
 
-public class CLeaf implements INode {
+public class CLeaf implements INode, ICNode {
+  byte[] pk;
+  INode ptr;
+
   @Override
   public long getValue() {
     return 0;
@@ -39,5 +42,10 @@ public class CLeaf implements INode {
   @Override
   public INode replace(String key, INode nNode) {
     return null;
+  }
+
+  @Override
+  public void setBranchingKeys(List<Integer> collect) {
+    throw new UnsupportedOperationException();
   }
 }
