@@ -69,9 +69,9 @@ public class Main extends MergePrefix {
 
   public static String[] defaultArgs() {
     String res = "";
-    res += " -mt hash";
+    // res += " -mt hash";
     // res += " -mt fdm";
-    // res += " -mt cdm";
+    res += " -mt cdm";
     // res += " -ms full";
     res += " -ms partial";
     // res += " -ms simple";

@@ -9,6 +9,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static optimize.nodes.cdm.CNodeHelper.findIntervals;
+import static optimize.nodes.cdm.CNodeHelper.int2BytesFixedLen;
+import static optimize.nodes.cdm.CNodeHelper.int2BytesVarLen;
+
 // enhanced with Elias-Fano coding
 public class CNode4EF implements INode, IInternal, IStaticNode, ICNode {
   // for only 4 positions
@@ -17,8 +21,8 @@ public class CNode4EF implements INode, IInternal, IStaticNode, ICNode {
   byte[] pbk, nbk; // positive/negative compressed array; by negative, it uses bitwise opposite
   int plen, nlen; // length of the original pos
   int plb, nlb; // lower-bits of related array
-  byte[][] interBytes; // bytes interleaves br keys
-  INode[] ptrs;
+  byte[][] interBytes; // bytes interleaves br keys, same number as branching keys
+  ICNode[] ptrs;
 
 
   // raw keys might with prefix
@@ -33,21 +37,23 @@ public class CNode4EF implements INode, IInternal, IStaticNode, ICNode {
     }
     posInt = CNodeHelper.bytes2Int(posBytes);
 
-    // rem key init
-    int remNum = pos[pos.length-1] - pos[0] - pos.length + 1;
-    interBytes = remNum == 0 ? null : new byte[remNum][];
+    int[] itvPos = findIntervals(pos);
   }
 
   public void setBranchingKeys(List<Integer> branchingBytes) {
-    ptrs = new INode[branchingBytes.size()];
+    ptrs = new ICNode[branchingBytes.size()];
+
+    // init interleaved bytes array
+    int[] itvPos = findIntervals(int2BytesVarLen(posInt));
+    if (itvPos.length > 0) interBytes = new byte[branchingBytes.size()][];
 
     List<Integer> positiveNumbers = branchingBytes.stream()
         .filter(num -> num >= 0)
         .collect(Collectors.toList());
     int[] arr = positiveNumbers.stream().mapToInt(i->i).toArray();
     plen = arr.length;
-    plb = EliasFano.getL(arr[plen - 1], plen);
-    pbk = EliasFano.compress(arr, 0, plen);
+    plb = plen == 0 ? -1 : EliasFano.getL(arr[plen - 1], plen);
+    pbk = plen == 0 ? null : EliasFano.compress(arr, 0, plen);
 
     List<Integer> negativeNumbers = branchingBytes.stream()
         .filter(num -> num < 0)
@@ -56,10 +62,11 @@ public class CNode4EF implements INode, IInternal, IStaticNode, ICNode {
         .collect(Collectors.toList());
     arr = negativeNumbers.stream().mapToInt(i->i).toArray();
     nlen = arr.length;
-    nlb = EliasFano.getL(arr[nlen-1], nlen);
-    nbk = EliasFano.compress(arr, 0, nlen);
+    nlb = nlen == 0 ? -1 : EliasFano.getL(arr[nlen-1], nlen);
+    nbk = nlen == 0 ? null : EliasFano.compress(arr, 0, nlen);
   }
 
+  // get index of the target key
   public int getBrKeyIdx(int val) {
     if (val < 0) {
       val &= 0x7fffffff;
@@ -69,12 +76,88 @@ public class CNode4EF implements INode, IInternal, IStaticNode, ICNode {
     return nlen + EliasFano.select(pbk, 0, plen, plb, val);
   }
 
-  public void setBranchingPtr(int idx, List<byte[]> cptKeys, INode ptr) {
-    if (interBytes != null) {
-      // todo extract rmk from cptKeys
+  @Override
+  public void setBranchingPtr(int idx, INode ptr) {
+    ptrs[idx] = (ICNode) ptr;
+  }
+
+  @Override
+  public void setInterleavedBytes(int idx, byte[] ilb) {
+    if (ilb.length > 0 && interBytes == null) throw new RuntimeException("Initial Interleave Bytes Error.");
+    if (ilb.length == 0) return;
+
+    interBytes[idx] = ilb;
+  }
+
+  @Override
+  public void setPartialKey(byte[] b) {pks = b;}
+
+  private int[] unsignedByteArr2IntArr(byte[] b) {
+    int [] intArr = new int[b.length];
+    for (int i = 0; i < intArr.length; i++) {
+      intArr[i] = 0xff & b[i];
     }
-    // brKeys already set.
-    ptrs[idx] = ptr;
+    return intArr;
+  }
+
+  // pos is the target index within the res[]
+  private byte[] setBytesByPos(byte[] res, byte[] src, int[] pos) {
+    if (res == null
+        || src == null
+        || pos == null
+        || src.length != pos.length
+        || res.length < src.length)
+      throw new RuntimeException("Input Error");
+
+    for (int i = 0; i < pos.length; i++) {
+      res[pos[i]] = src[i];
+    }
+
+    return res;
+  }
+
+  private int[] shiftIntArr(int[] b, int shift) {
+    int[] res = new int[b.length];
+    for (int i = 0; i < b.length; i++) {
+      res[i] = b[i] + shift;
+    }
+    return res;
+  }
+
+  @Override
+  public byte[] assembleKeyAt(int pos) {
+    byte[] res;
+    int[] brPosInt = unsignedByteArr2IntArr(int2BytesVarLen(posInt));
+    int[] itvPosInt = findIntervals(brPosInt);
+    byte[] brKey = getBrKeyAt(pos);
+    int keyLen = brPosInt[brPosInt.length-1] - brPosInt[0] + 1;
+
+    int[] brRltPos = shiftIntArr(brPosInt, -1 * brPosInt[0]);
+    int[] itvRltPos = shiftIntArr(itvPosInt, -1 * brPosInt[0]);
+
+    byte[] asmkey = new byte[keyLen];
+    setBytesByPos(asmkey, brKey, brRltPos);
+    if (interBytes != null)
+      setBytesByPos(asmkey, interBytes[pos], itvRltPos);
+
+    if (pks != null) {
+      res = new byte[pks.length + keyLen];
+      System.arraycopy(pks, 0, res, 0, pks.length);
+      System.arraycopy(asmkey, 0, res, pks.length, asmkey.length);
+      asmkey = res;
+    }
+    return asmkey;
+  }
+
+  private byte[] getBrKeyAt(int pos) {
+    if (pos < nlen) {
+      int i = EliasFano.get(nbk, 0, nlen, nlb, pos);
+      i |= 70000000;
+      return int2BytesFixedLen(i, 4);
+    }
+
+    pos -= nlen;
+    return int2BytesFixedLen(EliasFano.get(pbk, 0, plen, plb, pos), 4);
   }
 
   @Override

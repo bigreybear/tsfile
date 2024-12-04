@@ -13,11 +13,14 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalInt;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
+
+import static optimize.nodes.fdm.vfull.SEARTNode.ubyte;
 
 public class CNodeHelper {
   public static final int POS_SIZE = 4;
@@ -25,7 +28,7 @@ public class CNodeHelper {
   public static byte[] extractBytes(byte[] arr, int[] pos) {
     byte[] res = new byte[pos.length];
     for (int i = 0 ; i < pos.length; i++) {
-      res[i] = arr.length > i ? arr[pos[i]] : 0;
+      res[i] = arr.length > pos[i] ? arr[pos[i]] : 0;
     }
     return res;
   }
@@ -98,20 +101,6 @@ public class CNodeHelper {
     return res;
   }
 
-
-  public static byte[] assembleKey(byte[] bk, byte[] rk, int[] pos) {
-    assert pos.length == bk.length: "length equality";
-    for (int i = 1; i < pos.length; i++) {
-      assert pos[i] >= pos[i - 1] && pos[i - 1] >= 0 : "must be sorted";
-    }
-
-    final byte[] res = new byte[rk.length + pos.length];
-    for (int i = 0, j = 0; i < res.length; i++) {
-      res[i] = (j < pos.length && i == pos[j]) ? bk[j++] : rk[i - j];
-    }
-
-    return res;
-  }
 
   public static byte[] assembleKeyByBatch(byte[] bk, byte[] rk, int[] pos) {
     assert pos.length == bk.length: "length equality";
@@ -245,22 +234,45 @@ public class CNodeHelper {
 
     infixKeyMap.put(new ByteArray(), keys);
     int depth = start;
-    while (positions.size() < limit && !infixKeyMap.isEmpty()) {
+    OptionalInt maxLen = keys.stream().mapToInt(e->e.length).max();
+    while (positions.size() < limit && !infixKeyMap.isEmpty() && depth < maxLen.getAsInt()) {
       final int thisDepth = depth;
-      final Map<ByteArray, List<byte[]>> tmp = new ConcurrentHashMap<>();
+
+      // when split, branching keys immediately obtain its brKeys, while non-brs obtain after others finished.
+      final Map<ByteArray, List<byte[]>> branchingKeys = new ConcurrentHashMap<>();
+      final Map<ByteArray, List<byte[]>> nonBranchingKeys = new ConcurrentHashMap<>();
 
       infixKeyMap.entrySet().parallelStream().forEach(e -> {
         Map<Byte, List<byte[]>> res = parallelSplitAt(e.getValue(), thisDepth);
-        if (res.size() > 1) positions.add(thisDepth);
-
-        ByteArray tmpKey;
-        for (Map.Entry<Byte, List<byte[]>> resEnt : res.entrySet()) {
-          tmpKey = new ByteArray(e.getKey(), resEnt.getKey());
-          tmp.put(tmpKey, resEnt.getValue());
+        if (res.size() > 1) {
+          positions.add(thisDepth);
+          // ByteArray tmpKey;
+          for (Map.Entry<Byte, List<byte[]>> resEnt : res.entrySet()) {
+            // tmpKey = new ByteArray(e.getKey(), resEnt.getKey());
+            branchingKeys.put(new ByteArray(e.getKey(), resEnt.getKey()), resEnt.getValue());
+          }
+        } else {
+          // not branching, just key it as is, for further completion
+          nonBranchingKeys.put(e.getKey(), e.getValue());
         }
       });
 
-      infixKeyMap = tmp;
+      if (positions.contains(depth)) {
+        // improve: choose the smaller one as the base
+        infixKeyMap = branchingKeys;
+        for (Map.Entry<ByteArray, List<byte[]>> nbe : nonBranchingKeys.entrySet()) {
+          // all keys in this entry must agree on thisDepth
+          byte[] k1 = nbe.getValue().get(0);
+          infixKeyMap.put(
+              new ByteArray(
+                  nbe.getKey(),
+                  k1.length > thisDepth ? k1[thisDepth] : 0),
+              nbe.getValue());
+        }
+      } else {
+        // no key split at this depth
+        infixKeyMap = nonBranchingKeys;
+      }
       depth++;
     }
     return new InfixGroup(
@@ -310,6 +322,8 @@ public class CNodeHelper {
   /**
    * Only split at designated position. <br/>
    * Key method being called multiple times.
+   *
+   * @return for each entry <b, List<k>>, all k has value b at depth
    */
   private static Map<Byte, List<byte[]>> parallelSplitAt(List<byte[]> keys, int depth) {
     if (keys.isEmpty()) {
@@ -396,9 +410,20 @@ public class CNodeHelper {
 
   // endregion
 
-  public static void main3(String[] args) {
+  public static void main(String[] args) {
     byte[] t = new  byte[] {1,2,88,4};
-    System.out.println(Arrays.toString(int2Bytes(bytes2Int(t))));
+    int[] ti = new int[] {1,3};
+    System.out.println(Arrays.toString(findIntervals(ti)));
+    System.out.println(Arrays.toString(int2BytesVarLen(bytes2Int(t))));
+
+    t = new byte[] {1,2};
+    System.out.println(Arrays.toString(int2BytesVarLen(bytes2Int(t))));
+    t = new byte[] {8};
+    System.out.println(Arrays.toString(int2BytesVarLen(bytes2Int(t))));
+    t = new byte[] {1,2,3,4};
+    System.out.println(Arrays.toString(int2BytesVarLen(bytes2Int(t))));
+
+
   }
 
   // for assembler
@@ -411,7 +436,7 @@ public class CNodeHelper {
   }
 
   // on real dataset
-  public static void main(String[] args) throws Exception {
+  public static void main1(String[] args) throws Exception {
     String[] test = new String[] {
         "0110100101",
         "0110100110",
@@ -494,6 +519,32 @@ public class CNodeHelper {
 
   // region Utils
 
+  public static int[] findIntervals(byte[] pos) {
+    int[] res = new int[pos.length];
+    for (int i = 0; i < pos.length; i++) {
+      res[i] = 0xff & pos[i];
+    }
+    return findIntervals(res);
+  }
+
+  public static int[] findIntervals(int[] pos) {
+    if (pos == null || pos.length <= 1) return new int[0];
+
+    int[] itvPos = new int[pos[pos.length - 1] - pos[0] - pos.length + 1];
+    for (int idx = 0, k = 0;;) {
+      // k records number in itvPos
+      if (idx > pos.length - 2) break;  // shall not check last element
+
+      if (pos[idx] + 1 != pos[idx + 1]) {
+        for (int pi = pos[idx] + 1; pi < pos[idx+1]; pi++) {
+          itvPos[k++] = pi;
+        }
+      }
+      idx++;
+    }
+    return itvPos;
+  }
+
   public static List<ValuedPrefixArray> evaluatePrefixes(List<String> keys) {
     byte[][] toSort = strings2ByteArrays(keys);
 
@@ -529,21 +580,53 @@ public class CNodeHelper {
     return r;
   }
 
-  public static int bytes2Int(byte[] b) {
+  public static int bytes2IntLegacy(byte[] b) {
     // preceding bytes on higher bits
+    // fixme and its wrong! cannot differ [1,2,3] and [0,1,2,3] as 0 on highest byte
     return (( (b.length >= 1 ? b[0] : 0) & 0xFF) << 24) |
         (((b.length >= 2 ? b[1] : 0) & 0xFF) << 16) |
         (((b.length >= 3 ? b[2] : 0) & 0xFF) << 8)  |
         ((b.length >= 4 ? b[3] : 0) & 0xFF);
   }
 
-  public static byte[] int2Bytes(int i) {
+  public static int bytes2Int(byte[] b) {
+    // put prior pos on lower bytes
+    int len = b.length, r = 0;
+    if (len > 4) throw new UnsupportedOperationException("5 or more bytes cannot encoded to a int.");
+    for (int i = len - 1; i >= 0; i--) {
+      r <<= 8;
+      r |= ubyte(b[i]);
+    }
+
+    if (r==10524646)
+      System.out.println("AAAA");
+    return r;
+  }
+
+  // all bytes are processed as is, for fixed length
+  public static byte[] int2BytesFixedLen(final int i, final int len) {
     byte[] b = new byte[4];
-    b[0] = (byte) ((i >> 24) & 0xFF);
-    b[1] = (byte) ((i >> 16) & 0xFF);
-    b[2] = (byte) ((i >> 8) & 0xFF);
-    b[3] = (byte) (i & 0xFF);
-    return b;
+    int k = 0;
+    for (; k < len ;) {
+      b[k] = (byte) ((i >> (8 * k)) & 0xff);
+      k++;
+    }
+    return Arrays.copyOfRange(b, 0, len);
+  }
+
+  /**
+   * 0s are used as mark, only valid in the lowest byte (foremost byte previously)
+   */
+  public static byte[] int2BytesVarLen(final int i) {
+    byte[] b = new byte[4];
+    int k = 0;
+    for (; k < 4 ;) {
+      b[k] = (byte) ((i >> (8 * k)) & 0xff);
+      if (b[k] == 0 && k != 0) break;  // 0 after any non-zero are ignored
+      k++;
+    }
+
+    return Arrays.copyOfRange(b, 0, k);
   }
 
   private static final Comparator<byte[]> BYTE_ARRAY_COMPARATOR = (a, b) -> {

@@ -3,11 +3,24 @@ package optimize.nodes.cdm;
 import optimize.nodes.ILeaf;
 import optimize.nodes.INode;
 
+import java.util.Arrays;
 import java.util.List;
 
-public class CLeaf implements INode, ICNode {
+public class CLeaf implements ICNode {
   byte[] pk;
   INode ptr;
+
+  public CLeaf(byte[][] pk, int preLen, INode ptr) {
+    if (pk.length > 1) throw new UnsupportedOperationException("More than 1 key in CLeaf.");
+    if (pk[0].length < preLen) this.pk = null;
+    else this.pk = Arrays.copyOfRange(pk[0], preLen, pk[0].length);
+    this.ptr = ptr;
+  }
+
+  @Override
+  public void setPartialKey(byte[] b) {
+    throw new UnsupportedOperationException();
+  }
 
   @Override
   public long getValue() {
