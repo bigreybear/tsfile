@@ -105,8 +105,8 @@ public class CNode4EF implements INode, IInternal, IStaticNode, ICNode {
     if (res == null
         || src == null
         || pos == null
-        || src.length != pos.length
-        || res.length < src.length)
+        || src.length < pos[pos.length-1])
+        // || res.length < src.length) /* no need to equal as branching keys may have trailing 0s */
       throw new RuntimeException("Input Error");
 
     for (int i = 0; i < pos.length; i++) {
@@ -130,6 +130,12 @@ public class CNode4EF implements INode, IInternal, IStaticNode, ICNode {
     int[] brPosInt = unsignedByteArr2IntArr(int2BytesVarLen(posInt));
     int[] itvPosInt = findIntervals(brPosInt);
     byte[] brKey = getBrKeyAt(pos);
+
+    // todo debug
+    if (brKey[brKey.length-1] == 0) {
+      System.out.println("HHH");
+    }
+
     int keyLen = brPosInt[brPosInt.length-1] - brPosInt[0] + 1;
 
     int[] brRltPos = shiftIntArr(brPosInt, -1 * brPosInt[0]);

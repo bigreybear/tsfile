@@ -6,6 +6,7 @@ import optimize.nodes.cdm.CNode4EF;
 import optimize.nodes.cdm.CNodeHelper;
 import optimize.nodes.cdm.ICNode;
 import org.openjdk.jol.info.ClassLayout;
+import org.openjdk.jol.info.GraphLayout;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -52,6 +53,13 @@ public class CDMPrefixMerge {
       for (int i = 0; i < sortedBrKeys.length; i++) {
         // do not worry about prefixed key: handled by 0x00 key byte
         completeKeys = group.getCompleteKeys(int2BytesFixedLen(sortedBrKeys[i], validBrKeyLen));
+
+        // todo debug
+        if ((sortedBrKeys[i] & 0xff000000) == 0) {
+          System.out.println("HHH");
+        }
+
+
         curNode.setInterleavedBytes(i, extractBytes(completeKeys.get(0), itvPos));
         curNode.setBranchingPtr(
             i,
@@ -66,6 +74,7 @@ public class CDMPrefixMerge {
       throw new RuntimeException("Suffixes should not be identical.");
     }
 
+    curNode.assembleKeyAt(0);
     return curNode;
     // replaced with new func
     // final Set<Integer> pos = getBranchingPosParallel(byteList, 4);
