@@ -134,9 +134,6 @@ public class MergePrefix {
       // simple only extract direct common prefix which is none here
       if (ms.equals(MergeStrategy.SIMPLE)) return oriNode;
       // where partial and all strategy diff from simple
-
-      // todo remove debug
-      // System.out.println("DIFF");
     }
 
     // find the key exactly IS the common prefix

@@ -2,15 +2,15 @@ package optimize;
 
 import optimize.nodes.INode;
 import optimize.nodes.cdm.CLeaf;
+import optimize.nodes.cdm.CNode;
 import optimize.nodes.cdm.CNode4EF;
 import optimize.nodes.cdm.CNodeHelper;
-import optimize.nodes.cdm.ICNode;
-import org.openjdk.jol.info.ClassLayout;
-import org.openjdk.jol.info.GraphLayout;
+import optimize.nodes.logic.LNode;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -33,32 +33,30 @@ public class CDMPrefixMerge {
     }
 
     List<byte[]> byteList = Arrays.asList(keys);
-    // for standard edition set CDM width = 4
 
+    // for standard edition set CDM width = 4
     // key in group.map is ByteArray, shall align with bytes2Int method
     InfixGroup group = groupByInfix(byteList, 4, preLen);
-    CNode4EF curNode = new CNode4EF(group.getBranchingPos());
-    if (preLen < group.getBranchingPos()[0]) {
-      curNode.setPartialKey(Arrays.copyOfRange(keys[0], preLen, group.getBranchingPos()[0]));
+
+    if (group.getInfixMap().size() <= 1) {
+      throw new RuntimeException("Suffixes should not be identical.");
     }
 
-    // System.out.println(ClassLayout.parseInstance(curNode).toPrintable());
-
-    int[] itvPos = findIntervals(group.getBranchingPos());
-    int[] sortedBrKeys = group.sortedBrKeys();
     List<byte[]> completeKeys;
-    if (sortedBrKeys.length > 1 /* && evaluate()*/ ) {
+    if (evaluate(group, preLen, keys, height)) {
+      evaTrueTime++;
+      CNode4EF curNode = new CNode4EF(group.getBranchingPos());
+      if (preLen < group.getBranchingPos()[0]) {
+        curNode.setPartialKey(Arrays.copyOfRange(keys[0], preLen, group.getBranchingPos()[0]));
+      }
+
+      int[] itvPos = findIntervals(group.getBranchingPos());
+      int[] sortedBrKeys = group.sortedBrKeys();
       curNode.setBranchingKeys(Arrays.stream(sortedBrKeys).boxed().collect(Collectors.toList()));
       int validBrKeyLen = group.getBranchingPos().length;
       for (int i = 0; i < sortedBrKeys.length; i++) {
         // do not worry about prefixed key: handled by 0x00 key byte
         completeKeys = group.getCompleteKeys(int2BytesFixedLen(sortedBrKeys[i], validBrKeyLen));
-
-        // todo debug
-        if ((sortedBrKeys[i] & 0xff000000) == 0) {
-          System.out.println("HHH");
-        }
-
 
         curNode.setInterleavedBytes(i, extractBytes(completeKeys.get(0), itvPos));
         curNode.setBranchingPtr(
@@ -70,27 +68,57 @@ public class CDMPrefixMerge {
                 ms, mt, height
             ));
       }
+      return curNode;
     } else {
-      throw new RuntimeException("Suffixes should not be identical.");
+      evaFalseTime++;
+      // not use final-mapping CNode
+      group = groupByInfix(byteList, 256, preLen);
+      CNode curNode = new CNode(group.getBranchingPos());
+      if (preLen < group.getBranchingPos()[0]) {
+        curNode.setPartialKey(Arrays.copyOfRange(keys[0], preLen, group.getBranchingPos()[0]));
+      }
+
+      byte[][] sortedBrKeys = group.sortedBrKeyBytes();
+      curNode.setBranchingKeysExtended(sortedBrKeys);
+      // fixme for CNode, not interleaved but complementary, because no succeeding nodes
+      // int [] itvPos = findIntervals(group.getBranchingPos()), curItvPos;
+      // int prolongItvPos = 0;
+      byte[] sk, ck;
+      List<byte[]> ckl;
+      for (int i = 0; i < sortedBrKeys.length; i++) {
+        sk = sortedBrKeys[i];
+        ckl = group.getInfixMap().get(new CNodeHelper.ByteArray(sk));
+        if (ckl.size() > 1) {
+          throw new UnsupportedOperationException("Too long key: " + new String(ckl.get(0), StandardCharsets.UTF_8));
+        }
+        ck = ckl.get(0);
+
+        int[] cmpPos = CNodeHelper.complementaryBytePos(group.getBranchingPos()[0], ck.length, group.getBranchingPos());
+        curNode.setInterleavedBytes(i, extractBytes(ck, cmpPos));
+        curNode.setBranchingPtr(i, getLChild.apply(ck));
+      }
+      return curNode;
+    }
+  }
+
+  public static int evaTrueTime = 0, evaFalseTime = 0;
+  public static boolean evaluate(InfixGroup g, int preLen, byte[][] keys, int height) {
+    float gamma = 0.5f;
+    int keyNum = g.getInfixMap().values().stream().mapToInt(List::size).sum();
+    int[] posArr = g.getBranchingPos();
+    int shareLen = posArr[posArr.length-1] - posArr[0] + 1;
+    int savingBySharing = shareLen * keyNum;
+
+    final int pkLen = posArr[0];
+    int ptrSpace = 8 * g.getInfixMap().size(), desKeyLen = 0;
+    double detTime = 0.0d;
+    for (List<byte[]> lb : g.getInfixMap().values()) {
+      // desKeyLen += lb.stream().mapToInt(i -> i.length - pkLen).sum();
+      detTime += (lb.size() * 1.0d / keyNum ) * (Math.log(lb.size())) /(Math.log(2));
     }
 
-    curNode.assembleKeyAt(0);
-    return curNode;
-    // replaced with new func
-    // final Set<Integer> pos = getBranchingPosParallel(byteList, 4);
-    // final int[] posArray = pos.stream().mapToInt(i -> i).toArray();
-    //
-    // Map<Integer, List<byte[]>> groups = byteList
-    //     .parallelStream()
-    //     .collect(Collectors.groupingByConcurrent(
-    //     ba -> bytes2Int(extractBytes(ba, posArray))));
-    // List<Integer> sortedBrnBytes = groups.keySet().stream().sorted().collect(Collectors.toList());
-    //
-    // CNode4EF cNode4EF = new CNode4EF();
-    // cNode4EF.setBranchingKeys(sortedBrnBytes);
-
-    // if any suffix of extracted bytes are 0, it must point to a leaf/LNode
-
+    int deltaSpace = ptrSpace + desKeyLen - savingBySharing;
+    return gamma * deltaSpace + (1-gamma) * detTime * 13 < 0;
   }
 
   public static void main(String[] args) {
@@ -101,7 +129,20 @@ public class CDMPrefixMerge {
     byte[][] keys = CNodeHelper.strings2ByteArrays(t.getKeys());
     INode res = recNextMergeOnCDM(getLogicalChild(t), keys, 0, null, null, 2);
 
-    System.out.println("FINISH");
-    System.out.println(new String(((ICNode)res).assembleKeyAt(6), StandardCharsets.UTF_8));
+    LNode lt = (LNode) t;
+
+    int num = 0;
+    for (Map.Entry<String, INode> entry : lt.children.entrySet()) {
+      INode r2 = res.getChild(entry.getKey());
+
+      if (r2 == entry.getValue()) {
+        System.out.println("PASS");
+        num++;
+      } else {
+        System.out.println("WRONG");
+      }
+    }
+
+    System.out.println("FINISH: " + num);
   }
 }

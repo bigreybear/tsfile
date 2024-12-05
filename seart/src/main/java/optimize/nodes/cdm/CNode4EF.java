@@ -5,10 +5,13 @@ import optimize.nodes.IInternal;
 import optimize.nodes.INode;
 import optimize.nodes.IStaticNode;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static optimize.nodes.cdm.CNodeHelper.bytes2Int;
+import static optimize.nodes.cdm.CNodeHelper.extractBytes;
 import static optimize.nodes.cdm.CNodeHelper.findIntervals;
 import static optimize.nodes.cdm.CNodeHelper.int2BytesFixedLen;
 import static optimize.nodes.cdm.CNodeHelper.int2BytesVarLen;
@@ -40,6 +43,11 @@ public class CNode4EF implements INode, IInternal, IStaticNode, ICNode {
     int[] itvPos = findIntervals(pos);
   }
 
+  @Override
+  public int[] getBranchingPos() {
+    return ICNode.unsignedByteArr2IntArr(int2BytesVarLen(posInt));
+  }
+
   public void setBranchingKeys(List<Integer> branchingBytes) {
     ptrs = new ICNode[branchingBytes.size()];
 
@@ -67,6 +75,7 @@ public class CNode4EF implements INode, IInternal, IStaticNode, ICNode {
   }
 
   // get index of the target key
+  @Override
   public int getBrKeyIdx(int val) {
     if (val < 0) {
       val &= 0x7fffffff;
@@ -92,73 +101,36 @@ public class CNode4EF implements INode, IInternal, IStaticNode, ICNode {
   @Override
   public void setPartialKey(byte[] b) {pks = b;}
 
-  private int[] unsignedByteArr2IntArr(byte[] b) {
-    int [] intArr = new int[b.length];
-    for (int i = 0; i < intArr.length; i++) {
-      intArr[i] = 0xff & b[i];
-    }
-    return intArr;
-  }
-
-  // pos is the target index within the res[]
-  private byte[] setBytesByPos(byte[] res, byte[] src, int[] pos) {
-    if (res == null
-        || src == null
-        || pos == null
-        || src.length < pos[pos.length-1])
-        // || res.length < src.length) /* no need to equal as branching keys may have trailing 0s */
-      throw new RuntimeException("Input Error");
-
-    for (int i = 0; i < pos.length; i++) {
-      res[pos[i]] = src[i];
-    }
-
-    return res;
-  }
-
-  private int[] shiftIntArr(int[] b, int shift) {
-    int[] res = new int[b.length];
-    for (int i = 0; i < b.length; i++) {
-      res[i] = b[i] + shift;
-    }
-    return res;
-  }
-
   @Override
   public byte[] assembleKeyAt(int pos) {
     byte[] res;
-    int[] brPosInt = unsignedByteArr2IntArr(int2BytesVarLen(posInt));
+    int[] brPosInt = ICNode.unsignedByteArr2IntArr(int2BytesVarLen(posInt));
     int[] itvPosInt = findIntervals(brPosInt);
     byte[] brKey = getBrKeyAt(pos);
 
-    // todo debug
-    if (brKey[brKey.length-1] == 0) {
-      System.out.println("HHH");
-    }
-
     int keyLen = brPosInt[brPosInt.length-1] - brPosInt[0] + 1;
 
-    int[] brRltPos = shiftIntArr(brPosInt, -1 * brPosInt[0]);
-    int[] itvRltPos = shiftIntArr(itvPosInt, -1 * brPosInt[0]);
+    int[] brRltPos = ICNode.shiftIntArr(brPosInt, -1 * brPosInt[0]);
+    int[] itvRltPos = ICNode.shiftIntArr(itvPosInt, -1 * brPosInt[0]);
 
     byte[] asmkey = new byte[keyLen];
-    setBytesByPos(asmkey, brKey, brRltPos);
+    ICNode.setBytesByPos(asmkey, brKey, brRltPos);
     if (interBytes != null)
-      setBytesByPos(asmkey, interBytes[pos], itvRltPos);
+      ICNode.setBytesByPos(asmkey, interBytes[pos], itvRltPos);
 
-    if (pks != null) {
-      res = new byte[pks.length + keyLen];
-      System.arraycopy(pks, 0, res, 0, pks.length);
-      System.arraycopy(asmkey, 0, res, pks.length, asmkey.length);
-      asmkey = res;
-    }
+    // if (pks != null) {
+    //   res = new byte[pks.length + keyLen];
+    //   System.arraycopy(pks, 0, res, 0, pks.length);
+    //   System.arraycopy(asmkey, 0, res, pks.length, asmkey.length);
+    //   asmkey = res;
+    // }
     return asmkey;
   }
 
   private byte[] getBrKeyAt(int pos) {
     if (pos < nlen) {
       int i = EliasFano.get(nbk, 0, nlen, nlb, pos);
-      i |= 70000000;
+      i |= 0x80000000;
       return int2BytesFixedLen(i, 4);
     }
 
@@ -173,7 +145,59 @@ public class CNode4EF implements INode, IInternal, IStaticNode, ICNode {
 
   @Override
   public INode getChild(String name) {
-    return null;
+    byte[] kb = name.getBytes(StandardCharsets.UTF_8), cpk, curBrKeys, checkBrKeys;
+
+    ICNode curNode = this;
+    int idx = 0; /* idx to read the key */
+    int channel = -1; // which ptr to route
+    int[] brPos;
+    while (idx < kb.length) {
+      // check on partial key
+      if ((cpk = curNode.getPartialKey()) != null) {
+        for (int i = 0; i < cpk.length && idx < kb.length; i++) {
+          if (kb[idx] != cpk[i])
+            throw new RuntimeException("Key not exists: " + name);
+          idx++;
+        }
+
+        if (idx == kb.length) {
+          if (curNode instanceof CLeaf) return ((CLeaf) curNode).ptr;
+          // search key is exhausted on partial key, the branching key must be 0000
+          channel = curNode.getBrKeyIdx(0);
+          curNode = curNode.getPtrByPos(channel);
+          break;
+        }
+      }
+
+      // locate and retrieve brn and itv bytes and verify
+      brPos = curNode.getBranchingPos();
+      curBrKeys = extractBytes(kb, brPos);
+      channel = curNode.getBrKeyIdx(bytes2Int(curBrKeys));
+      if (channel < 0)
+        throw new RuntimeException("Key not found: " + name);
+      checkBrKeys = curNode.assembleKeyAt(channel);
+      for (int i = 0; i < checkBrKeys.length && idx < kb.length; i++) {
+        if (checkBrKeys[i] != kb[idx])
+          throw new RuntimeException();
+        idx++;
+      }
+
+      curNode = curNode.getPtrByPos(channel);
+      if (curNode instanceof CNode) {
+        return ((CNode)curNode).getChild(kb, idx);
+      }
+    }
+
+    // todo fixme IMPROVE
+    if (!(curNode instanceof CLeaf)) {
+      curNode = curNode.getPtrByPos(curNode.getBrKeyIdx(0));
+    }
+    return ((CLeaf)curNode).ptr;
+  }
+
+  @Override
+  public ICNode getPtrByPos(int pos) {
+    return ptrs[pos];
   }
 
   @Override

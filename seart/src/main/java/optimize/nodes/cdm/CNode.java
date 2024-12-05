@@ -8,13 +8,144 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 
-public class CNode implements INode, IInternal, IStaticNode {
-  // for only 4 positions
-  byte[] flags;// indeed flags for byte p1, p2, p3, p4;
-  byte[] pks; // partial keys
+import static optimize.nodes.cdm.CNodeHelper.extractBytes;
+import static optimize.nodes.cdm.CNodeHelper.findIntervals;
+import static optimize.nodes.cdm.CNodeHelper.getValidBrPosNum;
+import static optimize.nodes.cdm.CNodeHelper.strings2ByteArrays;
+
+public class CNode implements ICNode, INode, IInternal, IStaticNode {
+  // for more than 4 positions
+  byte[] pos;// indeed flags for byte p1, p2, p3, p4;
+  byte[] partialKeys; // partial keys
   byte[][] bks; // branching keys
   byte[][] rmk; // remaining keys
   INode[] ptrs;
+
+  public CNode(int[] pi) {
+    pos = new byte[pi.length];
+    for (int i = 0; i < pi.length; i++) {
+      if (pi[i] > 255) throw new UnsupportedOperationException("Too big branching pos.");
+      pos[i] = (byte) (0xff & pi[i]);
+    }
+  }
+
+  @Override
+  public void setBranchingKeys(List<Integer> collect) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void setBranchingKeysExtended(byte[][] input) {
+    bks = new byte[input.length][];
+    for (int i = 0; i < input.length; i++) {
+      bks[i] = removeTrailingZeros(input[i]);
+    }
+    rmk = new byte[input.length][];
+    ptrs = new INode[input.length];
+  }
+
+  private static byte[] removeTrailingZeros(byte[] src) {
+    int i = 0;
+    while (i < src.length && src[i] != 0) i++;
+    return Arrays.copyOfRange(src, 0, i);
+  }
+
+  @Override
+  public int[] getBranchingPos() {
+    int[] pi = new int[pos.length];
+    for (int i = 0; i < pos.length; i++) {
+      pi[i] = 0xff & pos[i];
+    }
+    return pi;
+  }
+
+  @Override
+  public int getBrKeyIdx(int val) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public int getBrKeyIdx(byte[] ba) {
+    int left = 0, right = bks.length - 1;
+
+    while (left <= right) {
+      int mid = left + (right - left) / 2;
+
+      int cmp = Arrays.compare(bks[mid], ba);
+
+      if (cmp == 0) {
+        return mid;
+      } else if (cmp < 0) {
+        left = mid + 1;
+      } else {
+        right = mid - 1;
+      }
+    }
+    return -1;
+  }
+
+  @Override
+  public void setBranchingPtr(int idx, INode ptr) {
+    ptrs[idx] = ptr;
+  }
+
+  @Override
+  public void setInterleavedBytes(int idx, byte[] ilb) {
+    rmk[idx] = (ilb == null && ilb[0] == 0) ? null : removeTrailingZeros(ilb);
+  }
+
+  @Override
+  public byte[] assembleKeyAt(int tarPos) {
+    int[] posInt = ICNode.unsignedByteArr2IntArr(pos);
+    int[] itvInt = findIntervals(posInt);
+
+    int[] brRltPos = ICNode.shiftIntArr(posInt, -1 * posInt[0]);
+    int[] itvRltPos = ICNode.shiftIntArr(itvInt, -1 * itvInt[0]);
+
+    byte[] asmkey = new byte[posInt[posInt.length-1] - posInt[0] + 1];
+    setBytesByPosNoCheck(asmkey, bks[tarPos], brRltPos);
+
+    if (rmk != null && rmk.length != 0)
+      setBytesByPosNoCheck(asmkey, rmk[tarPos], itvRltPos);
+    return asmkey;
+  }
+
+  private byte[] assembleKeyAt(int tarPos, int preLen, int keyLen) {
+    preLen = partialKeys == null ? preLen : preLen + partialKeys.length;
+
+    int[] posInt = ICNode.unsignedByteArr2IntArr(pos);
+    int[] itvInt = CNodeHelper.complementaryBytePos(preLen, keyLen, posInt);
+
+    int[] brRltPos = ICNode.shiftIntArr(posInt, -1 * preLen);
+    int[] itvRltPos = ICNode.shiftIntArr(itvInt, -1 * preLen);
+
+    byte[] asmkey = new byte[getValidBrPosNum(keyLen, posInt) + itvInt.length];
+    setBytesByPosNoCheck(asmkey, bks[tarPos], brRltPos);
+
+    if (rmk != null && rmk.length != 0)
+      setBytesByPosNoCheck(asmkey, rmk[tarPos], itvRltPos);
+    return asmkey;
+  }
+
+  static byte[] setBytesByPosNoCheck(byte[] res, byte[] src, int[] pos) {
+    for (int i = 0; i < pos.length && res.length > pos[i]; i++) {
+      res[pos[i]] = src[i];
+    }
+
+    return res;
+  }
+
+
+
+  @Override
+  public ICNode getPtrByPos(int pos) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void setPartialKey(byte[] b) {
+    partialKeys = b;
+  }
 
   @Override
   public INode replace(String key, INode nNode) {
@@ -23,7 +154,27 @@ public class CNode implements INode, IInternal, IStaticNode {
 
   @Override
   public INode getChild(String name) {
-    return null;
+    return getChild(extractBytes(name.getBytes(StandardCharsets.UTF_8), ICNode.unsignedByteArr2IntArr(pos)), 0);
+  }
+
+  public INode getChild(byte[] name, int preLen) {
+    int ki = preLen;
+    if (partialKeys != null) {
+      for (int i = 0; i < partialKeys.length; i++) {
+        if (name[ki] != partialKeys[i]) {
+          throw new RuntimeException("Key not consistent with partial key");
+        }
+        ki++;
+      }
+    }
+
+    // int idx = getBrKeyIdx(removeTrailingZeros(Arrays.copyOfRange(name, ki, name.length)));
+    int idx = getBrKeyIdx(removeTrailingZeros(extractBytes(name, ICNode.unsignedByteArr2IntArr(pos))));
+    byte[] checkKey = assembleKeyAt(idx, preLen, name.length);
+    for (int i = 0 ; i < checkKey.length; i++) {
+      if (name[ki + i] != checkKey[i]) throw new UnsupportedOperationException("Inconsistent on assemble key.");
+    }
+    return ptrs[idx];
   }
 
   @Override
@@ -38,7 +189,11 @@ public class CNode implements INode, IInternal, IStaticNode {
 
   @Override
   public byte[] getPartialKey() {
-    return pks;
+    return partialKeys;
+  }
+
+  public static void main(String[] args) {
+
   }
 }
 

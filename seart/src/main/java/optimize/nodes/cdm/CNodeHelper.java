@@ -163,6 +163,28 @@ public class CNodeHelper {
     return getBranchingPosParallel(byteKeys, limit);
   }
 
+  public static int[] complementaryBytePos(int preLen, int keyLen, int[] brPos) {
+    int brBeforeKey = getValidBrPosNum(keyLen, brPos);
+    int[] res = new int[keyLen - preLen - brBeforeKey];
+    for (int i = 0, bpi = 0; i < res.length; ) {
+      if (bpi < brBeforeKey && i + preLen + bpi == brPos[bpi] ) {
+        bpi ++;
+        continue;
+      }
+
+      res[i] = i + preLen + bpi;
+      i++;
+    }
+    return res;
+  }
+
+  public static int getValidBrPosNum(int keyLen, int[] brPos) {
+    for (int j = 0; j < brPos.length; j++) {
+      if (brPos[j] >= keyLen) return j;
+    }
+    return brPos.length;
+  }
+
   // return type of infix group
   public static class InfixGroup {
     int[] brPos;
@@ -182,6 +204,16 @@ public class CNodeHelper {
       if (brPos.length > 4) throw new RuntimeException("More than 4 branching positions.");
       return infixMap.keySet().stream().mapToInt(ba->bytes2Int(ba.val)).sorted().toArray();
     }
+
+    public byte[][] sortedBrKeyBytes() {
+      byte[][] keys = infixMap.keySet().stream()
+          .map(i -> i.val)
+          .toArray(byte[][]::new);
+      Arrays.sort(keys, Arrays::compare);
+      return keys;
+    }
+
+    public Map<ByteArray, List<byte[]>> getInfixMap() {return infixMap;}
   }
 
   // substitute List<byte> for extreme performance
@@ -199,6 +231,8 @@ public class CNodeHelper {
     public ByteArray(byte[] ba) {
       val = ba;
     }
+
+    public byte[] getVal() {return val;}
 
     @Override
     public boolean equals(Object o) {

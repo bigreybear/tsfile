@@ -11,7 +11,8 @@ import java.util.Map;
  */
 public class LNode implements INode {
 
-  Map<String, INode> children;
+  // todo shall be private
+  public Map<String, INode> children;
 
   public LNode() {}
 
