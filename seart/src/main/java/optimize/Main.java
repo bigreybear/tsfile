@@ -25,12 +25,12 @@ public class Main extends MergePrefix {
     return tree;
   }
 
-  public static void measureSpace(TSTree tree) {
+  public static void measureSpace(TSTree tree, Evaluator.MergeStrategy ms, Evaluator.MapType mt) {
     long size = GraphLayout.parseInstance(tree).totalSize();
     REPORT_CHANNEL
-        .append(String.format("%s %s total Size: ", mergeStrategy.name(), mapType.name()))
+        .append(String.format("%s %s total Size: ", ms == null ? "no-merge" : ms.name(), mt.name()))
         .append(size)
-        .append("%n");
+        .append("\n");
   }
 
   public static void estimateLatency(TSTree tree, DataSet ds) {
@@ -48,11 +48,6 @@ public class Main extends MergePrefix {
       if (ans[i] != tree.search(qPaths.get(i))) throw new RuntimeException("Search for worng!");
     }
     nano = System.nanoTime() - nano;
-
-    if (mergeStrategy.equals(Evaluator.MergeStrategy.FULL)
-        && mapType.equals(Evaluator.MapType.FDM)) {
-      System.out.println("total not exist key: " + SEARTree.nullKeys);
-    }
 
     REPORT_CHANNEL.append(String.format("query %d paths latency(ns): %s ns. %n", qPaths.size(), dottedNanoSec(nano)));
   }
@@ -125,14 +120,14 @@ public class Main extends MergePrefix {
     replaceTemplates(tree);
 
     if (argList.contains("-space")) {
-      measureSpace(tree);
+      measureSpace(tree, mergeStrategy, mapType);
     }
 
     if (argList.contains("-latency")) {
       estimateLatency(tree, dataSet);
     }
     REPORT_CHANNEL.append("FINISH:" + String.join(" ", argList) + " with EF code: " + CDM_WITH_EF);
-    REPORT_CHANNEL.append("%n%n");
+    REPORT_CHANNEL.append("\n\n");
     System.out.println(REPORT_CHANNEL);
   }
 
