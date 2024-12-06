@@ -17,7 +17,7 @@ public class DFSTraversal implements Iterator<ISEARTNode> {
   ISEARTNode root;
 
   Deque<byte[]> traceBytes = new ArrayDeque<>();
-  int tbl = 0;  // Trace Byte Length
+  int tbl = 0; // Trace Byte Length
   Deque<KeyedNode> stack = new ArrayDeque<>();
 
   public DFSTraversal(ISEARTNode node) {
@@ -70,7 +70,8 @@ public class DFSTraversal implements Iterator<ISEARTNode> {
             templatePathBytes.put(t1.hashCode(), pb);
           }
           for (byte[] ba : pb) {
-            System.out.println(new String(conBytes(getCurrentPathBytes(), ba), StandardCharsets.UTF_8));
+            System.out.println(
+                new String(conBytes(getCurrentPathBytes(), ba), StandardCharsets.UTF_8));
           }
         } else {
           System.out.println(getCurrentPath());
@@ -95,7 +96,9 @@ public class DFSTraversal implements Iterator<ISEARTNode> {
             templatePathBytes.put(t1.hashCode(), pathBytes);
           }
           for (byte[] ba : pathBytes) {
-            res.add(new String(conBytes(dfsTraversal.getCurrentPathBytes(), ba), StandardCharsets.UTF_8));
+            res.add(
+                new String(
+                    conBytes(dfsTraversal.getCurrentPathBytes(), ba), StandardCharsets.UTF_8));
           }
         } else {
           res.add(dfsTraversal.getCurrentPath());
@@ -195,15 +198,15 @@ public class DFSTraversal implements Iterator<ISEARTNode> {
   }
 
   // concatenate byte arrays
-  public static byte[] conBytes(byte[] ...bal) {
+  public static byte[] conBytes(byte[]... bal) {
     int len = 0;
-    for (byte[] ba: bal) {
+    for (byte[] ba : bal) {
       len += ba.length;
     }
 
     byte[] res = new byte[len];
     len = 0;
-    for (byte[] ba: bal) {
+    for (byte[] ba : bal) {
       System.arraycopy(ba, 0, res, len, ba.length);
       len += ba.length;
     }

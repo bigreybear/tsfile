@@ -1,10 +1,9 @@
 package optimize.nodes.fdm;
 
+import java.util.List;
 import optimize.nodes.IInternal;
 import optimize.nodes.INode;
 import optimize.nodes.fdm.vfull.SEARTree;
-
-import java.util.List;
 
 // employ an ART to imitate FNode
 public class VirtualFNode implements INode, IInternal {

@@ -1,10 +1,9 @@
 package optimize.nodes.fdm.vfull;
 
-import org.openjdk.jol.info.ClassLayout;
+import static seart.SEARTNode.ubyte;
 
 import java.nio.charset.StandardCharsets;
-
-import static seart.SEARTNode.ubyte;
+import org.openjdk.jol.info.ClassLayout;
 
 public class Node256 implements ISEARTNode {
   byte[] partialKey;
@@ -50,8 +49,7 @@ public class Node256 implements ISEARTNode {
   public ISEARTNode insert(byte key, int insPos, ISEARTNode child) {
     // todo remove redundant guardian in release ver.
     if (ptrs[ubyte(key)] != null) {
-      throw new RuntimeException(
-          "Inserting duplicate key:" + (char) key + "," + child);
+      throw new RuntimeException("Inserting duplicate key:" + (char) key + "," + child);
     }
 
     ptrs[ubyte(key)] = child;

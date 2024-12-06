@@ -1,7 +1,6 @@
 package optimize.nodes.cdm;
 
-
-import loader.PathTxtLoader;
+import static optimize.nodes.fdm.vfull.SEARTNode.ubyte;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -19,15 +18,14 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
-
-import static optimize.nodes.fdm.vfull.SEARTNode.ubyte;
+import loader.PathTxtLoader;
 
 public class CNodeHelper {
   public static final int POS_SIZE = 4;
 
   public static byte[] extractBytes(byte[] arr, int[] pos) {
     byte[] res = new byte[pos.length];
-    for (int i = 0 ; i < pos.length; i++) {
+    for (int i = 0; i < pos.length; i++) {
       res[i] = arr.length > pos[i] ? arr[pos[i]] : 0;
     }
     return res;
@@ -46,7 +44,8 @@ public class CNodeHelper {
 
   public static Set<Integer> getBranchingPositions(List<String> keys) {
     Collections.sort(keys);
-    List<byte[]> byteKeys = keys.stream().map(s -> s.getBytes(StandardCharsets.UTF_8)).collect(Collectors.toList());
+    List<byte[]> byteKeys =
+        keys.stream().map(s -> s.getBytes(StandardCharsets.UTF_8)).collect(Collectors.toList());
     Set<Integer> positions = new HashSet<>();
     List<List<byte[]>> cur = new ArrayList<>(), tar = new ArrayList<>(), temp /*only for swap*/;
     cur.add(byteKeys);
@@ -72,7 +71,6 @@ public class CNodeHelper {
 
     return positions;
   }
-
 
   // keys must be sorted, meaning same byte at depth must be consecutive!
   private static List<List<byte[]>> splitAt(List<byte[]> keys, int depth) {
@@ -101,9 +99,8 @@ public class CNodeHelper {
     return res;
   }
 
-
   public static byte[] assembleKeyByBatch(byte[] bk, byte[] rk, int[] pos) {
-    assert pos.length == bk.length: "length equality";
+    assert pos.length == bk.length : "length equality";
     for (int i = 1; i < pos.length; i++) {
       assert pos[i] >= pos[i - 1] && pos[i - 1] >= 0 : "must be sorted";
     }
@@ -136,29 +133,33 @@ public class CNodeHelper {
   public static byte[][] parallelExtBytes(byte[][] rsc, int[] pos) {
     byte[][] res = new byte[rsc.length][];
 
-    Arrays.parallelSetAll(res, i -> {
-      byte[] extracted = new byte[pos.length];
-      byte[] row = rsc[i];
-      for (int j = 0; j < pos.length; j++) {
-        extracted[j] = row[pos[j]];
-      }
-      return extracted;
-    });
+    Arrays.parallelSetAll(
+        res,
+        i -> {
+          byte[] extracted = new byte[pos.length];
+          byte[] row = rsc[i];
+          for (int j = 0; j < pos.length; j++) {
+            extracted[j] = row[pos[j]];
+          }
+          return extracted;
+        });
     return res;
   }
 
   public static Set<Integer> parallelGetBranchingPositions(List<String> keys, boolean posLimit) {
-    return posLimit ? parallelGetBranchingPositions(keys, POS_SIZE) :
-                      parallelGetBranchingPositions(keys, Integer.MAX_VALUE);
+    return posLimit
+        ? parallelGetBranchingPositions(keys, POS_SIZE)
+        : parallelGetBranchingPositions(keys, Integer.MAX_VALUE);
   }
 
   public static Set<Integer> parallelGetBranchingPositions(List<String> keys, int limit) {
     // todo remove the sort after thorough dev
     keys = keys.parallelStream().sorted().collect(Collectors.toList());
 
-    List<byte[]> byteKeys = keys.parallelStream()
-        .map(s -> s.getBytes(StandardCharsets.UTF_8))
-        .collect(Collectors.toList());
+    List<byte[]> byteKeys =
+        keys.parallelStream()
+            .map(s -> s.getBytes(StandardCharsets.UTF_8))
+            .collect(Collectors.toList());
 
     return getBranchingPosParallel(byteKeys, limit);
   }
@@ -167,8 +168,8 @@ public class CNodeHelper {
     int brBeforeKey = getValidBrPosNum(keyLen, brPos);
     int[] res = new int[keyLen - preLen - brBeforeKey];
     for (int i = 0, bpi = 0; i < res.length; ) {
-      if (bpi < brBeforeKey && i + preLen + bpi == brPos[bpi] ) {
-        bpi ++;
+      if (bpi < brBeforeKey && i + preLen + bpi == brPos[bpi]) {
+        bpi++;
         continue;
       }
 
@@ -185,54 +186,81 @@ public class CNodeHelper {
     return brPos.length;
   }
 
+  public static byte[] removeTrailingZeros(byte[] src) {
+    int i = 0;
+    while (i < src.length && src[i] != 0) i++;
+    return Arrays.copyOfRange(src, 0, i);
+  }
+
+  public static byte[] setBytesByPosNoCheck(byte[] res, byte[] src, int[] pos) {
+    for (int i = 0; i < pos.length && i < src.length && res.length > pos[i]; i++) {
+      res[pos[i]] = src[i];
+    }
+
+    return res;
+  }
+
   // return type of infix group
   public static class InfixGroup {
     int[] brPos;
     Map<ByteArray, List<byte[]>> infixMap;
 
     public InfixGroup(int[] bp, Map<ByteArray, List<byte[]>> im) {
-      brPos = bp; infixMap = im;
+      brPos = bp;
+
+      // fixme debug try filter trailing zeros
+      infixMap = new HashMap<>();
+      for (Map.Entry<ByteArray, List<byte[]>> entry : im.entrySet()) {
+        infixMap.put(new ByteArray(removeTrailingZeros(entry.getKey().getVal())), entry.getValue());
+      }
+      // infixMap = im;
     }
 
     public List<byte[]> getCompleteKeys(byte[] brKey) {
-      return infixMap.get(new ByteArray(brKey));
+      return infixMap.get(new ByteArray(removeTrailingZeros(brKey)));
     }
 
-    public int[] getBranchingPos() {return brPos;}
+    public int[] getBranchingPos() {
+      return brPos;
+    }
 
     public int[] sortedBrKeys() {
       if (brPos.length > 4) throw new RuntimeException("More than 4 branching positions.");
-      return infixMap.keySet().stream().mapToInt(ba->bytes2Int(ba.val)).sorted().toArray();
+      return infixMap.keySet().stream().mapToInt(ba -> bytes2Int(ba.val)).sorted().toArray();
     }
 
     public byte[][] sortedBrKeyBytes() {
-      byte[][] keys = infixMap.keySet().stream()
-          .map(i -> i.val)
-          .toArray(byte[][]::new);
+      byte[][] keys = infixMap.keySet().stream().map(i -> i.val).toArray(byte[][]::new);
       Arrays.sort(keys, Arrays::compare);
       return keys;
     }
 
-    public Map<ByteArray, List<byte[]>> getInfixMap() {return infixMap;}
+    public Map<ByteArray, List<byte[]>> getInfixMap() {
+      return infixMap;
+    }
   }
 
   // substitute List<byte> for extreme performance
   public static class ByteArray {
     final byte[] val;
 
-    public ByteArray() {val = null;}
+    public ByteArray() {
+      val = null;
+    }
 
     public ByteArray(ByteArray ori, byte add) {
       val = new byte[ori.val == null ? 1 : (ori.val.length + 1)];
       if (ori.val != null) System.arraycopy(ori.val, 0, val, 0, ori.val.length);
-      val[val.length-1] = add;
+      val[val.length - 1] = add;
     }
 
     public ByteArray(byte[] ba) {
       val = ba;
     }
 
-    public byte[] getVal() {return val;}
+    public byte[] getVal() {
+      return val;
+    }
 
     @Override
     public boolean equals(Object o) {
@@ -251,45 +279,47 @@ public class CNodeHelper {
   }
 
   /**
-   * Well-defined, which is implemented with no hurry :). <br/>
+   * Well-defined, which is implemented with no hurry :). <br>
    * With this method, both {@linkplain #groupPrefixes} and {@linkplain #getBranchingPosParallel}
    * gets Deprecated.
+   *
    * @param keys
    * @param limit
    * @param start
-   *
    * @return
    */
-  public static InfixGroup groupByInfix(final List<byte[]> keys,
-                                        final int limit,
-                                        final int start) {
+  public static InfixGroup groupByInfix(final List<byte[]> keys, final int limit, final int start) {
     Set<Integer> positions = ConcurrentHashMap.newKeySet();
     Map<ByteArray, List<byte[]>> infixKeyMap = new ConcurrentHashMap<>();
 
     infixKeyMap.put(new ByteArray(), keys);
     int depth = start;
-    OptionalInt maxLen = keys.stream().mapToInt(e->e.length).max();
+    OptionalInt maxLen = keys.stream().mapToInt(e -> e.length).max();
     while (positions.size() < limit && !infixKeyMap.isEmpty() && depth < maxLen.getAsInt()) {
       final int thisDepth = depth;
 
-      // when split, branching keys immediately obtain its brKeys, while non-brs obtain after others finished.
+      // when split, branching keys immediately obtain its brKeys, while non-brs obtain after others
+      // finished.
       final Map<ByteArray, List<byte[]>> branchingKeys = new ConcurrentHashMap<>();
       final Map<ByteArray, List<byte[]>> nonBranchingKeys = new ConcurrentHashMap<>();
 
-      infixKeyMap.entrySet().parallelStream().forEach(e -> {
-        Map<Byte, List<byte[]>> res = parallelSplitAt(e.getValue(), thisDepth);
-        if (res.size() > 1) {
-          positions.add(thisDepth);
-          // ByteArray tmpKey;
-          for (Map.Entry<Byte, List<byte[]>> resEnt : res.entrySet()) {
-            // tmpKey = new ByteArray(e.getKey(), resEnt.getKey());
-            branchingKeys.put(new ByteArray(e.getKey(), resEnt.getKey()), resEnt.getValue());
-          }
-        } else {
-          // not branching, just key it as is, for further completion
-          nonBranchingKeys.put(e.getKey(), e.getValue());
-        }
-      });
+      infixKeyMap.entrySet().parallelStream()
+          .forEach(
+              e -> {
+                Map<Byte, List<byte[]>> res = parallelSplitAt(e.getValue(), thisDepth);
+                if (res.size() > 1) {
+                  positions.add(thisDepth);
+                  // ByteArray tmpKey;
+                  for (Map.Entry<Byte, List<byte[]>> resEnt : res.entrySet()) {
+                    // tmpKey = new ByteArray(e.getKey(), resEnt.getKey());
+                    branchingKeys.put(
+                        new ByteArray(e.getKey(), resEnt.getKey()), resEnt.getValue());
+                  }
+                } else {
+                  // not branching, just key it as is, for further completion
+                  nonBranchingKeys.put(e.getKey(), e.getValue());
+                }
+              });
 
       if (positions.contains(depth)) {
         // improve: choose the smaller one as the base
@@ -298,9 +328,7 @@ public class CNodeHelper {
           // all keys in this entry must agree on thisDepth
           byte[] k1 = nbe.getValue().get(0);
           infixKeyMap.put(
-              new ByteArray(
-                  nbe.getKey(),
-                  k1.length > thisDepth ? k1[thisDepth] : 0),
+              new ByteArray(nbe.getKey(), k1.length > thisDepth ? k1[thisDepth] : 0),
               nbe.getValue());
         }
       } else {
@@ -309,13 +337,8 @@ public class CNodeHelper {
       }
       depth++;
     }
-    return new InfixGroup(
-        positions.stream().mapToInt(i->i).sorted().toArray(),
-        infixKeyMap
-    );
+    return new InfixGroup(positions.stream().mapToInt(i -> i).sorted().toArray(), infixKeyMap);
   }
-
-
 
   public static Set<Integer> getBranchingPosParallel(List<byte[]> byteKeys, int limit) {
     return getBranchingPosParallel(byteKeys, limit, 0);
@@ -323,9 +346,8 @@ public class CNodeHelper {
 
   // todo combine with grouping/classifier, avoid another stream/grouping
   //  make sure initial byteKys are identical on bytes before from.
-  public static Set<Integer> getBranchingPosParallel(final List<byte[]> byteKeys,
-                                                     final int limit,
-                                                     final int from /* included */ ) {
+  public static Set<Integer> getBranchingPosParallel(
+      final List<byte[]> byteKeys, final int limit, final int from /* included */) {
     Set<Integer> positions = ConcurrentHashMap.newKeySet();
     Queue<List<byte[]>> cur = new ConcurrentLinkedQueue<>();
 
@@ -335,16 +357,16 @@ public class CNodeHelper {
     while (positions.size() < limit && !cur.isEmpty()) {
       final int thisDepth = depth;
       final Queue<List<byte[]>> tar = new ConcurrentLinkedQueue<>();
-      cur.parallelStream().forEach(group -> {
-        Map<Byte, List<byte[]>> res = parallelSplitAt(group, thisDepth);
-        if (res.size() > 1) {
-          positions.add(thisDepth);
-        }
+      cur.parallelStream()
+          .forEach(
+              group -> {
+                Map<Byte, List<byte[]>> res = parallelSplitAt(group, thisDepth);
+                if (res.size() > 1) {
+                  positions.add(thisDepth);
+                }
 
-        res.values().stream()
-            .filter(e -> e.size() > 1)
-            .forEach(tar::add);
-      });
+                res.values().stream().filter(e -> e.size() > 1).forEach(tar::add);
+              });
 
       cur = tar;
       depth++;
@@ -354,7 +376,7 @@ public class CNodeHelper {
   }
 
   /**
-   * Only split at designated position. <br/>
+   * Only split at designated position. <br>
    * Key method being called multiple times.
    *
    * @return for each entry <b, List<k>>, all k has value b at depth
@@ -379,15 +401,13 @@ public class CNodeHelper {
     return map;
   }
 
-
   public static Map<List<Byte>, List<byte[]>> findPrefixes(byte[][] arrays, int prefixLength) {
     return Arrays.stream(arrays)
         .parallel()
         .filter(arr -> arr.length >= prefixLength)
-        .collect(Collectors.groupingByConcurrent(
-            arr -> getPrefix(arr, prefixLength),
-            Collectors.toList()
-        ));
+        .collect(
+            Collectors.groupingByConcurrent(
+                arr -> getPrefix(arr, prefixLength), Collectors.toList()));
   }
 
   private static List<Byte> getPrefix(byte[] array, int prefixLength) {
@@ -410,10 +430,7 @@ public class CNodeHelper {
 
     if (arrays.length == 1) return arrays[0].length;
 
-    int minLength = Arrays.stream(arrays)
-        .mapToInt(arr -> arr.length)
-        .min()
-        .orElse(0);
+    int minLength = Arrays.stream(arrays).mapToInt(arr -> arr.length).min().orElse(0);
 
     if (minLength < start) {
       return 0;
@@ -445,52 +462,75 @@ public class CNodeHelper {
   // endregion
 
   public static void main(String[] args) {
-    byte[] t = new  byte[] {1,2,88,4};
-    int[] ti = new int[] {1,3};
+    byte[] t = new byte[] {1, 2, 88, 4};
+    int[] ti = new int[] {1, 3};
     System.out.println(Arrays.toString(findIntervals(ti)));
     System.out.println(Arrays.toString(int2BytesVarLen(bytes2Int(t))));
 
-    t = new byte[] {1,2};
+    t = new byte[] {1, 2};
     System.out.println(Arrays.toString(int2BytesVarLen(bytes2Int(t))));
     t = new byte[] {8};
     System.out.println(Arrays.toString(int2BytesVarLen(bytes2Int(t))));
-    t = new byte[] {1,2,3,4};
+    t = new byte[] {1, 2, 3, 4};
     System.out.println(Arrays.toString(int2BytesVarLen(bytes2Int(t))));
-
-
   }
 
   // for assembler
   public static void main2(String[] args) {
-    byte[] bk = new byte[] {1, 2, 3, 4,11,11,11,11};
-    byte[] rk = new byte[] {5,6,7,8,44,78,33};
-    int[] pos = new int[] {1,2,3,4,8,9,10,11};
+    byte[] bk = new byte[] {1, 2, 3, 4, 11, 11, 11, 11};
+    byte[] rk = new byte[] {5, 6, 7, 8, 44, 78, 33};
+    int[] pos = new int[] {1, 2, 3, 4, 8, 9, 10, 11};
     byte[] res = assembleKeyByBatch(bk, rk, pos);
     System.out.println(Arrays.toString(res));
   }
 
   // on real dataset
   public static void main1(String[] args) throws Exception {
-    String[] test = new String[] {
-        "0110100101",
-        "0110100110",
-        "0110101010",
-        "0110101011",
-        "0111010110",
-        "0111101001",
-        "0111101011"
-    };
+    String[] test =
+        new String[] {
+          "0110100101",
+          "0110100110",
+          "0110101010",
+          "0110101011",
+          "0111010110",
+          "0111101001",
+          "0111101011"
+        };
 
-    List<String> keysList = Arrays.asList(
-        "elderberry", "fig", "grape", "guava",
-        "kiwi", "kumquat", "lemon", "lime",
-        "quince", "raspberry", "raspbersy", "strawberry", "tangerine",
-        "apple", "applef", "apricot", "banana", "bandana",
-        "cherry", "charming", "date", "dragonfruit",
-        "yellowfruit", "zucchini",
-        "mango", "nectarine", "orange", "papaya",
-        "ugli", "vanilla", "watermelon", "xigua"
-    );
+    List<String> keysList =
+        Arrays.asList(
+            "elderberry",
+            "fig",
+            "grape",
+            "guava",
+            "kiwi",
+            "kumquat",
+            "lemon",
+            "lime",
+            "quince",
+            "raspberry",
+            "raspbersy",
+            "strawberry",
+            "tangerine",
+            "apple",
+            "applef",
+            "apricot",
+            "banana",
+            "bandana",
+            "cherry",
+            "charming",
+            "date",
+            "dragonfruit",
+            "yellowfruit",
+            "zucchini",
+            "mango",
+            "nectarine",
+            "orange",
+            "papaya",
+            "ugli",
+            "vanilla",
+            "watermelon",
+            "xigua");
 
     byte[][] toSort = strings2ByteArrays(keysList);
 
@@ -498,7 +538,9 @@ public class CNodeHelper {
 
     Arrays.sort(toSort, BYTE_ARRAY_COMPARATOR);
     String[] sortRes = bytes2Strings(toSort);
-    int bsRes = Arrays.binarySearch(toSort, "apple".getBytes(StandardCharsets.UTF_8), BYTE_ARRAY_COMPARATOR);
+    int bsRes =
+        Arrays.binarySearch(
+            toSort, "apple".getBytes(StandardCharsets.UTF_8), BYTE_ARRAY_COMPARATOR);
 
     PathTxtLoader loader = new PathTxtLoader(PathTxtLoader.FILE_PATH);
     List<String> kl = loader.getAllLines();
@@ -506,17 +548,15 @@ public class CNodeHelper {
     long time = System.nanoTime();
     Set<Integer> res = parallelGetBranchingPositions(kl, false);
     time = System.nanoTime() - time;
-    System.out.println(time/1000000);
+    System.out.println(time / 1000000);
     System.out.println(res);
 
     byte[][] a = strings2ByteArrays(test);
     System.out.println(Arrays.toString(bytes2Strings(a)));
 
-    byte[][] res2 = extBytes(a, new int[]{1,2,3,4});
+    byte[][] res2 = extBytes(a, new int[] {1, 2, 3, 4});
     System.out.println(Arrays.toString(bytes2Strings(res2)));
-
   }
-
 
   // region Export
 
@@ -524,28 +564,30 @@ public class CNodeHelper {
   // group keys by prefixes start from certain position.
   public static List<ValuedPrefixArray> groupPrefixes(byte[][] keys, int start, int grpLen) {
     // group keys by the first byte
-    Map<List<Byte>, List<byte[]>> classfier = Arrays.stream(keys)
-        .parallel()
-        .filter(arr -> arr.length >= start + 1)  // prefixed key filtered
-        .collect(Collectors.groupingByConcurrent(
-            arr -> {
-              List<Byte> prefix = new ArrayList<>(grpLen);
-              for (int i = start; i < grpLen + start; i++) {
-                prefix.add(arr[i]);
-              }
-              return prefix;
-            },
-            Collectors.toList()
-        ));
-
+    Map<List<Byte>, List<byte[]>> classfier =
+        Arrays.stream(keys)
+            .parallel()
+            .filter(arr -> arr.length >= start + 1) // prefixed key filtered
+            .collect(
+                Collectors.groupingByConcurrent(
+                    arr -> {
+                      List<Byte> prefix = new ArrayList<>(grpLen);
+                      for (int i = start; i < grpLen + start; i++) {
+                        prefix.add(arr[i]);
+                      }
+                      return prefix;
+                    },
+                    Collectors.toList()));
 
     // evaluate the effect of merging for each group
-    List<ValuedPrefixArray> vpaList = classfier.values()
-        .stream()
-        .map(e -> new ValuedPrefixArray(e.toArray(new byte[0][0]), start)).
-        sorted(Comparator.comparingInt((ValuedPrefixArray obj) -> obj.len)
-            .thenComparingInt(obj -> obj.prd).reversed())
-        .collect(Collectors.toList());
+    List<ValuedPrefixArray> vpaList =
+        classfier.values().stream()
+            .map(e -> new ValuedPrefixArray(e.toArray(new byte[0][0]), start))
+            .sorted(
+                Comparator.comparingInt((ValuedPrefixArray obj) -> obj.len)
+                    .thenComparingInt(obj -> obj.prd)
+                    .reversed())
+            .collect(Collectors.toList());
     return vpaList;
   }
 
@@ -565,12 +607,12 @@ public class CNodeHelper {
     if (pos == null || pos.length <= 1) return new int[0];
 
     int[] itvPos = new int[pos[pos.length - 1] - pos[0] - pos.length + 1];
-    for (int idx = 0, k = 0;;) {
+    for (int idx = 0, k = 0; ; ) {
       // k records number in itvPos
-      if (idx > pos.length - 2) break;  // shall not check last element
+      if (idx > pos.length - 2) break; // shall not check last element
 
       if (pos[idx] + 1 != pos[idx + 1]) {
-        for (int pi = pos[idx] + 1; pi < pos[idx+1]; pi++) {
+        for (int pi = pos[idx] + 1; pi < pos[idx + 1]; pi++) {
           itvPos[k++] = pi;
         }
       }
@@ -586,13 +628,15 @@ public class CNodeHelper {
     Map<List<Byte>, List<byte[]>> classfier = findPrefixes(toSort, 1);
 
     // evaluate the effect of merging for each group
-    List<ValuedPrefixArray> vpaList = classfier.values()
-        .stream()
-        .filter(v -> v.size() > 1) /* group with single key shall be filtered */
-        .map(e -> new ValuedPrefixArray(e.toArray(new byte[0][0]))).
-        sorted(Comparator.comparingInt((ValuedPrefixArray obj) -> obj.len)
-            .thenComparingInt(obj -> obj.prd).reversed())
-        .collect(Collectors.toList());
+    List<ValuedPrefixArray> vpaList =
+        classfier.values().stream()
+            .filter(v -> v.size() > 1) /* group with single key shall be filtered */
+            .map(e -> new ValuedPrefixArray(e.toArray(new byte[0][0])))
+            .sorted(
+                Comparator.comparingInt((ValuedPrefixArray obj) -> obj.len)
+                    .thenComparingInt(obj -> obj.prd)
+                    .reversed())
+            .collect(Collectors.toList());
     return vpaList;
   }
 
@@ -603,11 +647,13 @@ public class CNodeHelper {
     Arrays.parallelSetAll(res, i -> s.get(i).getBytes(coding));
     return res;
   }
+
   public static byte[][] strings2ByteArrays(String[] s) {
     byte[][] res = new byte[s.length][];
     Arrays.parallelSetAll(res, i -> s[i].getBytes(coding));
     return res;
   }
+
   private static String[] bytes2Strings(byte[][] b) {
     String[] r = new String[b.length];
     Arrays.parallelSetAll(r, i -> new String(b[i], coding));
@@ -617,23 +663,22 @@ public class CNodeHelper {
   public static int bytes2IntLegacy(byte[] b) {
     // preceding bytes on higher bits
     // fixme and its wrong! cannot differ [1,2,3] and [0,1,2,3] as 0 on highest byte
-    return (( (b.length >= 1 ? b[0] : 0) & 0xFF) << 24) |
-        (((b.length >= 2 ? b[1] : 0) & 0xFF) << 16) |
-        (((b.length >= 3 ? b[2] : 0) & 0xFF) << 8)  |
-        ((b.length >= 4 ? b[3] : 0) & 0xFF);
+    return (((b.length >= 1 ? b[0] : 0) & 0xFF) << 24)
+        | (((b.length >= 2 ? b[1] : 0) & 0xFF) << 16)
+        | (((b.length >= 3 ? b[2] : 0) & 0xFF) << 8)
+        | ((b.length >= 4 ? b[3] : 0) & 0xFF);
   }
 
   public static int bytes2Int(byte[] b) {
     // put prior pos on lower bytes
     int len = b.length, r = 0;
-    if (len > 4) throw new UnsupportedOperationException("5 or more bytes cannot encoded to a int.");
+    if (len > 4)
+      throw new UnsupportedOperationException("5 or more bytes cannot encoded to a int.");
     for (int i = len - 1; i >= 0; i--) {
       r <<= 8;
       r |= ubyte(b[i]);
     }
 
-    if (r==10524646)
-      System.out.println("AAAA");
     return r;
   }
 
@@ -641,44 +686,45 @@ public class CNodeHelper {
   public static byte[] int2BytesFixedLen(final int i, final int len) {
     byte[] b = new byte[4];
     int k = 0;
-    for (; k < len ;) {
+    for (; k < len; ) {
       b[k] = (byte) ((i >> (8 * k)) & 0xff);
       k++;
     }
     return Arrays.copyOfRange(b, 0, len);
   }
 
-  /**
-   * 0s are used as mark, only valid in the lowest byte (foremost byte previously)
-   */
+  /** 0s are used as mark, only valid in the lowest byte (foremost byte previously) */
   public static byte[] int2BytesVarLen(final int i) {
     byte[] b = new byte[4];
     int k = 0;
-    for (; k < 4 ;) {
+    for (; k < 4; ) {
       b[k] = (byte) ((i >> (8 * k)) & 0xff);
-      if (b[k] == 0 && k != 0) break;  // 0 after any non-zero are ignored
+      if (b[k] == 0 && k != 0) break; // 0 after any non-zero are ignored
       k++;
     }
 
     return Arrays.copyOfRange(b, 0, k);
   }
 
-  private static final Comparator<byte[]> BYTE_ARRAY_COMPARATOR = (a, b) -> {
-    int cmp;
-    for (int i = 0; i < a.length && i < b.length; i++) {
-      cmp = Byte.compare(a[i], b[i]);
-      if (cmp != 0) {
-        return cmp;
-      }
-    }
-    return Integer.compare(a.length, b.length);
-  };
+  private static final Comparator<byte[]> BYTE_ARRAY_COMPARATOR =
+      (a, b) -> {
+        int cmp;
+        for (int i = 0; i < a.length && i < b.length; i++) {
+          cmp = Byte.compare(a[i], b[i]);
+          if (cmp != 0) {
+            return cmp;
+          }
+        }
+        return Integer.compare(a.length, b.length);
+      };
+
   // endregion
 
   public static class ValuedPrefixArray {
     // the prd (product) indicates the profit to merge this prefix
     public int len, prd;
     public byte[][] bytes;
+
     public ValuedPrefixArray(byte[][] b) {
       len = findLCPLength(b);
       bytes = b;
@@ -693,8 +739,9 @@ public class CNodeHelper {
 
     @Override
     public String toString() {
-      return String.format("%d x %d : %s", bytes.length, len,
-          new String(bytes[0], StandardCharsets.UTF_8).substring(0, len));
+      return String.format(
+          "%d x %d : %s",
+          bytes.length, len, new String(bytes[0], StandardCharsets.UTF_8).substring(0, len));
     }
   }
 }

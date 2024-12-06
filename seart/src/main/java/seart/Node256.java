@@ -40,8 +40,7 @@ public class Node256 implements ISEARTNode {
   public ISEARTNode insert(byte key, int insPos, ISEARTNode child) {
     // todo remove redundant guardian in release ver.
     if (ptrs[ubyte(key)] != null) {
-      throw new RuntimeException(
-          "Inserting duplicate key:" + (char) key + "," + child);
+      throw new RuntimeException("Inserting duplicate key:" + (char) key + "," + child);
     }
 
     ptrs[ubyte(key)] = child;

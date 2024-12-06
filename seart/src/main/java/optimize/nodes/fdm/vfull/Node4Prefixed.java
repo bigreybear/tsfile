@@ -1,8 +1,6 @@
 package optimize.nodes.fdm.vfull;
 
-import optimize.nodes.INode;
-
-public class Node4Prefixed extends Node4 implements Prefixed{
+public class Node4Prefixed extends Node4 implements Prefixed {
   ISEARTNode prefixedPtr; // with no key
 
   public Node4Prefixed(byte[] pk, byte k1, ISEARTNode p1, ISEARTNode prefixedPtr) {

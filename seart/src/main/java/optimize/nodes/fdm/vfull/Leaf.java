@@ -1,8 +1,7 @@
 package optimize.nodes.fdm.vfull;
 
-import optimize.nodes.INode;
-
 import java.nio.charset.StandardCharsets;
+import optimize.nodes.INode;
 
 public class Leaf implements ISEARTNode {
   byte[] partialKey;
@@ -41,7 +40,8 @@ public class Leaf implements ISEARTNode {
 
   @Override
   public String toString() {
-    return String.format(" %s : %d", new String(partialKey, StandardCharsets.UTF_8), value.getPartialKey());
+    return String.format(
+        " %s : %d", new String(partialKey, StandardCharsets.UTF_8), value.getPartialKey());
   }
 
   // endregion

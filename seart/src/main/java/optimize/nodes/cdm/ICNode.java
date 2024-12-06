@@ -1,25 +1,35 @@
 package optimize.nodes.cdm;
 
-import optimize.nodes.INode;
-
 import java.util.List;
+import optimize.nodes.INode;
 
 public interface ICNode extends INode {
   void setBranchingKeys(List<Integer> collect);
 
   // more than 4 positions
-  default void setBranchingKeysExtended(byte[][] bks) {};
+  default void setBranchingKeysExtended(byte[][] bks) {}
+  ;
 
-  default int[] getBranchingPos() {return null;}
+  default int[] getBranchingPos() {
+    return null;
+  }
 
   // get index of the target key
-  default int getBrKeyIdx(int val) {return -1;}
+  default int getBrKeyIdx(int val) {
+    return -1;
+  }
 
-  default int getBrKeyIdx(byte[] ba) {return -1;}
+  default int getBrKeyIdx(byte[] ba) {
+    return -1;
+  }
 
-  default void setBranchingPtr(int idx, INode ptr) {throw new UnsupportedOperationException();};
+  default void setBranchingPtr(int idx, INode ptr) {
+    throw new UnsupportedOperationException();
+  }
+  ;
 
-  default void setInterleavedBytes(int idx, byte[] ilb /*Inter-Leaved Bytes*/ ) {};
+  default void setInterleavedBytes(int idx, byte[] ilb /*Inter-Leaved Bytes*/) {}
+  ;
 
   /**
    * @param src may have trailing 0s, so could be longer than pos[-1] or res
@@ -30,8 +40,7 @@ public interface ICNode extends INode {
         || src == null
         || pos == null
         || src.length < pos.length
-        || res.length < pos.length)
-      throw new RuntimeException("Input Error");
+        || res.length < pos.length) throw new RuntimeException("Input Error");
 
     for (int i = 0; i < pos.length; i++) {
       res[pos[i]] = src[i];
@@ -49,7 +58,7 @@ public interface ICNode extends INode {
   }
 
   static int[] unsignedByteArr2IntArr(byte[] b) {
-    int [] intArr = new int[b.length];
+    int[] intArr = new int[b.length];
     for (int i = 0; i < intArr.length; i++) {
       intArr[i] = 0xff & b[i];
     }
@@ -58,12 +67,18 @@ public interface ICNode extends INode {
 
   /**
    * Ignore the partial key
+   *
    * @param pos assembled by branching and interleaved bytes
    * @return
    */
-  default byte[] assembleKeyAt(int pos) {return null;};
+  default byte[] assembleKeyAt(int pos) {
+    return null;
+  }
+  ;
 
-  default ICNode getPtrByPos(int pos) {return null;}
+  default ICNode getPtrByPos(int pos) {
+    return null;
+  }
 
   void setPartialKey(byte[] b);
 }

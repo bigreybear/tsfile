@@ -1,21 +1,20 @@
 package optimize.nodes.cdm;
 
-import optimize.nodes.IInternal;
-import optimize.nodes.INode;
-import optimize.nodes.IStaticNode;
+import static optimize.nodes.cdm.CNodeHelper.extractBytes;
+import static optimize.nodes.cdm.CNodeHelper.findIntervals;
+import static optimize.nodes.cdm.CNodeHelper.getValidBrPosNum;
+import static optimize.nodes.cdm.CNodeHelper.removeTrailingZeros;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
-
-import static optimize.nodes.cdm.CNodeHelper.extractBytes;
-import static optimize.nodes.cdm.CNodeHelper.findIntervals;
-import static optimize.nodes.cdm.CNodeHelper.getValidBrPosNum;
-import static optimize.nodes.cdm.CNodeHelper.strings2ByteArrays;
+import optimize.nodes.IInternal;
+import optimize.nodes.INode;
+import optimize.nodes.IStaticNode;
 
 public class CNode implements ICNode, INode, IInternal, IStaticNode {
   // for more than 4 positions
-  byte[] pos;// indeed flags for byte p1, p2, p3, p4;
+  byte[] pos; // indeed flags for byte p1, p2, p3, p4;
   byte[] partialKeys; // partial keys
   byte[][] bks; // branching keys
   byte[][] rmk; // remaining keys
@@ -38,16 +37,10 @@ public class CNode implements ICNode, INode, IInternal, IStaticNode {
   public void setBranchingKeysExtended(byte[][] input) {
     bks = new byte[input.length][];
     for (int i = 0; i < input.length; i++) {
-      bks[i] = removeTrailingZeros(input[i]);
+      bks[i] = CNodeHelper.removeTrailingZeros(input[i]);
     }
     rmk = new byte[input.length][];
     ptrs = new INode[input.length];
-  }
-
-  private static byte[] removeTrailingZeros(byte[] src) {
-    int i = 0;
-    while (i < src.length && src[i] != 0) i++;
-    return Arrays.copyOfRange(src, 0, i);
   }
 
   @Override
@@ -91,7 +84,11 @@ public class CNode implements ICNode, INode, IInternal, IStaticNode {
 
   @Override
   public void setInterleavedBytes(int idx, byte[] ilb) {
-    rmk[idx] = (ilb == null && ilb[0] == 0) ? null : removeTrailingZeros(ilb);
+    if (ilb == null) {
+      rmk[idx] = null;
+    }
+    ilb = removeTrailingZeros(ilb);
+    rmk[idx] = ilb.length == 0 ? null : ilb;
   }
 
   @Override
@@ -102,11 +99,11 @@ public class CNode implements ICNode, INode, IInternal, IStaticNode {
     int[] brRltPos = ICNode.shiftIntArr(posInt, -1 * posInt[0]);
     int[] itvRltPos = ICNode.shiftIntArr(itvInt, -1 * itvInt[0]);
 
-    byte[] asmkey = new byte[posInt[posInt.length-1] - posInt[0] + 1];
-    setBytesByPosNoCheck(asmkey, bks[tarPos], brRltPos);
+    byte[] asmkey = new byte[posInt[posInt.length - 1] - posInt[0] + 1];
+    CNodeHelper.setBytesByPosNoCheck(asmkey, bks[tarPos], brRltPos);
 
     if (rmk != null && rmk.length != 0)
-      setBytesByPosNoCheck(asmkey, rmk[tarPos], itvRltPos);
+      CNodeHelper.setBytesByPosNoCheck(asmkey, rmk[tarPos], itvRltPos);
     return asmkey;
   }
 
@@ -120,22 +117,12 @@ public class CNode implements ICNode, INode, IInternal, IStaticNode {
     int[] itvRltPos = ICNode.shiftIntArr(itvInt, -1 * preLen);
 
     byte[] asmkey = new byte[getValidBrPosNum(keyLen, posInt) + itvInt.length];
-    setBytesByPosNoCheck(asmkey, bks[tarPos], brRltPos);
+    CNodeHelper.setBytesByPosNoCheck(asmkey, bks[tarPos], brRltPos);
 
     if (rmk != null && rmk.length != 0)
-      setBytesByPosNoCheck(asmkey, rmk[tarPos], itvRltPos);
+      CNodeHelper.setBytesByPosNoCheck(asmkey, rmk[tarPos], itvRltPos);
     return asmkey;
   }
-
-  static byte[] setBytesByPosNoCheck(byte[] res, byte[] src, int[] pos) {
-    for (int i = 0; i < pos.length && res.length > pos[i]; i++) {
-      res[pos[i]] = src[i];
-    }
-
-    return res;
-  }
-
-
 
   @Override
   public ICNode getPtrByPos(int pos) {
@@ -154,7 +141,7 @@ public class CNode implements ICNode, INode, IInternal, IStaticNode {
 
   @Override
   public INode getChild(String name) {
-    return getChild(extractBytes(name.getBytes(StandardCharsets.UTF_8), ICNode.unsignedByteArr2IntArr(pos)), 0);
+    return getChild(name.getBytes(StandardCharsets.UTF_8), 0);
   }
 
   public INode getChild(byte[] name, int preLen) {
@@ -169,10 +156,14 @@ public class CNode implements ICNode, INode, IInternal, IStaticNode {
     }
 
     // int idx = getBrKeyIdx(removeTrailingZeros(Arrays.copyOfRange(name, ki, name.length)));
-    int idx = getBrKeyIdx(removeTrailingZeros(extractBytes(name, ICNode.unsignedByteArr2IntArr(pos))));
+    int idx =
+        getBrKeyIdx(
+            CNodeHelper.removeTrailingZeros(
+                extractBytes(name, ICNode.unsignedByteArr2IntArr(pos))));
     byte[] checkKey = assembleKeyAt(idx, preLen, name.length);
-    for (int i = 0 ; i < checkKey.length; i++) {
-      if (name[ki + i] != checkKey[i]) throw new UnsupportedOperationException("Inconsistent on assemble key.");
+    for (int i = 0; i < checkKey.length; i++) {
+      if (name[ki + i] != checkKey[i])
+        throw new UnsupportedOperationException("Inconsistent on assemble key.");
     }
     return ptrs[idx];
   }
@@ -192,8 +183,5 @@ public class CNode implements ICNode, INode, IInternal, IStaticNode {
     return partialKeys;
   }
 
-  public static void main(String[] args) {
-
-  }
+  public static void main(String[] args) {}
 }
-

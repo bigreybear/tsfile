@@ -1,10 +1,5 @@
 package optimize;
 
-import optimize.nodes.INode;
-import optimize.nodes.cdm.CNodeHelper;
-import org.openjdk.jol.info.ClassLayout;
-import org.openjdk.jol.info.GraphLayout;
-
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -14,10 +9,12 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import optimize.nodes.INode;
+import optimize.nodes.cdm.CNodeHelper;
+import org.openjdk.jol.info.ClassLayout;
+import org.openjdk.jol.info.GraphLayout;
 
-/**
- * For both TargetFunction and ability to index with related map type
- */
+/** For both TargetFunction and ability to index with related map type */
 public class Evaluator {
   // weight between space and time
   public static final float alpha = 1f;
@@ -32,29 +29,31 @@ public class Evaluator {
    * @param h height of the logical tree
    * @param ttlChd total child number of current node
    */
-  public static boolean evaluateMerge(CNodeHelper.ValuedPrefixArray vpa, int preLen,
-                                      int h, int ttlChd, MapType mapType) {
+  public static boolean evaluateMerge(
+      CNodeHelper.ValuedPrefixArray vpa, int preLen, int h, int ttlChd, MapType mapType) {
     boolean res = false;
     switch (mapType) {
-      case HASH: {
-        // get the
-        final List<String> keys = new ArrayList<>();
-        for (byte[] key : vpa.bytes) {
-          keys.add(new String(
-              Arrays.copyOfRange(key, preLen, vpa.len + preLen), StandardCharsets.ISO_8859_1));
+      case HASH:
+        {
+          // get the
+          final List<String> keys = new ArrayList<>();
+          for (byte[] key : vpa.bytes) {
+            keys.add(
+                new String(
+                    Arrays.copyOfRange(key, preLen, vpa.len + preLen),
+                    StandardCharsets.ISO_8859_1));
+          }
+
+          // todo remove debug, make sure to partial merge
+          int deltaSpace = calcMapMinSpace(keys) - vpa.prd + vpa.len;
+
+          // the 2nd term is definitely > 0, place h in denominator to indicate that
+          //  the higher the merge is, the higher the time penalty
+          //  i.e., if the merge happens at very deep level, it can rarely affect read perf.
+          res = alpha * deltaSpace + (1 - alpha) * t0 * ttlChd / (vpa.bytes.length * h) < 0;
+          break;
         }
-
-        // todo remove debug, make sure to partial merge
-        int deltaSpace = calcMapMinSpace(keys) - vpa.prd + vpa.len;
-
-        // the 2nd term is definitely > 0, place h in denominator to indicate that
-        //  the higher the merge is, the higher the time penalty
-        //  i.e., if the merge happens at very deep level, it can rarely affect read perf.
-        res = alpha * deltaSpace + (1 - alpha) * t0 * ttlChd / (vpa.bytes.length * h) < 0;
-        break;
-      }
     }
-
 
     return res;
   }
@@ -99,34 +98,36 @@ public class Evaluator {
   // keys should be prefix-truncated
   public static int estSpaceGain(List<String> keys, MapType type) {
     switch (type) {
-      case HASH: {
-        int cap = (int) (keys.size() / HASH_LOAD_FACTOR);
-        int nodeSiz = cap * 2 * REF_SIZE;
-        int pkSiz = keys.stream().mapToInt(String::length).sum();
-        return nodeSiz + pkSiz;
-      }
-      case FDM: {
-        // except the first byte, trailing bytes are moved to succeeding partial keys
-        // while lengths should be accounted here
-        int siz = keys.size();
-        int sucNodPkLen = keys.stream().mapToInt(String::length).sum() - siz;
-        // the FDM node size can be counted as follows
-        int nodeSiz;
-        if (siz <= 4) {
-          nodeSiz = 4 + 4 * REF_SIZE;
-        } else if (siz <= 16) {
-          nodeSiz = 16 + 16 * REF_SIZE;
-        } else if (siz <= 48) {
-          nodeSiz = 256 + 48 * REF_SIZE;
-        } else if (siz <= 256) {
-          nodeSiz = 256 * REF_SIZE;
-        } else {
-          throw new UnsupportedOperationException();
+      case HASH:
+        {
+          int cap = (int) (keys.size() / HASH_LOAD_FACTOR);
+          int nodeSiz = cap * 2 * REF_SIZE;
+          int pkSiz = keys.stream().mapToInt(String::length).sum();
+          return nodeSiz + pkSiz;
         }
+      case FDM:
+        {
+          // except the first byte, trailing bytes are moved to succeeding partial keys
+          // while lengths should be accounted here
+          int siz = keys.size();
+          int sucNodPkLen = keys.stream().mapToInt(String::length).sum() - siz;
+          // the FDM node size can be counted as follows
+          int nodeSiz;
+          if (siz <= 4) {
+            nodeSiz = 4 + 4 * REF_SIZE;
+          } else if (siz <= 16) {
+            nodeSiz = 16 + 16 * REF_SIZE;
+          } else if (siz <= 48) {
+            nodeSiz = 256 + 48 * REF_SIZE;
+          } else if (siz <= 256) {
+            nodeSiz = 256 * REF_SIZE;
+          } else {
+            throw new UnsupportedOperationException();
+          }
 
-        // trailing 2 ref for key and ptr array
-        return sucNodPkLen + nodeSiz + 2 * REF_SIZE;
-      }
+          // trailing 2 ref for key and ptr array
+          return sucNodPkLen + nodeSiz + 2 * REF_SIZE;
+        }
       case CDM:
         break;
     }
@@ -146,12 +147,12 @@ public class Evaluator {
     // notice could be smaller than actual
     // Note(zx) INACCURATE especially when treeify starts (single bin with more than 7 items)
     int keySize = keys.stream().mapToInt(Evaluator::calcSpace).sum();
-    return (int) (HASH_MERGE_COST_FACTOR * (keySize
-        + 48 /* Map itself */
-        + 16 /* header of the table */
-        + keys.size() * (32 + 4))) /* Node and the slot */;
+    return (int)
+        (HASH_MERGE_COST_FACTOR
+            * (keySize + 48 /* Map itself */ + 16 /* header of the table */
+            /** + keys.size() * (32 + 4) */
+            )) /* Node and the slot */;
   }
-
 
   // --add-opens java.base/java.util=ALL-UNNAMED
   // public static void testSpace(String[] args) {
@@ -161,7 +162,6 @@ public class Evaluator {
     System.out.println(ClassLayout.parseInstance(min).toPrintable());
     System.out.println(GraphLayout.parseInstance(min).totalSize());
     System.out.println(GraphLayout.parseInstance(min).toPrintable());
-
 
     // a HashMap has 48 fixed bytes wrapper (4 pads included)
     // the table (Node[]) is an array, so fixed with 16 bytes wrapper
@@ -209,13 +209,12 @@ public class Evaluator {
     // min.put("xxxxbaacaa", null);
     // min.put("xccaabbb", null);
     int diff = 0;
-    if ((diff = (int) (GraphLayout.parseInstance(min).totalSize() - calcMapMinSpace(min.keySet()))) > 0) {
+    if ((diff = (int) (GraphLayout.parseInstance(min).totalSize() - calcMapMinSpace(min.keySet())))
+        > 0) {
       // Note(zx) error derives as the key set not created when measured by GraphLayout,
       //  and table.len could be inaccurate
       System.out.println("map calculate diff: " + diff);
       System.out.println(GraphLayout.parseInstance(min).toPrintable());
     }
   }
-
 }
-

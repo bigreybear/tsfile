@@ -45,7 +45,7 @@ public class DevSenSupport implements Serializable {
   }
 
   public static void main(String[] args) throws IOException, ClassNotFoundException {
-    DevSenSupport s = deserialize("E:\\ExpDataSets\\new_arrow_src\\REDD.sup");
+    DevSenSupport s = deserialize("E:\\ExpDataSets\\Source-TsFile\\ZY.sup");
     System.out.println("CHECK SUP");
   }
 }

@@ -1,29 +1,19 @@
 package optimize;
 
-import loader.PathTxtLoader;
-import optimize.nodes.cdm.CNodeHelper;
-import optimize.nodes.fdm.vfull.SEARTree;
-import optimize.nodes.logic.LNode;
-import optimize.nodes.hash.HNode;
-import org.openjdk.jol.info.ClassLayout;
-import org.openjdk.jol.info.GraphLayout;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-
-import static optimize.Main.DataSet.BW;
-import static optimize.nodes.cdm.CNodeHelper.strings2ByteArrays;
+import loader.PathTxtLoader;
+import optimize.nodes.fdm.vfull.SEARTree;
+import org.openjdk.jol.info.GraphLayout;
 
 public class Main extends MergePrefix {
 
-
-
   public static TSTree buildLogicalTree(DataSet ds) {
     TSTree tree = new TSTree();
-    try (PathTxtLoader loader = new PathTxtLoader(PathTxtLoader.FILE_PATH)) {
+    try (PathTxtLoader loader = new PathTxtLoader(ds.rfile)) {
       List<String> paths = loader.getAllLines();
       for (String s : paths) {
         tree.insert(s, s.hashCode());
@@ -31,18 +21,21 @@ public class Main extends MergePrefix {
     } catch (Exception e) {
       e.printStackTrace();
     }
-    System.out.println(String.format("Logical tree with %d nodes", tree.nodeNum.get()));
+    REPORT_CHANNEL.append(String.format("Logical tree with %d nodes \n", tree.nodeNum.get()));
     return tree;
   }
 
   public static void measureSpace(TSTree tree) {
     long size = GraphLayout.parseInstance(tree).totalSize();
-    System.out.println("Total Size:" + size);
+    REPORT_CHANNEL
+        .append(String.format("%s %s total Size: ", mergeStrategy.name(), mapType.name()))
+        .append(size)
+        .append("\n");
   }
 
-  public static void estimateLatency(TSTree tree) {
+  public static void estimateLatency(TSTree tree, DataSet ds) {
     final List<String> qPaths = new ArrayList<>();
-    try (PathTxtLoader loader = new PathTxtLoader("mtreedata/baowu_query.txt")) {
+    try (PathTxtLoader loader = new PathTxtLoader(ds.qfile)) {
       qPaths.addAll(loader.getAllLines());
     } catch (Exception e) {
       e.printStackTrace();
@@ -56,16 +49,20 @@ public class Main extends MergePrefix {
     }
     nano = System.nanoTime() - nano;
 
-    if (mergeStrategy.equals(Evaluator.MergeStrategy.FULL) && mapType.equals(Evaluator.MapType.FDM)) {
+    if (mergeStrategy.equals(Evaluator.MergeStrategy.FULL)
+        && mapType.equals(Evaluator.MapType.FDM)) {
       System.out.println("total not exist key: " + SEARTree.nullKeys);
     }
 
-    System.out.println(String.format("query for %d ns / %d paths", nano, qPaths.size()));
+    REPORT_CHANNEL.append(String.format("query %d paths latency(ns): %d ns. \n", qPaths.size(), nano));
   }
 
-  public static void replaceTemplates(TSTree tree) {
+  public static void replaceTemplates(TSTree tree) {}
 
-  }
+  // configurations
+  public static final boolean CDM_WITH_EF = false;
+
+  public static final StringBuilder REPORT_CHANNEL = new StringBuilder();
 
   public static String[] defaultArgs() {
     String res = "";
@@ -73,9 +70,10 @@ public class Main extends MergePrefix {
     // res += " -mt fdm";
     // res += " -mt cdm";
     // res += " -ms full";
-    res += " -ms partial";
-    // res += " -ms simple";
-    res += " -ds bw";
+    // res += " -ms partial";
+    res += " -ms simple";
+    // res += " -ds bw";
+    res += " -ds xyzc";
 
     res += " -merge";
     res += " -latency";
@@ -83,11 +81,13 @@ public class Main extends MergePrefix {
 
     return res.split(" ");
   }
+
   // build logical tree
   // chooses map
   public static DataSet dataSet;
   public static Evaluator.MergeStrategy mergeStrategy;
   public static Evaluator.MapType mapType;
+
   public static void main(String[] args) {
     args = args.length == 0 ? defaultArgs() : args;
     List<String> argList = Arrays.stream(args).distinct().collect(Collectors.toList());
@@ -101,23 +101,26 @@ public class Main extends MergePrefix {
     }
     if ((argIdx = argList.indexOf("-mt")) != -1) {
       mapType = Evaluator.MapType.valueOf(argList.get(argIdx + 1).toUpperCase());
-      if ( mapType.equals(Evaluator.MapType.FDM)) {
+      if (mapType.equals(Evaluator.MapType.FDM)) {
         mergeStrategy = Evaluator.MergeStrategy.FULL;
       }
-
-      // if (mapType.equals(Evaluator.MapType.CDM) && mergeStrategy.equals()) {
-      //
-      // }
     }
 
-    TSTree tree = buildLogicalTree(BW);
+    TSTree tree = buildLogicalTree(dataSet);
+
+    if (argList.contains("-space") && mergeStrategy.equals(Evaluator.MergeStrategy.SIMPLE)) {
+      REPORT_CHANNEL.append(
+          String.format("Logical Space: %d \n", GraphLayout.parseInstance(tree).totalSize()));
+    }
+
     if (argList.contains("-merge")) {
       mergePrefixes(tree, mapType, mergeStrategy);
     } else {
       AtomicInteger atomicInteger = new AtomicInteger(0);
-      tree.traversePostOrderRec((par, key, cur, stk) -> {
-        if (cur.getKeys() != null) atomicInteger.incrementAndGet();
-      });
+      tree.traversePostOrderRec(
+          (par, key, cur, stk) -> {
+            if (cur.getKeys() != null) atomicInteger.incrementAndGet();
+          });
       System.out.println("Internal Nodes: " + atomicInteger.get());
     }
     replaceTemplates(tree);
@@ -127,27 +130,25 @@ public class Main extends MergePrefix {
     }
 
     if (argList.contains("-latency")) {
-      estimateLatency(tree);
+      estimateLatency(tree, dataSet);
     }
-    System.out.println("FINISH:" + String.join(" ", argList));
+    REPORT_CHANNEL.append("FINISH:" + String.join(" ", argList) + " with EF code: " + CDM_WITH_EF);
+    System.out.println(REPORT_CHANNEL);
   }
 
-  // test measurement
-  public static void mainv(String[] args) {
-    HNode sn = new HNode();
-    LNode ln = new LNode();
-    String a = new String("AAA");
-    byte[] b = new byte[] {1,2,3};
-    System.out.println(ClassLayout.parseInstance(sn).toPrintable());
-    System.out.println(ClassLayout.parseInstance(ln).toPrintable());
-    System.out.println(GraphLayout.parseInstance(a).toPrintable());
-    System.out.println(ClassLayout.parseInstance(b).toPrintable());
-  }
-
+  private static String DATASET_DIR = "mtreedata/";
   public enum DataSet {
-    BW,
-    SW,
-    ZY,
-    XYZC;
+    BW(DATASET_DIR + "text_series.txt", DATASET_DIR + "baowu_query.txt"),
+    SW(DATASET_DIR + "sw/path.txt", DATASET_DIR + "sw/query.txt"),
+    ZY(DATASET_DIR + "ZY.txt", DATASET_DIR  + "ZY-query.txt"),
+    XYZC(DATASET_DIR + "xyzc/boxmeas_path.txt", DATASET_DIR + "xyzc/boxmeas_query.txt");
+
+    public final String rfile;
+    public final String qfile;
+
+    DataSet(String a, String b) {
+      rfile = a;
+      qfile = b;
+    }
   }
 }

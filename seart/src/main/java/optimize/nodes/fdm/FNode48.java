@@ -1,10 +1,10 @@
 package optimize.nodes.fdm;
 
-import optimize.nodes.INode;
-
 import static optimize.nodes.fdm.vfull.SEARTNode.ubyte;
 
-public class FNode48 extends FNode256{
+import optimize.nodes.INode;
+
+public class FNode48 extends FNode256 {
   public final byte[] keys = new byte[256];
   private int ptrNum = 0;
 

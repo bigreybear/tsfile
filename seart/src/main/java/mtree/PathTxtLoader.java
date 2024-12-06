@@ -44,6 +44,5 @@ class PathTxtLoader {
     return src.split("\\.");
   }
 
-  public static void main(String[] args) throws IOException {
-  }
+  public static void main(String[] args) throws IOException {}
 }

@@ -2,11 +2,12 @@ package optimize.nodes;
 
 import java.util.List;
 
-public interface ILeaf extends INode{
+public interface ILeaf extends INode {
   @Override
   default INode getChild(String name) {
     throw new UnsupportedOperationException();
-  };
+  }
+  ;
 
   @Override
   default List<INode> getChildren() {

@@ -1,6 +1,6 @@
 package optimize.nodes;
 
-public interface IStaticNode extends INode{
+public interface IStaticNode extends INode {
 
   @Override
   default INode addChild(String name, INode child) {
@@ -13,7 +13,8 @@ public interface IStaticNode extends INode{
     }
 
     if (!src.startsWith(prefix)) {
-      throw new IllegalArgumentException("Source string does not start with the given prefix: " + prefix);
+      throw new IllegalArgumentException(
+          "Source string does not start with the given prefix: " + prefix);
     }
 
     return src.substring(prefix.length());

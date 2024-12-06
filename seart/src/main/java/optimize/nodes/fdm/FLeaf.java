@@ -2,7 +2,7 @@ package optimize.nodes.fdm;
 
 import optimize.nodes.INode;
 
-public class FLeaf implements IFNode{
+public class FLeaf implements IFNode {
   byte[] pk;
   public INode value;
 

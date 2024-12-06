@@ -104,16 +104,16 @@ import java.util.concurrent.atomic.AtomicInteger;
  * */
 public class TsFileSequentialConvertor {
   // configurations.
-  public static final String prjPath = "F:\\0006DataSets\\";  // @ lab
-  // public static final String prjPath = "E:\\ExpDataSets\\";  // @ home
+  // public static final String prjPath = "F:\\0006DataSets\\";  // @ lab
+  public static final String prjPath = "E:\\ExpDataSets\\";  // @ home
   public static String filName = "ZY";
   // public static final String srcPath = prjPath + "Results\\" + filName + "_UNCOMPRESSED.tsfile"; // path to read TsFile
   // public static final String srcPath = prjPath + "Results\\CCS_new2_UNCOMPRESSED.tsfile"; // path to read TsFile
-  public static String srcPath = prjPath + "ZY.tsfile"; // raw, original tsfile
+  public static String srcPath = prjPath + "Source-TsFile\\ZY.tsfile"; // raw, original tsfile
   public static String dstPath = prjPath + "\\new_arrow_src\\" + filName + ".arrow"; // path to write ArrowIPC
   public static String supPath = prjPath + "\\new_arrow_src\\" + filName + ".sup";  // path to supporting file
   private static int BATCH_ROW = 100_000;
-  private static boolean ONLY_PART = true;
+  private static boolean ONLY_PART = false;
   // in draft, 240M for ZY, 480M for CCS; ZY could be 480M as well, at least for conditions
   private static final int PART_START = -1, PART_END = 480_000_000;
   // private static final boolean HIGH_FIDELITY = false;  // to develop

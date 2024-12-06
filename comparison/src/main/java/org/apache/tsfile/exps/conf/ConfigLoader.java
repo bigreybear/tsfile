@@ -1,7 +1,5 @@
 package org.apache.tsfile.exps.conf;
 
-import jdk.nashorn.internal.runtime.regexp.joni.Config;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;

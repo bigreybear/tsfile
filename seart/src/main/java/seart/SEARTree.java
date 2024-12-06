@@ -64,7 +64,7 @@ public class SEARTree implements SeriesIndexTree, Serializable {
 
       // matLen == pk.len : pk exhausted, insKey not, and find NO branching byte
       ISEARTNode nl = new Leaf(Arrays.copyOfRange(insKey, ofs + matLen + 1, insKey.length), value);
-      ISEARTNode expNode = curNode.insert(insKey[ofs+matLen], nxtPtrIdx, nl);
+      ISEARTNode expNode = curNode.insert(insKey[ofs + matLen], nxtPtrIdx, nl);
 
       if (expNode == null) {
         return root;
@@ -298,7 +298,7 @@ public class SEARTree implements SeriesIndexTree, Serializable {
         trace.addLast(cur);
         ofs += cover;
         cur = cur.getChildByKeyByte(kb[ofs]);
-        ofs ++;
+        ofs++;
       }
     }
 
@@ -335,7 +335,6 @@ public class SEARTree implements SeriesIndexTree, Serializable {
     tree.insert("root.sgj.d1.v1".getBytes(StandardCharsets.UTF_8), 7L);
     tree.insert("root.sgk.d1.v1".getBytes(StandardCharsets.UTF_8), 7L);
     tree.insert("root.sgl.d1.v1".getBytes(StandardCharsets.UTF_8), 73121L);
-
 
     System.out.println("--------------");
     displayPrefixDesc(tree.root, "root.sg2");

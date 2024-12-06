@@ -1,17 +1,14 @@
 package optimize.nodes.hash;
 
-import optimize.nodes.IInternal;
-import optimize.nodes.INode;
-import optimize.nodes.IStaticNode;
-import optimize.nodes.logic.LLeaf;
-
-import javax.print.attribute.standard.MediaSize;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import optimize.nodes.IInternal;
+import optimize.nodes.INode;
+import optimize.nodes.IStaticNode;
 
 public class HNode implements IStaticNode, IInternal {
   // stored strings are iso encoded
@@ -20,7 +17,9 @@ public class HNode implements IStaticNode, IInternal {
 
   public HNode() {}
 
-  public HNode(int c) {children = new HashMap<>(c, 1.0f);}
+  public HNode(int c) {
+    children = new HashMap<>(c, 1.0f);
+  }
 
   public HNode(String pk) {
     this.pk = pk.getBytes(StandardCharsets.UTF_8);
@@ -44,10 +43,11 @@ public class HNode implements IStaticNode, IInternal {
         }
       }
 
-      // fixme: should not allow a child from prefixed ptr holding any partial key - chaos must be removed
+      // fixme: should not allow a child from prefixed ptr holding any partial key - chaos must be
+      // removed
       // qk not exhausted but no children map, should try prefix-way
       if (cur.children == null && cur instanceof PrefixedHNode) {
-        cur = (HNode) ((PrefixedHNode)cur).prePtr;
+        cur = (HNode) ((PrefixedHNode) cur).prePtr;
         inner = 0;
         i++;
         continue;
@@ -56,16 +56,16 @@ public class HNode implements IStaticNode, IInternal {
       if (cur.children == null) throw new RuntimeException("Null chilren.");
 
       INode res;
-      if ( (res = cur.children.get(
-          new String(
-              Arrays.copyOfRange(qk, i, qk.length),
-              StandardCharsets.ISO_8859_1))) != null) {
+      if ((res =
+              cur.children.get(
+                  new String(Arrays.copyOfRange(qk, i, qk.length), StandardCharsets.ISO_8859_1)))
+          != null) {
         // search key used
         return res;
-      } else if ((res = cur.children.get(
-          new String(
-              Arrays.copyOfRange(qk, i, i+1),
-              StandardCharsets.ISO_8859_1))) != null) {
+      } else if ((res =
+              cur.children.get(
+                  new String(Arrays.copyOfRange(qk, i, i + 1), StandardCharsets.ISO_8859_1)))
+          != null) {
         // search key not exhausted, res must be a HNode
         cur = (HNode) res;
         inner = 0;
@@ -73,7 +73,7 @@ public class HNode implements IStaticNode, IInternal {
       } else {
         // fixme: ugly and inefficient to repeat this check
         if (cur instanceof PrefixedHNode) {
-          cur = (HNode) ((PrefixedHNode)cur).prePtr;
+          cur = (HNode) ((PrefixedHNode) cur).prePtr;
           inner = 0;
           continue;
         }
@@ -82,11 +82,11 @@ public class HNode implements IStaticNode, IInternal {
     }
 
     if (cur instanceof PrefixedHNode) {
-      if (((PrefixedHNode)cur).prePtr == null) {
+      if (((PrefixedHNode) cur).prePtr == null) {
         throw new RuntimeException("Incomplete search key:" + name);
       }
 
-      return ((PrefixedHNode)cur).prePtr;
+      return ((PrefixedHNode) cur).prePtr;
     }
 
     throw new RuntimeException("Wrong node type.");
@@ -145,7 +145,7 @@ public class HNode implements IStaticNode, IInternal {
 
   public static void main(String[] args) {
     // 示例 2：无效的 UTF-8 字节数组
-    byte[] invalidUtf8 = {(byte)0xC3, (byte)0x28}; // 无效的 UTF-8 序列
+    byte[] invalidUtf8 = {(byte) 0xC3, (byte) 0x28}; // 无效的 UTF-8 序列
     String a2 = new String(invalidUtf8, StandardCharsets.ISO_8859_1);
     byte[] c2 = a2.getBytes(StandardCharsets.ISO_8859_1);
     System.out.println("无效 UTF-8 转换后是否相同: " + Arrays.equals(invalidUtf8, c2));

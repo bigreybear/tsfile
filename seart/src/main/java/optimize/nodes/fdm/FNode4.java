@@ -1,8 +1,7 @@
 package optimize.nodes.fdm;
 
-import optimize.nodes.INode;
-
 import java.util.Arrays;
+import optimize.nodes.INode;
 
 public class FNode4 extends FNode256 {
   public byte[] keys;
@@ -16,7 +15,7 @@ public class FNode4 extends FNode256 {
   @Override
   public void add(byte k, INode v) {
     int pos = getPtrIdxByByte(keys, k);
-    shiftInsert(-pos-1, k, keys,v);
+    shiftInsert(-pos - 1, k, keys, v);
   }
 
   @Override

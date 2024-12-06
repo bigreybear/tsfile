@@ -1,18 +1,18 @@
 package optimize;
 
+import java.util.Collections;
+import java.util.List;
 import loader.PathTxtLoader;
 import seart.utils.PathUtils;
 
-import java.util.Collections;
-import java.util.List;
-
 public class TextSampler {
 
-  public static void main(String[] args)throws Exception{
-    PathTxtLoader loader = new PathTxtLoader(PathTxtLoader.FILE_PATH /* source file */ );
+  public static void main(String[] args) throws Exception {
+    Main.DataSet ds = Main.DataSet.SW;
+    PathTxtLoader loader = new PathTxtLoader(ds.rfile /* source file */);
     List<String> ori = loader.getAllLines();
     Collections.shuffle(ori);
     List<String> randomSample = ori.subList(0, 5000);
-    PathUtils.dumpStringCollection("mtreedata/baowu_query.txt", randomSample);
+    PathUtils.dumpStringCollection(ds.qfile, randomSample);
   }
 }

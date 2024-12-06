@@ -129,6 +129,7 @@ class ArtNode48 extends ArtNode {
       }
     };
   }
+
   // endregion
 
   public ArtNode48() {

@@ -9,9 +9,13 @@ public class Pair<L, R> {
     right = r;
   }
 
-  public L left() {return left;}
+  public L left() {
+    return left;
+  }
 
-  public R right() {return right;}
+  public R right() {
+    return right;
+  }
 
   @Override
   public String toString() {

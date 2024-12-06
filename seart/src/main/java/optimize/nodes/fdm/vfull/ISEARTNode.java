@@ -1,8 +1,7 @@
 package optimize.nodes.fdm.vfull;
 
-import optimize.nodes.INode;
-
 import java.io.Serializable;
+import optimize.nodes.INode;
 
 public interface ISEARTNode extends Serializable {
 
@@ -23,6 +22,7 @@ public interface ISEARTNode extends Serializable {
   default byte[] getKeys() {
     return null;
   }
+
   // endregion
 
   default ISEARTNode getChildByPtrIndex(int idx) {
@@ -51,7 +51,9 @@ public interface ISEARTNode extends Serializable {
     throw new UnsupportedOperationException();
   }
 
-  default ISEARTNode insert(byte key, int insPos, ISEARTNode child) {throw new UnsupportedOperationException();}
+  default ISEARTNode insert(byte key, int insPos, ISEARTNode child) {
+    throw new UnsupportedOperationException();
+  }
 
   // easy for debug
   default ISEARTNode insert(byte key, ISEARTNode child) {
@@ -59,11 +61,12 @@ public interface ISEARTNode extends Serializable {
     if (ip >= 0) {
       throw new UnsupportedOperationException("Cannot insert duplicate byte.");
     }
-    return insert(key, -ip-1, child);
+    return insert(key, -ip - 1, child);
   }
 
   // todo optimize with virtualization
-  default void insertOnByteMap(byte bk, ISEARTNode child) {};
+  default void insertOnByteMap(byte bk, ISEARTNode child) {}
+  ;
 
   default INode getValue() {
     throw new UnsupportedOperationException();

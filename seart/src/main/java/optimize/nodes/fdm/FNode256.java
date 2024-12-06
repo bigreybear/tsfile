@@ -1,25 +1,21 @@
 package optimize.nodes.fdm;
 
-import optimize.nodes.IInternal;
-import optimize.nodes.INode;
-import optimize.nodes.IStaticNode;
-import optimize.nodes.fdm.vfull.ISEARTNode;
-
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.List;
-
 import static optimize.nodes.fdm.vfull.SEARTNode.ubyte;
 
-public class FNode256 implements INode, IInternal, IFNode{
+import java.util.Arrays;
+import java.util.List;
+import optimize.nodes.IInternal;
+import optimize.nodes.INode;
+
+public class FNode256 implements INode, IInternal, IFNode {
   // no prefixed key, but deem b\'00' as prefixed-pointer
   public byte[] pk;
   public INode[] ptrs;
 
   public static int getCap(int need) {
-    if (need <=4 ) return 4;
+    if (need <= 4) return 4;
     else if (need <= 16) return 16;
-    else if (need <=48) return 48;
+    else if (need <= 48) return 48;
     else return 256;
   }
 
@@ -39,7 +35,8 @@ public class FNode256 implements INode, IInternal, IFNode{
   }
 
   /** Copy and modify from {@linkplain Arrays#binarySearch}. */
-  protected static int binarySearchUnsignedByteArray(byte[] a, int fromIndex, int toIndex, byte key) {
+  protected static int binarySearchUnsignedByteArray(
+      byte[] a, int fromIndex, int toIndex, byte key) {
     int low = fromIndex;
     int high = toIndex - 1;
     int sk = ubyte(key);

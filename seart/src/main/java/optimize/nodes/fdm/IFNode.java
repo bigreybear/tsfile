@@ -1,13 +1,13 @@
 package optimize.nodes.fdm;
 
-import optimize.nodes.INode;
-
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import optimize.nodes.INode;
 
-public interface IFNode extends INode{
+public interface IFNode extends INode {
 
   void add(byte k, INode v);
+
   INode get(byte k);
 
   void setPartialKey(byte[] pk);
@@ -30,7 +30,7 @@ public interface IFNode extends INode{
     IFNode cur = this;
     byte[] kbs = name.getBytes(StandardCharsets.UTF_8);
     byte[] pk = getPartialKey();
-    for (int i = 0; i < kbs.length;) {
+    for (int i = 0; i < kbs.length; ) {
       i += matchLen(pk, kbs, i);
 
       if (i < kbs.length) {
@@ -40,7 +40,7 @@ public interface IFNode extends INode{
       }
     }
 
-    return cur instanceof FLeaf ? cur.getFValue() : ((IFNode)cur.get((byte)0)).getFValue();
+    return cur instanceof FLeaf ? cur.getFValue() : ((IFNode) cur.get((byte) 0)).getFValue();
   }
 
   static int matchLen(byte[] pk, byte[] ik, int ofs) {

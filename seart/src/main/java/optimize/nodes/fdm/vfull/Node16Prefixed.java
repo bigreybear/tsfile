@@ -2,7 +2,7 @@ package optimize.nodes.fdm.vfull;
 
 import org.openjdk.jol.info.ClassLayout;
 
-public class Node16Prefixed extends Node16 implements Prefixed{
+public class Node16Prefixed extends Node16 implements Prefixed {
   ISEARTNode prefixedPtr; // with no key
 
   public Node16Prefixed() {

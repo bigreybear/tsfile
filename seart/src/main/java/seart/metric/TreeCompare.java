@@ -221,6 +221,7 @@ public class TreeCompare {
   private static int SEARCH_EPOCH = 1;
   private static String[] objFileName = new String[] {"mtree.obj", "cart.obj", "seart.obj"};
   private static boolean toSearch, measureSpace, persist, check;
+
   // main for jar entrance
   public static void main(String[] args) throws Exception {
     if (args.length == 0) {

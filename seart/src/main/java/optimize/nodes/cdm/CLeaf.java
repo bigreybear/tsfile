@@ -1,11 +1,9 @@
 package optimize.nodes.cdm;
 
-import optimize.nodes.ILeaf;
-import optimize.nodes.INode;
-
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
+import optimize.nodes.INode;
 
 public class CLeaf implements ICNode {
   byte[] pk;

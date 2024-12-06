@@ -1,14 +1,12 @@
 package optimize.nodes.logic;
-import optimize.nodes.INode;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import optimize.nodes.INode;
 
-/**
- * L for Logical Nodes
- */
+/** L for Logical Nodes */
 public class LNode implements INode {
 
   // todo shall be private
@@ -61,5 +59,4 @@ public class LNode implements INode {
     }
     return children.put(name, child);
   }
-
 }

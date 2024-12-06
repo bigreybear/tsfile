@@ -1,17 +1,16 @@
 package optimize.nodes.fdm.vfull;
 
-import loader.PathTxtLoader;
-import optimize.nodes.INode;
-import org.openjdk.jol.info.GraphLayout;
-import seart.exception.PrefixPropertyException;
+import static seart.ISEARTNode.getMatchLength;
 
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import static seart.ISEARTNode.getMatchLength;
+import loader.PathTxtLoader;
+import optimize.nodes.INode;
+import org.openjdk.jol.info.GraphLayout;
+import seart.exception.PrefixPropertyException;
 
 public class SEARTree implements SeriesIndexTree, Serializable {
   public ISEARTNode root;
@@ -74,7 +73,7 @@ public class SEARTree implements SeriesIndexTree, Serializable {
 
       // matLen == pk.len : pk exhausted, insKey not, and find NO branching byte
       ISEARTNode nl = new Leaf(Arrays.copyOfRange(insKey, ofs + matLen + 1, insKey.length), value);
-      ISEARTNode expNode = curNode.insert(insKey[ofs+matLen], nxtPtrIdx, nl);
+      ISEARTNode expNode = curNode.insert(insKey[ofs + matLen], nxtPtrIdx, nl);
 
       if (expNode == null) {
         return root;
@@ -99,13 +98,16 @@ public class SEARTree implements SeriesIndexTree, Serializable {
     if (matLen == curNode.getPartialKey().length && matLen + ofs < insKey.length) {
       // ins key covered existed key
       return updateRoot(
-          root, parNode, parNodeIdx, splitPartialKeyForPrefixProperty(insKey, curNode, ofs, matLen, value)
-      );
+          root,
+          parNode,
+          parNodeIdx,
+          splitPartialKeyForPrefixProperty(insKey, curNode, ofs, matLen, value));
     } else if (matLen + ofs == insKey.length && matLen < curNode.getPartialKey().length) {
       byte k = curNode.getPartialKey()[matLen];
       Leaf l = new Leaf(new byte[0], value);
       Node4Prefixed n4p = new Node4Prefixed(new byte[0], k, curNode, l);
-      curNode.reassignPartialKey(Arrays.copyOfRange(curNode.getPartialKey(), 1, curNode.getPartialKey().length));
+      curNode.reassignPartialKey(
+          Arrays.copyOfRange(curNode.getPartialKey(), 1, curNode.getPartialKey().length));
       return updateRoot(root, parNode, parNodeIdx, n4p);
     }
 
@@ -140,9 +142,7 @@ public class SEARTree implements SeriesIndexTree, Serializable {
     // from ofs+overLen+1 for 1 byte as branching key in the new Node4
     Leaf leaf = new Leaf(Arrays.copyOfRange(ik, ofs + overLen + 1, ik.length), value);
     byte keyForLoger = ik[ofs + overLen];
-    SEARTNode n4p = new Node4Prefixed(
-        new byte[0],
-        keyForLoger, leaf, existedLeaf);
+    SEARTNode n4p = new Node4Prefixed(new byte[0], keyForLoger, leaf, existedLeaf);
 
     // SEARTNode n4 =
     //     new Node4(
@@ -152,7 +152,8 @@ public class SEARTree implements SeriesIndexTree, Serializable {
     //         ik[ofs + overLen],
     //         leaf);
     // existedLeaf.reassignPartialKey(
-    //     Arrays.copyOfRange(existedLeaf.getPartialKey(), overLen + 1, existedLeaf.getPartialKey().length));
+    //     Arrays.copyOfRange(existedLeaf.getPartialKey(), overLen + 1,
+    // existedLeaf.getPartialKey().length));
     return n4p;
   }
 
@@ -165,8 +166,8 @@ public class SEARTree implements SeriesIndexTree, Serializable {
     return n4;
   }
 
-
   public static int nullKeys = 0;
+
   @Override
   public INode search(String sk) {
     return search(sk.getBytes(StandardCharsets.UTF_8));
@@ -228,7 +229,7 @@ public class SEARTree implements SeriesIndexTree, Serializable {
         curNode = curNode.getChildByPtrIndex(nxtPtrIdx);
 
         if (ofs == sk.length && !curNode.isLeaf()) {
-          curNode = ((Prefixed)curNode).getPrefixedPtr();
+          curNode = ((Prefixed) curNode).getPrefixedPtr();
           continue;
         }
 
