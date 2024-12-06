@@ -21,7 +21,7 @@ public class Main extends MergePrefix {
     } catch (Exception e) {
       e.printStackTrace();
     }
-    REPORT_CHANNEL.append(String.format("Logical tree with %d nodes \n", tree.nodeNum.get()));
+    REPORT_CHANNEL.append(String.format("Logical tree with %d nodes %n", tree.nodeNum.get()));
     return tree;
   }
 
@@ -30,7 +30,7 @@ public class Main extends MergePrefix {
     REPORT_CHANNEL
         .append(String.format("%s %s total Size: ", mergeStrategy.name(), mapType.name()))
         .append(size)
-        .append("\n");
+        .append("%n");
   }
 
   public static void estimateLatency(TSTree tree, DataSet ds) {
@@ -54,7 +54,11 @@ public class Main extends MergePrefix {
       System.out.println("total not exist key: " + SEARTree.nullKeys);
     }
 
-    REPORT_CHANNEL.append(String.format("query %d paths latency(ns): %d ns. \n", qPaths.size(), nano));
+    REPORT_CHANNEL.append(String.format("query %d paths latency(ns): %s ns. %n", qPaths.size(), dottedNanoSec(nano)));
+  }
+
+  private static String dottedNanoSec(long nano) {
+    return String.format("%d.%06d", nano / 1_000_000, nano % 1_000_000);
   }
 
   public static void replaceTemplates(TSTree tree) {}
@@ -108,11 +112,6 @@ public class Main extends MergePrefix {
 
     TSTree tree = buildLogicalTree(dataSet);
 
-    if (argList.contains("-space") && mergeStrategy.equals(Evaluator.MergeStrategy.SIMPLE)) {
-      REPORT_CHANNEL.append(
-          String.format("Logical Space: %d \n", GraphLayout.parseInstance(tree).totalSize()));
-    }
-
     if (argList.contains("-merge")) {
       mergePrefixes(tree, mapType, mergeStrategy);
     } else {
@@ -133,6 +132,7 @@ public class Main extends MergePrefix {
       estimateLatency(tree, dataSet);
     }
     REPORT_CHANNEL.append("FINISH:" + String.join(" ", argList) + " with EF code: " + CDM_WITH_EF);
+    REPORT_CHANNEL.append("%n%n");
     System.out.println(REPORT_CHANNEL);
   }
 
