@@ -8,17 +8,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.OptionalInt;
-import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
 import loader.PathTxtLoader;
+import optimize.util.InfixGroup;
 
 public class CNodeHelper {
   public static final int POS_SIZE = 4;
@@ -161,7 +157,7 @@ public class CNodeHelper {
             .map(s -> s.getBytes(StandardCharsets.UTF_8))
             .collect(Collectors.toList());
 
-    return getBranchingPosParallel(byteKeys, limit);
+    return InfixGroup.getBranchingPosParallel(byteKeys, limit);
   }
 
   public static int[] complementaryBytePos(int preLen, int keyLen, int[] brPos) {
@@ -186,219 +182,12 @@ public class CNodeHelper {
     return brPos.length;
   }
 
-  public static byte[] removeTrailingZeros(byte[] src) {
-    int i = 0;
-    while (i < src.length && src[i] != 0) i++;
-    return Arrays.copyOfRange(src, 0, i);
-  }
-
   public static byte[] setBytesByPosNoCheck(byte[] res, byte[] src, int[] pos) {
     for (int i = 0; i < pos.length && i < src.length && res.length > pos[i]; i++) {
       res[pos[i]] = src[i];
     }
 
     return res;
-  }
-
-  // return type of infix group
-  public static class InfixGroup {
-    int[] brPos;
-    Map<ByteArray, List<byte[]>> infixMap;
-
-    public InfixGroup(int[] bp, Map<ByteArray, List<byte[]>> im) {
-      brPos = bp;
-
-      // fixme debug try filter trailing zeros
-      infixMap = new HashMap<>();
-      for (Map.Entry<ByteArray, List<byte[]>> entry : im.entrySet()) {
-        infixMap.put(new ByteArray(removeTrailingZeros(entry.getKey().getVal())), entry.getValue());
-      }
-      // infixMap = im;
-    }
-
-    public List<byte[]> getCompleteKeys(byte[] brKey) {
-      return infixMap.get(new ByteArray(removeTrailingZeros(brKey)));
-    }
-
-    public int[] getBranchingPos() {
-      return brPos;
-    }
-
-    public int[] sortedBrKeys() {
-      if (brPos.length > 4) throw new RuntimeException("More than 4 branching positions.");
-      return infixMap.keySet().stream().mapToInt(ba -> bytes2Int(ba.val)).sorted().toArray();
-    }
-
-    public byte[][] sortedBrKeyBytes() {
-      byte[][] keys = infixMap.keySet().stream().map(i -> i.val).toArray(byte[][]::new);
-      Arrays.sort(keys, Arrays::compare);
-      return keys;
-    }
-
-    public Map<ByteArray, List<byte[]>> getInfixMap() {
-      return infixMap;
-    }
-  }
-
-  // substitute List<byte> for extreme performance
-  public static class ByteArray {
-    final byte[] val;
-
-    public ByteArray() {
-      val = null;
-    }
-
-    public ByteArray(ByteArray ori, byte add) {
-      val = new byte[ori.val == null ? 1 : (ori.val.length + 1)];
-      if (ori.val != null) System.arraycopy(ori.val, 0, val, 0, ori.val.length);
-      val[val.length - 1] = add;
-    }
-
-    public ByteArray(byte[] ba) {
-      val = ba;
-    }
-
-    public byte[] getVal() {
-      return val;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      return o instanceof ByteArray && Arrays.equals(val, ((ByteArray) o).val);
-    }
-
-    @Override
-    public int hashCode() {
-      return Arrays.hashCode(val);
-    }
-
-    @Override
-    public String toString() {
-      return val == null ? "" : Arrays.toString(val);
-    }
-  }
-
-  /**
-   * Well-defined, which is implemented with no hurry :). <br>
-   * With this method, both {@linkplain #groupPrefixes} and {@linkplain #getBranchingPosParallel}
-   * gets Deprecated.
-   *
-   * @param keys
-   * @param limit
-   * @param start
-   * @return
-   */
-  public static InfixGroup groupByInfix(final List<byte[]> keys, final int limit, final int start) {
-    Set<Integer> positions = ConcurrentHashMap.newKeySet();
-    Map<ByteArray, List<byte[]>> infixKeyMap = new ConcurrentHashMap<>();
-
-    infixKeyMap.put(new ByteArray(), keys);
-    int depth = start;
-    OptionalInt maxLen = keys.stream().mapToInt(e -> e.length).max();
-    while (positions.size() < limit && !infixKeyMap.isEmpty() && depth < maxLen.getAsInt()) {
-      final int thisDepth = depth;
-
-      // when split, branching keys immediately obtain its brKeys, while non-brs obtain after others
-      // finished.
-      final Map<ByteArray, List<byte[]>> branchingKeys = new ConcurrentHashMap<>();
-      final Map<ByteArray, List<byte[]>> nonBranchingKeys = new ConcurrentHashMap<>();
-
-      infixKeyMap.entrySet().parallelStream()
-          .forEach(
-              e -> {
-                Map<Byte, List<byte[]>> res = parallelSplitAt(e.getValue(), thisDepth);
-                if (res.size() > 1) {
-                  positions.add(thisDepth);
-                  // ByteArray tmpKey;
-                  for (Map.Entry<Byte, List<byte[]>> resEnt : res.entrySet()) {
-                    // tmpKey = new ByteArray(e.getKey(), resEnt.getKey());
-                    branchingKeys.put(
-                        new ByteArray(e.getKey(), resEnt.getKey()), resEnt.getValue());
-                  }
-                } else {
-                  // not branching, just key it as is, for further completion
-                  nonBranchingKeys.put(e.getKey(), e.getValue());
-                }
-              });
-
-      if (positions.contains(depth)) {
-        // improve: choose the smaller one as the base
-        infixKeyMap = branchingKeys;
-        for (Map.Entry<ByteArray, List<byte[]>> nbe : nonBranchingKeys.entrySet()) {
-          // all keys in this entry must agree on thisDepth
-          byte[] k1 = nbe.getValue().get(0);
-          infixKeyMap.put(
-              new ByteArray(nbe.getKey(), k1.length > thisDepth ? k1[thisDepth] : 0),
-              nbe.getValue());
-        }
-      } else {
-        // no key split at this depth
-        infixKeyMap = nonBranchingKeys;
-      }
-      depth++;
-    }
-    return new InfixGroup(positions.stream().mapToInt(i -> i).sorted().toArray(), infixKeyMap);
-  }
-
-  public static Set<Integer> getBranchingPosParallel(List<byte[]> byteKeys, int limit) {
-    return getBranchingPosParallel(byteKeys, limit, 0);
-  }
-
-  // todo combine with grouping/classifier, avoid another stream/grouping
-  //  make sure initial byteKys are identical on bytes before from.
-  public static Set<Integer> getBranchingPosParallel(
-      final List<byte[]> byteKeys, final int limit, final int from /* included */) {
-    Set<Integer> positions = ConcurrentHashMap.newKeySet();
-    Queue<List<byte[]>> cur = new ConcurrentLinkedQueue<>();
-
-    cur.add(byteKeys);
-    int depth = from;
-
-    while (positions.size() < limit && !cur.isEmpty()) {
-      final int thisDepth = depth;
-      final Queue<List<byte[]>> tar = new ConcurrentLinkedQueue<>();
-      cur.parallelStream()
-          .forEach(
-              group -> {
-                Map<Byte, List<byte[]>> res = parallelSplitAt(group, thisDepth);
-                if (res.size() > 1) {
-                  positions.add(thisDepth);
-                }
-
-                res.values().stream().filter(e -> e.size() > 1).forEach(tar::add);
-              });
-
-      cur = tar;
-      depth++;
-    }
-
-    return positions;
-  }
-
-  /**
-   * Only split at designated position. <br>
-   * Key method being called multiple times.
-   *
-   * @return for each entry <b, List<k>>, all k has value b at depth
-   */
-  private static Map<Byte, List<byte[]>> parallelSplitAt(List<byte[]> keys, int depth) {
-    if (keys.isEmpty()) {
-      return new HashMap<>();
-    }
-
-    Map<Byte, List<byte[]>> map = new HashMap<>();
-    for (byte[] key : keys) {
-      // keys not long enough will be grouped as '0'
-      if (key.length <= depth) {
-        map.computeIfAbsent((byte) 0, k -> new ArrayList<>()).add(key);
-        continue;
-      }
-
-      byte currentChar = key[depth];
-      map.computeIfAbsent(currentChar, k -> new ArrayList<>()).add(key);
-    }
-
-    return map;
   }
 
   public static Map<List<Byte>, List<byte[]>> findPrefixes(byte[][] arrays, int prefixLength) {
@@ -561,7 +350,9 @@ public class CNodeHelper {
   // region Export
 
   @Deprecated
-  // group keys by prefixes start from certain position.
+  /**
+   * refers to {@link InfixGroup#groupByInfix}
+   */
   public static List<ValuedPrefixArray> groupPrefixes(byte[][] keys, int start, int grpLen) {
     // group keys by the first byte
     Map<List<Byte>, List<byte[]>> classfier =

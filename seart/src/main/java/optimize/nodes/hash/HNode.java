@@ -10,6 +10,7 @@ import optimize.nodes.IInternal;
 import optimize.nodes.INode;
 import optimize.nodes.IStaticNode;
 
+@Deprecated
 public class HNode implements IStaticNode, IInternal {
   // stored strings are iso encoded
   public byte[] pk;

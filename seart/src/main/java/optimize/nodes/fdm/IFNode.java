@@ -10,6 +10,8 @@ public interface IFNode extends INode {
 
   INode get(byte k);
 
+  default void replace(byte k, INode c) {}
+
   void setPartialKey(byte[] pk);
 
   default void setValue(INode v) {
@@ -17,7 +19,7 @@ public interface IFNode extends INode {
   }
 
   default INode getFValue() {
-    throw new UnsupportedOperationException();
+    return null;
   }
 
   @Override

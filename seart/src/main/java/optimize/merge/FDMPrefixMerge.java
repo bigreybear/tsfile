@@ -25,7 +25,6 @@ public class FDMPrefixMerge {
     else return new FNode256();
   }
 
-  // todo merge with hash ones
   public static INode recNextMergeOnFDM(
       INode oriNode,
       byte[][] keys,

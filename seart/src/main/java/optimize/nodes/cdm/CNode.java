@@ -3,7 +3,7 @@ package optimize.nodes.cdm;
 import static optimize.nodes.cdm.CNodeHelper.extractBytes;
 import static optimize.nodes.cdm.CNodeHelper.findIntervals;
 import static optimize.nodes.cdm.CNodeHelper.getValidBrPosNum;
-import static optimize.nodes.cdm.CNodeHelper.removeTrailingZeros;
+import static optimize.util.ArrayHelper.removeTrailingZeros;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -11,6 +11,7 @@ import java.util.List;
 import optimize.nodes.IInternal;
 import optimize.nodes.INode;
 import optimize.nodes.IStaticNode;
+import optimize.util.ArrayHelper;
 
 public class CNode implements ICNode, INode, IInternal, IStaticNode {
   // for more than 4 positions
@@ -37,7 +38,7 @@ public class CNode implements ICNode, INode, IInternal, IStaticNode {
   public void setBranchingKeysExtended(byte[][] input) {
     bks = new byte[input.length][];
     for (int i = 0; i < input.length; i++) {
-      bks[i] = CNodeHelper.removeTrailingZeros(input[i]);
+      bks[i] = ArrayHelper.removeTrailingZeros(input[i]);
     }
     rmk = new byte[input.length][];
     ptrs = new INode[input.length];
@@ -158,7 +159,7 @@ public class CNode implements ICNode, INode, IInternal, IStaticNode {
     // int idx = getBrKeyIdx(removeTrailingZeros(Arrays.copyOfRange(name, ki, name.length)));
     int idx =
         getBrKeyIdx(
-            CNodeHelper.removeTrailingZeros(
+            ArrayHelper.removeTrailingZeros(
                 extractBytes(name, ICNode.unsignedByteArr2IntArr(pos))));
     byte[] checkKey = assembleKeyAt(idx, preLen, name.length);
     for (int i = 0; i < checkKey.length; i++) {

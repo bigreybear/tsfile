@@ -3,7 +3,7 @@ package optimize.nodes.logic;
 import optimize.nodes.ILeaf;
 
 public class LLeaf implements ILeaf {
-  byte[] pk;
+  public byte[] pk;
   long value;
 
   public LLeaf() {}

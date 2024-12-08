@@ -5,7 +5,7 @@ import static optimize.nodes.cdm.CNodeHelper.extractBytes;
 import static optimize.nodes.cdm.CNodeHelper.findIntervals;
 import static optimize.nodes.cdm.CNodeHelper.int2BytesFixedLen;
 import static optimize.nodes.cdm.CNodeHelper.int2BytesVarLen;
-import static optimize.nodes.cdm.CNodeHelper.removeTrailingZeros;
+import static optimize.util.ArrayHelper.removeTrailingZeros;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;

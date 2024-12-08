@@ -1,6 +1,9 @@
 package optimize.nodes;
 
+import optimize.util.ByteArray;
+
 import java.util.List;
+import java.util.Map;
 
 public interface INode {
 
@@ -21,4 +24,14 @@ public interface INode {
   INode addChild(String name, INode child);
 
   INode replace(String key, INode nNode);
+
+  default INode replace(byte[] key, INode nNode) {throw new UnsupportedOperationException();}
+
+  default List<byte[]> getKeyBytes() {return null;}
+
+  default byte[] getKeysFromFDM() {return null;}
+
+  default INode getChildFromFDM(byte k) {return null;}
+
+  default INode getChildByBytes(byte[] k) {return null;}
 }

@@ -28,11 +28,22 @@ public class FLeaf implements IFNode {
 
   @Override
   public void setPartialKey(byte[] pk) {
-    this.pk = pk;
+    this.pk = (pk == null || pk.length == 0) ? null : pk;
   }
 
   @Override
   public byte[] getPartialKey() {
     return pk;
+  }
+
+  @Override
+  public INode replace(String key, INode nNode) {
+    value = nNode;
+    return this;
+  }
+
+  public INode replace(byte[] key, INode nNode) {
+    value = nNode;
+    return this;
   }
 }

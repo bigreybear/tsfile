@@ -1,6 +1,7 @@
 package optimize.nodes.fdm;
 
 import static optimize.nodes.fdm.vfull.SEARTNode.ubyte;
+import static optimize.util.ArrayHelper.removeTrailingZeros;
 
 import java.util.Arrays;
 import java.util.List;
@@ -12,12 +13,7 @@ public class FNode256 implements INode, IInternal, IFNode {
   public byte[] pk;
   public INode[] ptrs;
 
-  public static int getCap(int need) {
-    if (need <= 4) return 4;
-    else if (need <= 16) return 16;
-    else if (need <= 48) return 48;
-    else return 256;
-  }
+
 
   @Override
   public void setPartialKey(byte[] pk) {
@@ -32,6 +28,26 @@ public class FNode256 implements INode, IInternal, IFNode {
   @Override
   public INode get(byte k) {
     return ptrs[ubyte(k)];
+  }
+
+  @Override
+  public byte[] getKeysFromFDM() {
+    byte[] res = new byte[256];
+    for (int i = 0, len = 0; i < 256; i++) {
+      if (ptrs[i] != null) res[len++] = (byte) i;
+    }
+    return removeTrailingZeros(res);
+  }
+
+  @Override
+  public void replace(byte k, INode c) {
+    ptrs[ubyte(k)] = c;
+  }
+
+  @Override
+  public INode replace(byte[] k, INode c) {
+    ptrs[ubyte(k[0])] = c;
+    return this;
   }
 
   /** Copy and modify from {@linkplain Arrays#binarySearch}. */

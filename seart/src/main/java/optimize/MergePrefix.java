@@ -3,7 +3,9 @@ package optimize;
 import static optimize.Evaluator.MapType;
 import static optimize.Evaluator.MergeStrategy;
 import static optimize.Main.CDM_WITH_EF;
+import static optimize.Main.REPORT_CHANNEL;
 import static optimize.merge.CDMPrefixMerge.recNextMergeOnCDM;
+import static optimize.merge.HashPrefixMerge.recNextMergeOnHashV2;
 import static optimize.nodes.cdm.CNodeHelper.strings2ByteArrays;
 
 import java.nio.charset.StandardCharsets;
@@ -13,20 +15,23 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import optimize.merge.CDMPrefixMerge;
 import optimize.merge.FDMPrefixMerge;
-import optimize.merge.HashPrefixMerge;
 import optimize.nodes.INode;
-import optimize.nodes.hash.HNode;
+import optimize.nodes.hash.HNodeV2;
 import optimize.nodes.logic.LLeaf;
 import org.openjdk.jol.info.GraphLayout;
 
 public class MergePrefix {
   public static AtomicInteger occ = new AtomicInteger(),
       ttlLen = new AtomicInteger(),
-      inc = new AtomicInteger();
+      inc = new AtomicInteger(),
+      partialToMerge = new AtomicInteger(),
+      partialNotMerge = new AtomicInteger();
 
-  public static void reportMergeStatus() {
-    System.out.println(
-        String.format("Merge occ: %d, total len: %d, inc: %d", occ.get(), ttlLen.get(), inc.get()));
+  public static void reportMergeStatus(MergeStrategy ms) {
+    REPORT_CHANNEL.append(
+        String.format("Merge occ: %d, total len: %d, inc: %d \n", occ.get(), ttlLen.get(), inc.get()));
+    REPORT_CHANNEL.append(String.format("Partial merge: %d, not merge: %d \n",
+        partialToMerge.get(), partialNotMerge.get()));
   }
 
   /**
@@ -39,7 +44,7 @@ public class MergePrefix {
 
   // public static void testRecNextMerge(String[] args) {
   public static void main(String[] args) {
-    HNode n1 = new HNode();
+    HNodeV2 n1 = new HNodeV2();
     byte[][] keys =
         new byte[][] {
           "aaabcg".getBytes(StandardCharsets.UTF_8),
@@ -50,13 +55,13 @@ public class MergePrefix {
         };
 
     for (byte[] k : keys) {
-      n1.setChild(new String(k, StandardCharsets.UTF_8), new LLeaf(k.length));
+      n1.add(k, new LLeaf(k.length));
     }
 
     // INode res = recNextMergeOnHash(n1, keys, 0, MergeStrategy.PARTIAL, MapType.HASH, 1);
     INode res = FDMPrefixMerge.recNextMergeOnFDM(n1, keys, 0, MergeStrategy.FULL, MapType.FDM, 1);
     System.out.println(GraphLayout.parseInstance(res).totalSize());
-    reportMergeStatus();
+    reportMergeStatus(MergeStrategy.PARTIAL);
     INode a = res.getChild("aaabcgxxab");
     System.out.println("HELLO");
   }
@@ -107,7 +112,7 @@ public class MergePrefix {
                 }
               }
             });
-        reportMergeStatus();
+        reportMergeStatus(ms);
         return;
       case HASH:
         tree.traversePostOrderRec(
@@ -118,9 +123,8 @@ public class MergePrefix {
               }
               byte[][] keyBytes = strings2ByteArrays(keyList);
 
-              INode n2 = HashPrefixMerge.recNextMergeOnHash(cur, keyBytes, 0, ms, mt, stk.size());
-              // INode n2 = recNextMergeOnHashV2(getLogicalChild(cur), keyBytes, 0, ms, mt,
-              // stk.size());  // v2;
+              INode n2 = recNextMergeOnHashV2(getLogicalChild(cur), keyBytes, 0, ms, mt,
+              stk.size());  // v2;
 
               if (n2 != cur) {
                 if (par == null) {
@@ -130,7 +134,7 @@ public class MergePrefix {
                 }
               }
             });
-        reportMergeStatus();
+        reportMergeStatus(ms);
     }
   }
 }

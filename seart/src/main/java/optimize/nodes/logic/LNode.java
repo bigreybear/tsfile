@@ -18,6 +18,8 @@ public class LNode implements INode {
     return children != null && children.containsKey(name);
   }
 
+
+
   @Override
   public long getValue() {
     throw new UnsupportedOperationException();

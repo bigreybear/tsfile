@@ -3,10 +3,14 @@ package optimize.merge;
 import static optimize.Main.DataSet.BW;
 import static optimize.Main.REPORT_CHANNEL;
 import static optimize.MergePrefix.getLogicalChild;
-import static optimize.nodes.cdm.CNodeHelper.InfixGroup;
+
+import optimize.util.InfixGroup;
+
+import static optimize.MergePrefix.partialNotMerge;
+import static optimize.MergePrefix.partialToMerge;
 import static optimize.nodes.cdm.CNodeHelper.extractBytes;
 import static optimize.nodes.cdm.CNodeHelper.findIntervals;
-import static optimize.nodes.cdm.CNodeHelper.groupByInfix;
+import static optimize.util.InfixGroup.groupByInfix;
 import static optimize.nodes.cdm.CNodeHelper.int2BytesFixedLen;
 
 import java.nio.charset.StandardCharsets;
@@ -26,6 +30,7 @@ import optimize.nodes.cdm.CNode4EF;
 import optimize.nodes.cdm.CNodeHelper;
 import optimize.nodes.cdm.ICNode;
 import optimize.nodes.logic.LNode;
+import optimize.util.ByteArray;
 import org.openjdk.jol.info.GraphLayout;
 
 public class CDMPrefixMerge {
@@ -33,7 +38,9 @@ public class CDMPrefixMerge {
   public static void reportMergeStatus() {
     REPORT_CHANNEL.append(
         String.format(
-            "CDM node 4 type Evaluate true: %d, false: %d \n", evaTrueTime, evaFalseTime));
+            "CDM node 4 num: %d, CDM-final num: %d \n", evaTrueTime, evaFalseTime));
+    REPORT_CHANNEL.append(String.format("Partial merge: %d, not merge: %d \n",
+        partialToMerge.get(), partialNotMerge.get()));
   }
 
   public static INode recNextMergeOnCDM(
@@ -63,6 +70,9 @@ public class CDMPrefixMerge {
       useNode4 = true;
     } else if (ms.equals(Evaluator.MergeStrategy.PARTIAL)) {
       useNode4 = evaluateForNode4(group, preLen, keys, height);
+
+      if (useNode4) partialToMerge.incrementAndGet();
+      else partialNotMerge.incrementAndGet();
     } else if (ms.equals(Evaluator.MergeStrategy.SIMPLE)) {
       useNode4 = false;
     } else {
@@ -119,7 +129,7 @@ public class CDMPrefixMerge {
       List<byte[]> ckl;
       for (int i = 0; i < sortedBrKeys.length; i++) {
         sk = sortedBrKeys[i];
-        ckl = group1.getInfixMap().get(new CNodeHelper.ByteArray(sk));
+        ckl = group1.getInfixMap().get(new ByteArray(sk));
         if (ckl.size() > 1) {
           throw new UnsupportedOperationException(
               "Too long key: " + new String(ckl.get(0), StandardCharsets.UTF_8));

@@ -6,8 +6,9 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import loader.PathTxtLoader;
-import optimize.nodes.fdm.vfull.SEARTree;
 import org.openjdk.jol.info.GraphLayout;
+
+import static optimize.SuffixMerge.collectSuffixes;
 
 public class Main extends MergePrefix {
 
@@ -21,7 +22,7 @@ public class Main extends MergePrefix {
     } catch (Exception e) {
       e.printStackTrace();
     }
-    REPORT_CHANNEL.append(String.format("Logical tree with %d nodes %n", tree.nodeNum.get()));
+    REPORT_CHANNEL.append(String.format("Logical tree with %d nodes \n", tree.nodeNum.get()));
     return tree;
   }
 
@@ -33,7 +34,7 @@ public class Main extends MergePrefix {
         .append("\n");
   }
 
-  public static void estimateLatency(TSTree tree, DataSet ds) {
+  public static void estimateLatency(TSTree tree, DataSet ds, Evaluator.MergeStrategy ms, Evaluator.MapType mt) {
     final List<String> qPaths = new ArrayList<>();
     try (PathTxtLoader loader = new PathTxtLoader(ds.qfile)) {
       qPaths.addAll(loader.getAllLines());
@@ -43,13 +44,41 @@ public class Main extends MergePrefix {
 
     long[] ans = new long[qPaths.size()];
     Arrays.parallelSetAll(ans, i -> qPaths.get(i).hashCode());
-    long nano = System.nanoTime();
-    for (int i = 0; i < qPaths.size(); i++) {
-      if (ans[i] != tree.search(qPaths.get(i))) throw new RuntimeException("Search for worng!");
-    }
-    nano = System.nanoTime() - nano;
 
-    REPORT_CHANNEL.append(String.format("query %d paths latency(ns): %s ns. %n", qPaths.size(), dottedNanoSec(nano)));
+    long nano = 0;
+
+    switch (mt) {
+      case FDM:
+        nano = System.nanoTime();
+        for (int i = 0; i < qPaths.size(); i++) {
+          if (ans[i] != tree.searchFDM(qPaths.get(i))) throw new RuntimeException("Search for worng!");
+        }
+        nano = System.nanoTime() - nano;
+        break;
+      case CDM:
+        nano = System.nanoTime();
+        for (int i = 0; i < qPaths.size(); i++) {
+          if (ans[i] != tree.searchCDM(qPaths.get(i))) throw new RuntimeException("Search for worng!");
+        }
+        nano = System.nanoTime() - nano;
+        break;
+      case HASH:
+        nano = System.nanoTime();
+        for (int i = 0; i < qPaths.size(); i++) {
+          if (ans[i] != tree.searchHash(qPaths.get(i))) throw new RuntimeException("Search for worng!");
+          // if (ans[i] != tree.search(qPaths.get(i))) throw new RuntimeException("Search for worng!");
+        }
+        nano = System.nanoTime() - nano;
+        break;
+    }
+
+    REPORT_CHANNEL.append(
+        String.format(
+            "%s %s query %d paths latency(ns): %s ns. \n",
+            ms == null ? "no-merge" : ms.name(),
+            mt.name(),
+            qPaths.size(),
+            dottedNanoSec(nano)));
   }
 
   private static String dottedNanoSec(long nano) {
@@ -68,15 +97,18 @@ public class Main extends MergePrefix {
     res += " -mt hash";
     // res += " -mt fdm";
     // res += " -mt cdm";
-    // res += " -ms full";
+    res += " -ms full";
     // res += " -ms partial";
-    res += " -ms simple";
-    // res += " -ds bw";
-    res += " -ds xyzc";
+    // res += " -ms simple";
+    res += " -ds bw";
+    // res += " -ds xyzc";
+    // res += " -ds sw";
+    // res += " -ds zy";
 
     res += " -merge";
     res += " -latency";
     // res += " -space";
+    res += " -template";
 
     return res.split(" ");
   }
@@ -117,14 +149,29 @@ public class Main extends MergePrefix {
           });
       System.out.println("Internal Nodes: " + atomicInteger.get());
     }
-    replaceTemplates(tree);
+
+    if (argList.contains("-space") && argList.contains("-template")) {
+      REPORT_CHANNEL.append(String.format("Before Traversal: %d \n",
+          GraphLayout.parseInstance(tree).totalSize()));
+      collectSuffixes(tree, mapType, false);
+      REPORT_CHANNEL.append(String.format("Before template space: %d \n",
+          GraphLayout.parseInstance(tree).totalSize()));
+    }
+    // always traverse the tree for fair
+    if (argList.contains("-template")) {
+      collectSuffixes(tree, mapType, true);
+      if (argList.contains("-space")) {
+        REPORT_CHANNEL.append(String.format("After template space: %d \n",
+            GraphLayout.parseInstance(tree).totalSize()));
+      }
+    }
 
     if (argList.contains("-space")) {
       measureSpace(tree, mergeStrategy, mapType);
     }
 
     if (argList.contains("-latency")) {
-      estimateLatency(tree, dataSet);
+      estimateLatency(tree, dataSet, mergeStrategy, mapType);
     }
     REPORT_CHANNEL.append("FINISH:" + String.join(" ", argList) + " with EF code: " + CDM_WITH_EF);
     REPORT_CHANNEL.append("\n\n");
