@@ -5,6 +5,7 @@ import static optimize.nodes.cdm.CNodeHelper.extractBytes;
 import static optimize.nodes.cdm.CNodeHelper.findIntervals;
 import static optimize.nodes.cdm.CNodeHelper.int2BytesFixedLen;
 import static optimize.nodes.cdm.CNodeHelper.int2BytesVarLen;
+import static optimize.nodes.fdm.vfull.SEARTNode.ubyte;
 import static optimize.util.ArrayHelper.removeTrailingZeros;
 import static optimize.nodes.cdm.CNodeHelper.setBytesByPosNoCheck;
 
@@ -21,7 +22,7 @@ public class CNode4 implements INode, IInternal, IStaticNode, ICNode {
   byte[] parKey; // partial keys
   int[] bks; // indeed a byte[][4] bks; // branching keys
   byte[][] rmk; // remaining keys
-  ICNode[] ptrs;
+  public ICNode[] ptrs;
 
   // exactly no padding on 64-jvm, jdk-17, Compressed OOPs
 
@@ -93,7 +94,7 @@ public class CNode4 implements INode, IInternal, IStaticNode, ICNode {
     int[] brPosInt = ICNode.unsignedByteArr2IntArr(int2BytesVarLen(posInt));
     int[] itvPosInt = findIntervals(brPosInt);
 
-    int keyLen = brPosInt[brKey.length - 1] - brPosInt[0] + 1;
+    int keyLen = brPosInt[brPosInt.length-1] - brPosInt[0] + 1;
 
     int[] brRltPos = ICNode.shiftIntArr(brPosInt, -1 * brPosInt[0]);
     int[] itvRltPos = ICNode.shiftIntArr(itvPosInt, -1 * brPosInt[0]);
@@ -103,7 +104,7 @@ public class CNode4 implements INode, IInternal, IStaticNode, ICNode {
     setBytesByPosNoCheck(asmkey, brKey, brRltPos);
     if (rmk != null && rmk[pos] != null) setBytesByPosNoCheck(asmkey, rmk[pos], itvRltPos);
     // ICNode.setBytesByPos(asmkey, rmk[pos], itvRltPos);
-    return asmkey;
+    return removeTrailingZeros(asmkey);
   }
 
   @Override

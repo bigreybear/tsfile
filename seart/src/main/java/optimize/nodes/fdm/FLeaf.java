@@ -13,7 +13,7 @@ public class FLeaf implements IFNode {
 
   @Override
   public INode get(byte k) {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -45,5 +45,9 @@ public class FLeaf implements IFNode {
   public INode replace(byte[] key, INode nNode) {
     value = nNode;
     return this;
+  }
+
+  public void replace(byte k, INode c) {
+    value = c;
   }
 }

@@ -7,7 +7,11 @@ import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import optimize.nodes.INode;
+import optimize.nodes.cdm.CLeaf;
+import optimize.nodes.cdm.CNode;
+import optimize.nodes.cdm.CNode4;
 import optimize.nodes.cdm.CNodeHelper;
+import optimize.nodes.cdm.ICNode;
 import optimize.nodes.fdm.FLeaf;
 import optimize.nodes.fdm.IFNode;
 import optimize.nodes.hash.HNodeV2;
@@ -16,6 +20,11 @@ import optimize.nodes.logic.LNode;
 import optimize.nodes.ref.FDMRefNode;
 import optimize.nodes.ref.HashRefNode;
 import optimize.util.ByteArray;
+
+import static optimize.nodes.cdm.CNodeHelper.bytes2Int;
+import static optimize.nodes.cdm.CNodeHelper.extractBytes;
+import static optimize.nodes.cdm.ICNode.unsignedByteArr2IntArr;
+import static optimize.util.ArrayHelper.removeTrailingZeros;
 
 public class TSTree {
   public INode root = new LNode();
@@ -63,6 +72,7 @@ public class TSTree {
         if (i < kbs.length) {
           res = cur.get(kbs[i]);
           i++;
+          // the logic is, as kbs not exhausted, res should not be a FLeaf
           if (res instanceof IFNode) cur = (IFNode) res;
           else {
             // should be in template
@@ -88,21 +98,27 @@ public class TSTree {
       if (directLeaf) {
         directLeaf = false;
         if (oi == path.length - 1) return cur.getFValue().getValue();
+        if (cur.getFValue() instanceof FDMRefNode) {
+          return ((FDMRefNode)cur.getFValue()).getValFrom(path[oi+1].getBytes(StandardCharsets.UTF_8), 0);
+        }
         cur = (IFNode) cur.getFValue();
         continue;
       }
 
       if (res != null && res.getPartialKey() == null && res instanceof IFNode) {
-        if (((IFNode) res).get((byte) 0) != null) {
-          res = ((IFNode) res).get((byte) 0);
-          cur = (IFNode) ((IFNode) res).getFValue();
-          continue;
-        } else if (res instanceof FLeaf) {
+        if (res instanceof FLeaf) {
           res = ((FLeaf) res).getFValue();
           if (res instanceof LLeaf) {
             return res.getValue();
           }
+          if (res instanceof FDMRefNode) {
+            return ((FDMRefNode)res).getValFrom(path[oi+1].getBytes(StandardCharsets.UTF_8), 0);
+          }
           cur = (IFNode) res;
+          continue;
+        } else if (((IFNode) res).get((byte) 0) != null) {
+          res = ((IFNode) res).get((byte) 0);
+          cur = (IFNode) ((IFNode) res).getFValue();
           continue;
         }
       }
@@ -122,12 +138,171 @@ public class TSTree {
 
   public long searchCDM(String p) {
     String[] path = p.split("\\.");
-    INode cur = root;
-    for (int i = 1; i < path.length; i++) {
+    ICNode cur = (ICNode) root;
+    int channel = -1;
+    int[] brPos;
+    byte[] pk, curBrKeys, checkBrKeys;
+    for (int oi = 1; oi < path.length; oi++) {
+      final byte[] sk = path[oi].getBytes(StandardCharsets.UTF_8);
+      int idx = 0;
 
-      cur = cur.getChild(path[i]);
+      if (cur instanceof CLeaf) {
+        pk = cur.getPartialKey();
+        if (pk != null) {
+          for (int j = 0; j < pk.length; j++) {
+            if (pk[j] != sk[idx]) throw new RuntimeException("Inconsistent key.");
+            idx++;
+          }
+        }
+
+        if (idx < sk.length) throw new RuntimeException("Should exhaust partial key on CLeaf.");
+        if (((CLeaf) cur).ptr instanceof LLeaf) {
+          return ((CLeaf) cur).ptr.getValue();
+        }
+        cur = (ICNode) ((CLeaf) cur).ptr;
+        continue;
+      }
+
+      while (cur instanceof CNode4 && idx < sk.length) {
+        pk = cur.getPartialKey();
+        if (pk != null) {
+          for (int j = 0; j < pk.length; j++) {
+            if (sk[idx] != pk[j]) throw new RuntimeException("Key not exists: " + path[oi]);
+            idx++;
+          }
+
+          if (idx == sk.length) {
+            if (cur instanceof CLeaf) {
+              cur = (ICNode) ((CLeaf)cur).ptr;
+              break;
+            }
+
+            channel = cur.getBrKeyIdx(0);
+            cur = cur.getPtrByPos(channel);
+            break;
+          }
+        }
+
+        brPos = cur.getBranchingPos();
+        if (brPos == null) break;
+
+        curBrKeys = extractBytes(sk, brPos);
+        channel = cur.getBrKeyIdx(bytes2Int(curBrKeys));
+        if (channel < 0) throw new RuntimeException("Key not found: " + path[oi]);
+        checkBrKeys = cur.assembleKeyAt(channel);
+        for (int i = 0; i < checkBrKeys.length && idx < sk.length; i++) {
+          if (checkBrKeys[i] != sk[idx]) throw new RuntimeException();
+          idx++;
+        }
+
+        cur = cur.getPtrByPos(channel);
+
+
+        // if (((CNode4) cur).ptrs[channel] != null) {
+        //   cur = cur.getPtrByPos(channel);
+        // } else {
+        //   INode res = ((CNode)cur).ptrs[channel];
+        //   if (res instanceof LLeaf) return res.getValue();
+        //   else throw new UnsupportedOperationException();
+        // }
+      }
+
+      if (idx == sk.length && !(cur instanceof CLeaf)) {
+        cur = cur.getPtrByPos(0);
+        if (cur instanceof CLeaf) {
+          // a finaly leaf, just return the value
+          if (((CLeaf) cur).ptr instanceof LLeaf) {
+            return ((CLeaf) cur).ptr.getValue();
+          } else {
+            // the partial key must be for next segment, just continue
+            if (cur.getPartialKey() != null && cur.getPartialKey().length > 0) {
+              continue;
+            } else {
+              // no partial key, and not final, no branching (leaf), so must proceed once more
+              cur = (ICNode) ((CLeaf) cur).ptr;
+            }
+            continue;
+          }
+        }
+        // a prefixed node must be a leaf
+        else throw new RuntimeException("Illegal route.");
+      }
+
+      if (cur instanceof CLeaf) {
+        if (cur.getPartialKey() != null) {
+          pk = cur.getPartialKey();
+          for (int j = 0; j < pk.length; j++) {
+            if (pk[j] != sk[idx]) throw new RuntimeException("Key Inconsistent");
+            idx++;
+          }
+        }
+        if (idx == sk.length) {
+          // cur = (ICNode) ((CLeaf) cur).ptr;
+          INode res = ((CLeaf)cur).ptr;
+          if (res instanceof LLeaf) return res.getValue();
+          cur = (ICNode) res;
+          continue;
+        } else {
+          throw new UnsupportedOperationException();
+        }
+      }
+
+      // if (idx == sk.length && !(cur instanceof CLeaf)) {
+      //   // sk exhausted, so there is an immediate-prefix node
+      //   cur = cur.getPtrByPos(cur.getBrKeyIdx(0));
+      // }
+
+      while (cur instanceof CNode && idx < sk.length) {
+        int pidx = idx;
+        pk = cur.getPartialKey();
+        if (pk != null) {
+          for (int j = 0; j < pk.length; j++) {
+            if (sk[idx] != pk[j]) throw new RuntimeException("Key not consistent with partial key");
+            idx++;
+          }
+        }
+
+        channel = cur.getBrKeyIdx(removeTrailingZeros(extractBytes(sk, cur.getBranchingPos())));
+        checkBrKeys = ((CNode)cur).assembleKeyAt(channel, pidx, sk.length);
+        for (int j = 0; j < checkBrKeys.length; j++) {
+          if (sk[idx] != checkBrKeys[j]) throw new UnsupportedOperationException("Inconsistent on assemble key.");
+          idx++;
+        }
+
+        if (((CNode)cur).ptrs[channel] instanceof ICNode) {
+          cur = cur.getPtrByPos(channel);
+        } else {
+          INode res = ((CNode)cur).ptrs[channel];
+          if (res instanceof LLeaf) return res.getValue();
+          else throw new UnsupportedOperationException();
+        }
+      }
+
+      // if (idx == sk.length && !(cur instanceof CLeaf)) {
+      //   // sk exhausted, so there is an immediate-prefix node
+      //   cur = cur.getPtrByPos(cur.getBrKeyIdx(0));
+      // }
       if (cur == null) throw new RuntimeException("Key not found");
     }
+
+    byte[] sk = path[path.length - 1].getBytes(StandardCharsets.UTF_8);
+    int idx = 0;
+    if (cur instanceof CLeaf) {
+      pk = cur.getPartialKey();
+      if (pk != null) {
+        for (int j = 0; j < pk.length; j++) {
+          if (pk[j] != sk[idx]) throw new RuntimeException("Inconsistent key.");
+          idx++;
+        }
+      }
+
+      if (idx < sk.length) throw new RuntimeException("Should exhaust partial key on CLeaf.");
+      if (((CLeaf) cur).ptr instanceof LLeaf) {
+        return ((CLeaf) cur).ptr.getValue();
+      }
+      cur = (ICNode) ((CLeaf) cur).ptr;
+    }
+
     return cur.getValue();
   }
 

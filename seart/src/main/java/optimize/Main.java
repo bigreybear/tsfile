@@ -59,6 +59,7 @@ public class Main extends MergePrefix {
         nano = System.nanoTime();
         for (int i = 0; i < qPaths.size(); i++) {
           if (ans[i] != tree.searchCDM(qPaths.get(i))) throw new RuntimeException("Search for worng!");
+          // if (ans[i] != tree.search(qPaths.get(i))) throw new RuntimeException("Search for worng!");
         }
         nano = System.nanoTime() - nano;
         break;
@@ -94,11 +95,11 @@ public class Main extends MergePrefix {
 
   public static String[] defaultArgs() {
     String res = "";
-    res += " -mt hash";
+    // res += " -mt hash";
     // res += " -mt fdm";
-    // res += " -mt cdm";
-    res += " -ms full";
-    // res += " -ms partial";
+    res += " -mt cdm";
+    // res += " -ms full";
+    res += " -ms partial";
     // res += " -ms simple";
     res += " -ds bw";
     // res += " -ds xyzc";
@@ -108,7 +109,7 @@ public class Main extends MergePrefix {
     res += " -merge";
     res += " -latency";
     // res += " -space";
-    res += " -template";
+    // res += " -template";
 
     return res.split(" ");
   }

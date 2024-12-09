@@ -183,6 +183,8 @@ public class CNodeHelper {
   }
 
   public static byte[] setBytesByPosNoCheck(byte[] res, byte[] src, int[] pos) {
+    if (src == null) return res;
+
     for (int i = 0; i < pos.length && i < src.length && res.length > pos[i]; i++) {
       res[pos[i]] = src[i];
     }

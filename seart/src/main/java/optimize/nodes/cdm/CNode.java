@@ -19,7 +19,7 @@ public class CNode implements ICNode, INode, IInternal, IStaticNode {
   byte[] partialKeys; // partial keys
   byte[][] bks; // branching keys
   byte[][] rmk; // remaining keys
-  INode[] ptrs;
+  public INode[] ptrs;
 
   public CNode(int[] pi) {
     pos = new byte[pi.length];
@@ -105,10 +105,10 @@ public class CNode implements ICNode, INode, IInternal, IStaticNode {
 
     if (rmk != null && rmk.length != 0)
       CNodeHelper.setBytesByPosNoCheck(asmkey, rmk[tarPos], itvRltPos);
-    return asmkey;
+    return removeTrailingZeros(asmkey);
   }
 
-  private byte[] assembleKeyAt(int tarPos, int preLen, int keyLen) {
+  public byte[] assembleKeyAt(int tarPos, int preLen, int keyLen) {
     preLen = partialKeys == null ? preLen : preLen + partialKeys.length;
 
     int[] posInt = ICNode.unsignedByteArr2IntArr(pos);
@@ -122,12 +122,12 @@ public class CNode implements ICNode, INode, IInternal, IStaticNode {
 
     if (rmk != null && rmk.length != 0)
       CNodeHelper.setBytesByPosNoCheck(asmkey, rmk[tarPos], itvRltPos);
-    return asmkey;
+    return removeTrailingZeros(asmkey);
   }
 
   @Override
   public ICNode getPtrByPos(int pos) {
-    throw new UnsupportedOperationException();
+    return (ICNode) ptrs[pos];
   }
 
   @Override
