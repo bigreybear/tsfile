@@ -11,16 +11,16 @@ public interface ICNode extends INode {
   ;
 
   default int[] getBranchingPos() {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   // get index of the target key
   default int getBrKeyIdx(int val) {
-    return -1;
+    throw new UnsupportedOperationException();
   }
 
   default int getBrKeyIdx(byte[] ba) {
-    return -1;
+    throw new UnsupportedOperationException();
   }
 
   default void setBranchingPtr(int idx, INode ptr) {

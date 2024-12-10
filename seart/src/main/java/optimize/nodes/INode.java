@@ -2,6 +2,7 @@ package optimize.nodes;
 
 import optimize.util.ByteArray;
 
+import java.rmi.StubNotFoundException;
 import java.util.List;
 import java.util.Map;
 
@@ -31,7 +32,7 @@ public interface INode {
 
   default byte[] getKeysFromFDM() {return null;}
 
-  default INode getChildFromFDM(byte k) {return null;}
+  default INode getChildByBytes(byte[] k) {throw new UnsupportedOperationException();}
 
-  default INode getChildByBytes(byte[] k) {return null;}
+  default byte[][] getKeysFromCDM() {throw new UnsupportedOperationException();}
 }

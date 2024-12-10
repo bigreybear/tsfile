@@ -1,16 +1,34 @@
 package optimize;
 
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.jar.Attributes;
+import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 import loader.PathTxtLoader;
 import org.openjdk.jol.info.GraphLayout;
+import seart.metric.TreeCompare;
 
 import static optimize.SuffixMerge.collectSuffixes;
 
 public class Main extends MergePrefix {
+
+  private static String getBuildTimestamp() {
+    try {
+      InputStream manifestStream = TreeCompare.class.getResourceAsStream("/META-INF/MANIFEST.MF");
+      if (manifestStream != null) {
+        Manifest manifest = new Manifest(manifestStream);
+        Attributes attributes = manifest.getMainAttributes();
+        return attributes.getValue("Build-Timestamp");
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    return "Unknown";
+  }
 
   public static TSTree buildLogicalTree(DataSet ds) {
     TSTree tree = new TSTree();
@@ -95,20 +113,23 @@ public class Main extends MergePrefix {
 
   public static String[] defaultArgs() {
     String res = "";
-    // res += " -mt hash";
+    res += " -mt hash";
     // res += " -mt fdm";
-    res += " -mt cdm";
+    // res += " -mt cdm";
+
     // res += " -ms full";
     res += " -ms partial";
     // res += " -ms simple";
-    res += " -ds bw";
-    // res += " -ds xyzc";
+
+    // res += " -ds bw";
+    res += " -ds xyzc";
     // res += " -ds sw";
     // res += " -ds zy";
 
     res += " -merge";
     res += " -latency";
-    // res += " -space";
+    res += " -space";
+    res += " -depth";
     // res += " -template";
 
     return res.split(" ");
@@ -142,18 +163,15 @@ public class Main extends MergePrefix {
 
     if (argList.contains("-merge")) {
       mergePrefixes(tree, mapType, mergeStrategy);
-    } else {
-      AtomicInteger atomicInteger = new AtomicInteger(0);
-      tree.traversePostOrderRec(
-          (par, key, cur, stk) -> {
-            if (cur.getKeys() != null) atomicInteger.incrementAndGet();
-          });
-      System.out.println("Internal Nodes: " + atomicInteger.get());
+    }
+
+    if (argList.contains("-depth")) {
+
     }
 
     if (argList.contains("-space") && argList.contains("-template")) {
-      REPORT_CHANNEL.append(String.format("Before Traversal: %d \n",
-          GraphLayout.parseInstance(tree).totalSize()));
+      // REPORT_CHANNEL.append(String.format("Before Traversal: %d \n",
+      //     GraphLayout.parseInstance(tree).totalSize()));
       collectSuffixes(tree, mapType, false);
       REPORT_CHANNEL.append(String.format("Before template space: %d \n",
           GraphLayout.parseInstance(tree).totalSize()));

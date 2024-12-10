@@ -30,6 +30,18 @@ public class CNode implements ICNode, INode, IInternal, IStaticNode {
   }
 
   @Override
+  public byte[][] getKeysFromCDM() {
+    return bks;
+  }
+
+  @Override
+  public INode getChildByBytes(byte[] k) {
+    byte[] k2 = removeTrailingZeros(k);
+    int idx = getBrKeyIdx(k2);
+    return ptrs[getBrKeyIdx(k2)];
+  }
+
+  @Override
   public void setBranchingKeys(List<Integer> collect) {
     throw new UnsupportedOperationException();
   }
@@ -138,6 +150,11 @@ public class CNode implements ICNode, INode, IInternal, IStaticNode {
   @Override
   public INode replace(String key, INode nNode) {
     return null;
+  }
+
+  @Override
+  public INode replace(byte[] key, INode nNode) {
+    return ptrs[getBrKeyIdx(key)] = nNode;
   }
 
   @Override

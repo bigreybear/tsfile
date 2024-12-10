@@ -66,12 +66,11 @@ public class HashPrefixMerge {
     List<CNodeHelper.ValuedPrefixArray> groupedPrefix = groupPrefixes(keys, len + preLen, 1);
     boolean toMergeAndExpand;
     for (CNodeHelper.ValuedPrefixArray vpa : groupedPrefix) {
+      // decide whether to merge
       toMergeAndExpand = false;
-
       if (ms.equals(Evaluator.MergeStrategy.FULL) && vpa.bytes.length> 1) {
         toMergeAndExpand = true;
       }
-
       if (ms.equals(Evaluator.MergeStrategy.PARTIAL)) {
         if (Evaluator.evaluateMerge(vpa, preLen, height, keys.length, mt)) {
           partialToMerge.incrementAndGet();
@@ -81,6 +80,7 @@ public class HashPrefixMerge {
         }
       }
 
+      // deliver the decision
       if (toMergeAndExpand) {
         // when to execute: Full merge or evaluated worthy, and shared by more than ONE key
         MergePrefix.occ.incrementAndGet();

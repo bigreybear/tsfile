@@ -17,6 +17,7 @@ import optimize.nodes.fdm.IFNode;
 import optimize.nodes.hash.HNodeV2;
 import optimize.nodes.logic.LLeaf;
 import optimize.nodes.logic.LNode;
+import optimize.nodes.ref.CDMRefNode;
 import optimize.nodes.ref.FDMRefNode;
 import optimize.nodes.ref.HashRefNode;
 import optimize.util.ByteArray;
@@ -207,6 +208,10 @@ public class TSTree {
         // }
       }
 
+      if (cur instanceof CDMRefNode) {
+        return ((CDMRefNode) cur).getValFrom(sk, idx);
+      }
+
       if (idx == sk.length && !(cur instanceof CLeaf)) {
         cur = cur.getPtrByPos(0);
         if (cur instanceof CLeaf) {
@@ -278,10 +283,35 @@ public class TSTree {
         }
       }
 
+      if (idx == sk.length) {
+        if (cur instanceof CLeaf) {
+          if (cur.getPartialKey() != null && cur.getPartialKey().length != 0) {
+            continue;
+          }
+
+          // next level as normal
+          if (((CLeaf) cur).ptr instanceof LLeaf) {
+            return ((CLeaf) cur).ptr.getValue();
+          }
+          cur = (ICNode) ((CLeaf) cur).ptr;
+          continue;
+        }
+
+        if (cur instanceof CDMRefNode) {
+          // next level as template
+          continue;
+        }
+      }
+
       // if (idx == sk.length && !(cur instanceof CLeaf)) {
       //   // sk exhausted, so there is an immediate-prefix node
       //   cur = cur.getPtrByPos(cur.getBrKeyIdx(0));
       // }
+      if (cur instanceof CDMRefNode) {
+        return ((CDMRefNode) cur).getValFrom(sk, idx);
+      }
+
+
       if (cur == null) throw new RuntimeException("Key not found");
     }
 
@@ -303,6 +333,9 @@ public class TSTree {
       cur = (ICNode) ((CLeaf) cur).ptr;
     }
 
+    if (cur instanceof CDMRefNode) {
+      return ((CDMRefNode) cur).getValFrom(sk, idx);
+    }
     return cur.getValue();
   }
 

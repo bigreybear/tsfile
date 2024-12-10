@@ -76,6 +76,10 @@ public class ByteArray {
     return new ByteArray(res);
   }
 
+  public static ByteArray join(byte[][] b, byte sep) {
+    return join(Arrays.asList(b), sep);
+  }
+
   public static ByteArray join(List<byte[]> src, byte sep) {
     src.sort(Arrays::compare);
     byte[] res = new byte[src.stream().mapToInt(i1 -> i1.length).sum() + src.size() - 1];

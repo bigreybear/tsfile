@@ -62,7 +62,12 @@ public class CDMPrefixMerge {
     InfixGroup group = groupByInfix(byteList, 4, preLen);
 
     if (group.getInfixMap().size() <= 1) {
-      throw new RuntimeException("Suffixes should not be identical.");
+      throw new RuntimeException("Should not have duplicate keys.");
+    }
+
+    if (ms == null) {
+      // todo transform to CNode, serving as full
+      return null;
     }
 
     boolean useNode4;

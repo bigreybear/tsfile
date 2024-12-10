@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import optimize.nodes.INode;
+import optimize.nodes.logic.LLeaf;
 
 public class CLeaf implements ICNode {
   byte[] pk;
@@ -23,7 +24,7 @@ public class CLeaf implements ICNode {
 
   @Override
   public long getValue() {
-    return 0;
+    return ptr.getValue();
   }
 
   @Override
@@ -34,6 +35,11 @@ public class CLeaf implements ICNode {
       if (bk[i] != pk[i]) return null;
     }
     return ptr;
+  }
+
+  @Override
+  public INode replace(byte[] key, INode nNode) {
+    return ptr = nNode;
   }
 
   @Override

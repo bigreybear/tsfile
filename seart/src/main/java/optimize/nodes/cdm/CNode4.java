@@ -113,6 +113,33 @@ public class CNode4 implements INode, IInternal, IStaticNode, ICNode {
   }
 
   @Override
+  public INode getChildByBytes(byte[] k) {
+    if (k.length > 4) throw new UnsupportedOperationException();
+    int ans = bytes2Int(k);
+    int idx = getBrKeyIdx(ans);
+    return ptrs[idx];
+  }
+
+  @Override
+  public byte[][] getKeysFromCDM() {
+    byte[][] res = new byte[bks.length][];
+    for (int i = 0; i < bks.length; i++) {
+      res[i] = int2BytesFixedLen(bks[i], 4);
+    }
+    return res;
+  }
+
+  @Override
+  public INode replace(byte[] key, INode nNode) {
+    return ptrs[getBrKeyIdx(key)] = (ICNode) nNode;
+  }
+
+  @Override
+  public int getBrKeyIdx(byte[] ba) {
+    return getBrKeyIdx(bytes2Int(ba));
+  }
+
+  @Override
   public INode getChild(String name) {
     byte[] kb = name.getBytes(StandardCharsets.UTF_8), cpk, curBrKeys, checkBrKeys;
 

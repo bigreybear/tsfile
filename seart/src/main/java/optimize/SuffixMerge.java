@@ -1,12 +1,16 @@
 package optimize;
 
-import optimize.merge.MergedTreeTraversal;
+import optimize.traversal.MergedTreeTraversal;
 import optimize.nodes.ILeaf;
 import optimize.nodes.INode;
+import optimize.nodes.cdm.CLeaf;
+import optimize.nodes.cdm.CNode;
+import optimize.nodes.cdm.ICNode;
 import optimize.nodes.fdm.FLeaf;
 import optimize.nodes.fdm.IFNode;
 import optimize.nodes.hash.HNodeV2;
 import optimize.nodes.logic.LLeaf;
+import optimize.nodes.ref.CDMRefNode;
 import optimize.nodes.ref.FDMRefNode;
 import optimize.nodes.ref.HashRefNode;
 import optimize.util.ByteArray;
@@ -17,6 +21,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static optimize.Main.REPORT_CHANNEL;
+import static optimize.nodes.ref.CDMRefNode.buildCDMTemplate;
 import static optimize.nodes.ref.FDMRefNode.buildFDMTemplate;
 import static optimize.nodes.ref.HashRefNode.buildHashTemplate;
 import static optimize.nodes.cdm.CNodeHelper.strings2ByteArrays;
@@ -28,6 +33,7 @@ public class SuffixMerge {
     INode template;
     INode foPar;
     byte[] foParKey;
+    byte[][] foParKeyArr;
     AtomicLong count = new AtomicLong();
     OccMark() {}
   }
@@ -63,6 +69,57 @@ public class SuffixMerge {
 
     switch (mt) {
       case CDM:
+        // todo framework finished, fill in implementation
+        MergedTreeTraversal.CDMMergeTraverse(null, null, (ICNode) tree.root, null,
+            (par, key, cur, stk) -> {
+          if (cur instanceof CLeaf) return;
+          byte[][] keys = cur.getKeysFromCDM();
+          if (cur instanceof LLeaf || keys == null || keys.length < 2) return;
+
+          // check whether all are terminal child
+          for (byte[] b : keys) {
+            if (cur.getChildByBytes(b) instanceof LLeaf) continue;
+
+            if (cur.getChildByBytes(b) instanceof CLeaf && ((CLeaf)cur.getChildByBytes(b)).ptr instanceof LLeaf) continue;
+            // any single non-LLeaf child will terminate the process
+            else return;
+          }
+
+          ByteArray tptID = ByteArray.join(keys, (byte)0);
+          if (CDM_TEMPLATES.containsKey(tptID)) {
+            OccMark mark = CDM_TEMPLATES.get(tptID);
+            if (mark.template == null) {
+              mark.template = buildCDMTemplate(cur);
+
+              CDMRefNode crn = new CDMRefNode();
+              crn.embedTemplate((ICNode) mark.firstOcc, (CNode) mark.template);
+              if (replace) {
+                mark.foPar.replace(mark.foParKey, crn);
+              }
+            }
+            if (par == null) {
+              throw new RuntimeException("should not be single tree");
+            } else {
+              CDMRefNode frn = new CDMRefNode();
+              frn.embedTemplate(cur, (CNode) mark.template);
+              mark.count.incrementAndGet();
+
+              if (replace) {
+                // if (par.get(key) != cur &&
+                //     ((IFNode) par.get(key)).getFValue() != cur) {
+                //   throw new UnsupportedOperationException();
+                // }
+                par.replace(key, frn);
+              }
+            }
+          } else {
+            OccMark mark = new OccMark();
+            mark.firstOcc = cur;
+            mark.foPar = par;
+            mark.foParKey = key;
+            CDM_TEMPLATES.put(tptID, mark);
+          }
+        });
         reportCDMSuffixMerge();
         return;
       case FDM:

@@ -9,6 +9,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
+
 import optimize.nodes.INode;
 import optimize.nodes.cdm.CNodeHelper;
 import org.openjdk.jol.info.ClassLayout;
@@ -24,6 +26,8 @@ public class Evaluator {
   public static final int REF_SIZE = 4; // unit: byte
   public static final float HASH_LOAD_FACTOR = 0.75f;
 
+  public static final float HASH_MERGE_LOW_BOUND = 0.02f;
+
   /**
    * @param preLen start of the prefix within the keys
    * @param h height of the logical tree
@@ -31,21 +35,23 @@ public class Evaluator {
    */
   public static boolean evaluateMerge(
       CNodeHelper.ValuedPrefixArray vpa, int preLen, int h, int ttlChd, MapType mapType) {
+    if (vpa.bytes.length == 1) return false;
     boolean res = false;
     switch (mapType) {
       case HASH:
         {
           // get the
-          final List<String> keys = new ArrayList<>();
-          for (byte[] key : vpa.bytes) {
-            keys.add(
-                new String(
-                    Arrays.copyOfRange(key, preLen, vpa.len + preLen),
-                    StandardCharsets.ISO_8859_1));
-          }
+          // final List<String> keys = new ArrayList<>();
+          // for (byte[] key : vpa.bytes) {
+          //   keys.add(
+          //       new String(
+          //           Arrays.copyOfRange(key, preLen, vpa.len + preLen),
+          //           StandardCharsets.ISO_8859_1));
+          // }
 
-          // todo remove debug, make sure to partial merge
-          int deltaSpace = calcMapMinSpace(keys) - vpa.prd + vpa.len;
+          // legacy
+          // int deltaSpace = calcMapMinSpace(keys) - vpa.prd + vpa.len;
+          int deltaSpace = 68 - vpa.prd + vpa.len; // 68 for map header and new ptr
 
           // the 2nd term is definitely > 0, place h in denominator to indicate that
           //  the higher the merge is, the higher the time penalty
@@ -57,6 +63,8 @@ public class Evaluator {
 
     return res;
   }
+
+  private static Random dice = new Random();
 
   public enum MergeStrategy {
     SIMPLE,
