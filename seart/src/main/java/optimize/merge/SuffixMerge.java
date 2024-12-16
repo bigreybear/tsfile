@@ -1,5 +1,7 @@
-package optimize;
+package optimize.merge;
 
+import optimize.TSTree;
+import optimize.merge.MapType;
 import optimize.traversal.MergedTreeTraversal;
 import optimize.nodes.ILeaf;
 import optimize.nodes.INode;
@@ -60,7 +62,7 @@ public class SuffixMerge {
         NOMERGE_TEMPLATES.size(), NOMERGE_TEMPLATES.values().stream().mapToLong(i->i.count.get()).sum()));
   }
 
-  public static void collectSuffixes(TSTree tree, Evaluator.MapType mt, final boolean replace) {
+  public static void collectSuffixes(TSTree tree, MapType mt, final boolean replace) {
     if (mt == null) {
 
       return;

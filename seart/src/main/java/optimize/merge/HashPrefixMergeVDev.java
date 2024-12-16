@@ -1,29 +1,28 @@
 package optimize.merge;
 
-import static optimize.merge.MergePrefix.partialNotMerge;
-import static optimize.merge.MergePrefix.partialToMerge;
-import static optimize.nodes.cdm.CNodeHelper.findLCPLength;
-import static optimize.util.InfixGroup.groupByInfix;
-import static optimize.nodes.cdm.CNodeHelper.groupPrefixes;
+import optimize.nodes.IMicroNode;
+import optimize.nodes.cdm.CNodeHelper;
+import optimize.nodes.hash.HNodeVDev;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import optimize.nodes.INode;
-import optimize.nodes.cdm.CNodeHelper;
-import optimize.nodes.hash.HNodeV2;
+import static optimize.merge.MergePrefix.partialNotMerge;
+import static optimize.merge.MergePrefix.partialToMerge;
+import static optimize.nodes.cdm.CNodeHelper.findLCPLength;
+import static optimize.nodes.cdm.CNodeHelper.groupPrefixes;
 
-public class HashPrefixMerge {
+public class HashPrefixMergeVDev {
 
   /**
    * An experimental function, may be less read-friendly comparing to the V1 function.
    *
    * @param logicalChild wrapping oriNode for its getChild function
    */
-  public static INode recNextMergeOnHashV2(
-      Function<byte[], INode> logicalChild,
+  public static IMicroNode recNextMergeOnHashV2(
+      Function<byte[], IMicroNode> logicalChild,
       byte[][] keys,
       int preLen,
       PrefixMergeStrategy ms,
@@ -33,18 +32,18 @@ public class HashPrefixMerge {
     final int len = findLCPLength(keys, preLen);
 
     if (len == 0 && ms.equals(PrefixMergeStrategy.SIMPLE)) {
-        final HNodeV2 repNode = initHashNodeWithPartialKey(keys[0], preLen, len);
+        final IMicroNode repNode = initHashNodeWithPartialKey(keys[0], preLen, len);
         for (byte[] key : keys) {
-          repNode.add(key, logicalChild.apply(key));
+          repNode.setChild(key, logicalChild.apply(key));
         }
       return repNode;
     }
 
-    final HNodeV2 repNode = initHashNodeWithPartialKey(keys[0], preLen, len);
+    final IMicroNode repNode = initHashNodeWithPartialKey(keys[0], preLen, len);
     List<byte[]> prefixedKeys =
         Arrays.stream(keys).filter(e -> e.length == len + preLen).collect(Collectors.toList());
     if (!prefixedKeys.isEmpty()) {
-      repNode.add(new byte[0], logicalChild.apply(prefixedKeys.get(0)));
+      repNode.setChild(new byte[0], logicalChild.apply(prefixedKeys.get(0)));
     }
 
     if (ms.equals(PrefixMergeStrategy.SIMPLE)) {
@@ -52,7 +51,7 @@ public class HashPrefixMerge {
       List<byte[]> longerKeys =
           Arrays.stream(keys).filter(e -> e.length > len + preLen).collect(Collectors.toList());
       for (byte[] nk : longerKeys) {
-        repNode.add(
+        repNode.setChild(
             Arrays.copyOfRange(nk, preLen + len, nk.length),
             logicalChild.apply(nk));
       }
@@ -84,7 +83,7 @@ public class HashPrefixMerge {
         // when to execute: Full merge or evaluated worthy, and shared by more than ONE key
         MergePrefix.occ.incrementAndGet();
         MergePrefix.ttlLen.addAndGet(vpa.prd);
-        final INode recNode =
+        final IMicroNode recNode =
             recNextMergeOnHashV2(
                 logicalChild,
                 vpa.bytes,
@@ -93,25 +92,25 @@ public class HashPrefixMerge {
                 mt,
                 height);
         // add the node generated in rec to the current node
-        repNode.add(
+        repNode.setChild(
             Arrays.copyOfRange(vpa.bytes[0],len + preLen,len+ preLen+ 1),
             recNode);
       } else {
         // go-through to the no-branching child
         for (byte[] k : vpa.bytes) {
-          repNode.add(Arrays.copyOfRange(k, preLen + len, k.length), logicalChild.apply(k));
+          repNode.setChild(Arrays.copyOfRange(k, preLen + len, k.length), logicalChild.apply(k));
         }
       }
     }
     return repNode;
   }
 
-  public static HNodeV2 initHashNodeWithPartialKey(
+  public static IMicroNode initHashNodeWithPartialKey(
       byte[] key,
       int preLen,
       int len) {
-    HNodeV2 res = new HNodeV2();
-    res.pk = len == 0 ? null : Arrays.copyOfRange(key, preLen, len + preLen);
+    IMicroNode res = new HNodeVDev();
+    res.setParKey(len == 0 ? null : Arrays.copyOfRange(key, preLen, len + preLen));
     return res;
   }
 }

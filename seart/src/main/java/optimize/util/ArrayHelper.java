@@ -2,6 +2,7 @@ package optimize.util;
 
 import java.util.Arrays;
 
+
 public class ArrayHelper {
 
   public static boolean identical(byte[] a, byte[] b) {

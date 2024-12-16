@@ -14,9 +14,8 @@ import java.util.Arrays;
 import java.util.List;
 import optimize.nodes.IInternal;
 import optimize.nodes.INode;
-import optimize.nodes.IStaticNode;
 
-public class CNode4 implements INode, IInternal, IStaticNode, ICNode {
+public class CNode4 implements INode, IInternal, ICNode {
   // for only 4 positions
   int posInt; // an int concatenated by 4 bytes: byte p1, p2, p3, p4;
   byte[] parKey; // partial keys
@@ -212,5 +211,10 @@ public class CNode4 implements INode, IInternal, IStaticNode, ICNode {
   @Override
   public byte[] getPartialKey() {
     return parKey;
+  }
+
+  @Override
+  public INode addChild(String name, INode child) {
+    throw new UnsupportedOperationException();
   }
 }

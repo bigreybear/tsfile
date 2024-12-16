@@ -1,13 +1,13 @@
 package optimize.merge;
 
-import static optimize.Main.DataSet.BW;
+import static optimize.MyDataSet.BW;
 import static optimize.Main.REPORT_CHANNEL;
-import static optimize.MergePrefix.getLogicalChild;
+import static optimize.merge.MergePrefix.getLogicalChild;
 
 import optimize.util.InfixGroup;
 
-import static optimize.MergePrefix.partialNotMerge;
-import static optimize.MergePrefix.partialToMerge;
+import static optimize.merge.MergePrefix.partialNotMerge;
+import static optimize.merge.MergePrefix.partialToMerge;
 import static optimize.nodes.cdm.CNodeHelper.extractBytes;
 import static optimize.nodes.cdm.CNodeHelper.findIntervals;
 import static optimize.util.InfixGroup.groupByInfix;
@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import optimize.Evaluator;
+
 import optimize.Main;
 import optimize.TSTree;
 import optimize.nodes.INode;
@@ -47,8 +47,8 @@ public class CDMPrefixMerge {
       Function<byte[], INode> getLChild,
       byte[][] keys,
       int preLen,
-      Evaluator.MergeStrategy ms,
-      Evaluator.MapType mt,
+      PrefixMergeStrategy ms,
+      MapType mt,
       int height,
       boolean withEFCode) {
     if (keys.length == 1) {
@@ -71,14 +71,14 @@ public class CDMPrefixMerge {
     }
 
     boolean useNode4;
-    if (ms.equals(Evaluator.MergeStrategy.FULL)) {
+    if (ms.equals(PrefixMergeStrategy.FULL)) {
       useNode4 = true;
-    } else if (ms.equals(Evaluator.MergeStrategy.PARTIAL)) {
+    } else if (ms.equals(PrefixMergeStrategy.PARTIAL)) {
       useNode4 = evaluateForNode4(group, preLen, keys, height);
 
       if (useNode4) partialToMerge.incrementAndGet();
       else partialNotMerge.incrementAndGet();
-    } else if (ms.equals(Evaluator.MergeStrategy.SIMPLE)) {
+    } else if (ms.equals(PrefixMergeStrategy.SIMPLE)) {
       useNode4 = false;
     } else {
       throw new RuntimeException("MERGE STRATEGY ERROR");
@@ -182,10 +182,10 @@ public class CDMPrefixMerge {
     byte[][] keys = CNodeHelper.strings2ByteArrays(t.getKeys());
     INode resEF =
         recNextMergeOnCDM(
-            getLogicalChild(t), keys, 0, Evaluator.MergeStrategy.PARTIAL, null, 2, true);
+            getLogicalChild(t), keys, 0, PrefixMergeStrategy.PARTIAL, null, 2, true);
     INode res =
         recNextMergeOnCDM(
-            getLogicalChild(t), keys, 0, Evaluator.MergeStrategy.PARTIAL, null, 2, false);
+            getLogicalChild(t), keys, 0, PrefixMergeStrategy.PARTIAL, null, 2, false);
 
     LNode lt = (LNode) t;
 

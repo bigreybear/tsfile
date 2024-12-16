@@ -10,10 +10,9 @@ import java.util.Arrays;
 import java.util.List;
 import optimize.nodes.IInternal;
 import optimize.nodes.INode;
-import optimize.nodes.IStaticNode;
 import optimize.util.ArrayHelper;
 
-public class CNode implements ICNode, INode, IInternal, IStaticNode {
+public class CNode implements ICNode, INode, IInternal {
   // for more than 4 positions
   byte[] pos; // indeed flags for byte p1, p2, p3, p4;
   byte[] partialKeys; // partial keys
@@ -199,6 +198,11 @@ public class CNode implements ICNode, INode, IInternal, IStaticNode {
   @Override
   public byte[] getPartialKey() {
     return partialKeys;
+  }
+
+  @Override
+  public INode addChild(String name, INode child) {
+    throw new UnsupportedOperationException();
   }
 
   public static void main(String[] args) {}

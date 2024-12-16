@@ -14,10 +14,9 @@ import java.util.stream.Collectors;
 import optimize.eliasfano.EliasFano;
 import optimize.nodes.IInternal;
 import optimize.nodes.INode;
-import optimize.nodes.IStaticNode;
 
 // enhanced with Elias-Fano coding
-public class CNode4EF implements INode, IInternal, IStaticNode, ICNode {
+public class CNode4EF implements INode, IInternal, ICNode {
   // for only 4 positions
   int posInt; // an int concatenated by 4 unsigned bytes: byte p1, p2, p3, p4;
   byte[] pks; // partial keys
@@ -208,5 +207,10 @@ public class CNode4EF implements INode, IInternal, IStaticNode, ICNode {
   @Override
   public byte[] getPartialKey() {
     return pks;
+  }
+
+  @Override
+  public INode addChild(String name, INode child) {
+    throw new UnsupportedOperationException();
   }
 }

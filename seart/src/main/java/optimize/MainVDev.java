@@ -1,12 +1,5 @@
 package optimize;
 
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.jar.Attributes;
-import java.util.jar.Manifest;
-import java.util.stream.Collectors;
 import loader.PathTxtLoader;
 import optimize.merge.MapType;
 import optimize.merge.MergePrefix;
@@ -16,9 +9,17 @@ import optimize.traversal.MergedTreeTraversalForDepth;
 import org.openjdk.jol.info.GraphLayout;
 import seart.metric.TreeCompare;
 
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.jar.Attributes;
+import java.util.jar.Manifest;
+import java.util.stream.Collectors;
+
 import static optimize.merge.SuffixMerge.collectSuffixes;
 
-public class Main extends MergePrefix {
+public class MainVDev extends MergePrefix {
 
   private static String getBuildTimestamp() {
     try {

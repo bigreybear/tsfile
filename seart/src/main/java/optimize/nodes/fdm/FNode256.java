@@ -8,7 +8,7 @@ import java.util.List;
 import optimize.nodes.IInternal;
 import optimize.nodes.INode;
 
-public class FNode256 implements INode, IInternal, IFNode {
+public class FNode256 implements IInternal, IFNode {
   // no prefixed key, but deem b\'00' as prefixed-pointer
   public byte[] pk;
   public INode[] ptrs;

@@ -1,7 +1,9 @@
-package optimize;
+package optimize.merge;
 
-import static optimize.Evaluator.MapType;
-import static optimize.Evaluator.MergeStrategy;
+import optimize.TSTree;
+import optimize.merge.MapType;
+
+import optimize.merge.PrefixMergeStrategy;
 import static optimize.Main.CDM_WITH_EF;
 import static optimize.Main.REPORT_CHANNEL;
 import static optimize.merge.CDMPrefixMerge.recNextMergeOnCDM;
@@ -27,7 +29,7 @@ public class MergePrefix {
       partialToMerge = new AtomicInteger(),
       partialNotMerge = new AtomicInteger();
 
-  public static void reportMergeStatus(MergeStrategy ms) {
+  public static void reportMergeStatus(PrefixMergeStrategy ms) {
     REPORT_CHANNEL.append(
         String.format("Merge occ: %d, total len: %d, inc: %d \n", occ.get(), ttlLen.get(), inc.get()));
     REPORT_CHANNEL.append(String.format("Partial merge: %d, not merge: %d \n",
@@ -59,16 +61,16 @@ public class MergePrefix {
     }
 
     // INode res = recNextMergeOnHash(n1, keys, 0, MergeStrategy.PARTIAL, MapType.HASH, 1);
-    INode res = FDMPrefixMerge.recNextMergeOnFDM(n1, keys, 0, MergeStrategy.FULL, MapType.FDM, 1);
+    INode res = FDMPrefixMerge.recNextMergeOnFDM(n1, keys, 0, PrefixMergeStrategy.FULL, MapType.FDM, 1);
     System.out.println(GraphLayout.parseInstance(res).totalSize());
-    reportMergeStatus(MergeStrategy.PARTIAL);
+    reportMergeStatus(PrefixMergeStrategy.PARTIAL);
     INode a = res.getChild("aaabcgxxab");
     System.out.println("HELLO");
   }
 
   public static final List<String> dupPaths = new ArrayList<>();
 
-  public static void mergePrefixes(TSTree tree, MapType mt, MergeStrategy ms) {
+  public static void mergePrefixes(TSTree tree, MapType mt, PrefixMergeStrategy ms) {
     switch (mt) {
       case CDM:
         tree.traversePostOrderRec(

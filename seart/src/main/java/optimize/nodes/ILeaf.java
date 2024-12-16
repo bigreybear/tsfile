@@ -7,16 +7,15 @@ public interface ILeaf extends INode {
   default INode getChild(String name) {
     throw new UnsupportedOperationException();
   }
-  ;
 
   @Override
   default List<INode> getChildren() {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override
   default List<String> getKeys() {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override

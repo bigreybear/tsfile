@@ -1,9 +1,7 @@
-package optimize;
+package optimize.merge;
 
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
 import java.util.HashMap;
@@ -17,7 +15,7 @@ import org.openjdk.jol.info.ClassLayout;
 import org.openjdk.jol.info.GraphLayout;
 
 /** For both TargetFunction and ability to index with related map type */
-public class Evaluator {
+public class HashMergeEvaluator {
   // weight between space and time
   public static final float alpha = 1f;
   public static final float t0 = 13; // nano-sec per op
@@ -65,18 +63,6 @@ public class Evaluator {
   }
 
   private static Random dice = new Random();
-
-  public enum MergeStrategy {
-    SIMPLE,
-    PARTIAL,
-    FULL;
-  }
-
-  public enum MapType {
-    HASH,
-    FDM, // first diff map
-    CDM; // complete diff map
-  }
 
   /**
    * @param keys keys AFTER prefix truncated.
@@ -154,7 +140,7 @@ public class Evaluator {
   public static int calcMapMinSpace(Collection<String> keys) {
     // notice could be smaller than actual
     // Note(zx) INACCURATE especially when treeify starts (single bin with more than 7 items)
-    int keySize = keys.stream().mapToInt(Evaluator::calcSpace).sum();
+    int keySize = keys.stream().mapToInt(HashMergeEvaluator::calcSpace).sum();
     return (int)
         (HASH_MERGE_COST_FACTOR
             * (keySize + 48 /* Map itself */ + 16 /* header of the table */

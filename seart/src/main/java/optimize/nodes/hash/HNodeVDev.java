@@ -1,7 +1,8 @@
 package optimize.nodes.hash;
 
-import optimize.nodes.IInternal;
+import optimize.nodes.IMicroNode;
 import optimize.nodes.INode;
+import optimize.nodes.ITSNode;
 import optimize.nodes.ref.HashRefNode;
 import optimize.util.ByteArray;
 
@@ -18,18 +19,18 @@ import java.util.stream.Collectors;
  * About why it doesn't need a HLeaf: the key in each hash includes the trailing part, while
  * CDM and FDM needs a leaf holding the partial key after the split.
  */
-public class HNodeV2 implements IInternal {
+public class HNodeVDev implements IMicroNode {
   // stored strings are iso encoded
   public byte[] pk;
-  public Map<ByteArray, INode> children;
+  public Map<ByteArray, IMicroNode> children;
 
-  public HNodeV2() {}
+  public HNodeVDev() {}
 
-  public HNodeV2(int c) {
+  public HNodeVDev(int c) {
     children = new HashMap<>(c, 1.0f);
   }
 
-  public HNodeV2(String pk) {
+  public HNodeVDev(String pk) {
     this.pk = pk.getBytes(StandardCharsets.UTF_8);
   }
 
@@ -39,20 +40,20 @@ public class HNodeV2 implements IInternal {
   }
 
   @Override
-  public INode replace(byte[] key, INode nNode) {
+  public IMicroNode replace(byte[] key, IMicroNode nNode) {
     return children.put(new ByteArray(key), nNode);
   }
 
   @Override
-  public INode getChildByBytes(byte[] k) {
+  public IMicroNode getChild(byte[] k) {
     return children.get(new ByteArray(k));
   }
 
   @Override
-  public INode getChild(String name) {
+  public IMicroNode getLogicalChild(String name) {
     // equivalent to that of LNode
     final byte[] sk = name.getBytes(StandardCharsets.UTF_8);
-    HNodeV2 cur = this;
+    HNodeVDev cur = this;
 
     for (int i = 0; i < sk.length; i++) {
       if (cur.pk != null) {
@@ -69,7 +70,7 @@ public class HNodeV2 implements IInternal {
       };
 
       // try all remaining key
-      INode res = cur.children.get(new ByteArray(Arrays.copyOfRange(sk, i, sk.length)));
+      IMicroNode res = cur.children.get(new ByteArray(Arrays.copyOfRange(sk, i, sk.length)));
       if (res != null) {
 
         if (res instanceof HashRefNode) {
@@ -78,9 +79,9 @@ public class HNodeV2 implements IInternal {
 
         // Note(zx) sk exhausted, if the cur node has zero-len key, then that is the target
         //  meaning, there are some sibling prefixing the search key
-        if (res instanceof HNodeV2) {
-          if (res.getPartialKey() == null && ((HNodeV2) res).children.containsKey(new ByteArray(new byte[0]))) {
-            return ((HNodeV2) res).children.get(new ByteArray(new byte[0]));
+        if (res instanceof HNodeVDev) {
+          if (res.getParKey() == null && ((HNodeVDev) res).children.containsKey(new ByteArray(new byte[0]))) {
+            return ((HNodeVDev) res).children.get(new ByteArray(new byte[0]));
           }
         }
         return res;
@@ -88,43 +89,45 @@ public class HNodeV2 implements IInternal {
 
       // no remaining, use first byte
       res = cur.children.get(new ByteArray(Arrays.copyOfRange(sk, i, i+1)));
-      cur = (HNodeV2) res;
+      cur = (HNodeVDev) res;
     }
 
     throw new RuntimeException("No key found.");
   }
 
   @Override
-  public List<INode> getChildren() {
+  public List<IMicroNode> getChildren() {
     return new ArrayList<>(children.values());
   }
 
   @Override
-  public List<String> getKeys() {
-    return null;
+  public byte[] getParKey() {
+    return pk;
   }
 
   @Override
-  public byte[] getPartialKey() {
-    return pk;
+  public void setParKey(byte[] _pk) {
+    pk = _pk;
+  }
+
+  @Override
+  public long getValue() {
+    throw new UnsupportedOperationException();
   }
 
   public INode replace(String s, INode nNode) {
     throw new UnsupportedOperationException();
   }
 
-  public void add(byte[] key, INode uc) {
+  @Override
+  public void setChild(byte[] key, IMicroNode uc) {
     if (children == null) children = new HashMap<>(1, 1.0f);
 
     children.put(new ByteArray(key), uc);
   }
 
   @Override
-  public INode addChild(String name, INode child) {
-    return null;
-  }
-
-  public boolean hasChild(String name) {
-    return children != null && children.containsKey(name);
+  public ITSNode addChild(String name, ITSNode child) {
+    throw new UnsupportedOperationException();
   }
 }
