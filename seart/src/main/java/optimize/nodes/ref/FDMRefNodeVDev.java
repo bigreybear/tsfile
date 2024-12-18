@@ -8,7 +8,7 @@ import optimize.nodes.fdm.FNode256;
 import optimize.nodes.fdm.IFNode;
 import optimize.nodes.logic.LLeaf;
 
-public class FDMRefNode implements INode {
+public class FDMRefNodeVDev implements INode {
   public byte[] pk;
   public IFNode template;
   public long[] values;

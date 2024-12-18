@@ -1,9 +1,8 @@
 package optimize.nodes.logic;
 
+import java.util.List;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.ITSNode;
-
-import java.util.List;
 
 public class LLeafVDev implements IMicroNode {
   public byte[] pk;

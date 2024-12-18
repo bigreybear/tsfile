@@ -13,8 +13,6 @@ public class FNode256 implements IInternal, IFNode {
   public byte[] pk;
   public INode[] ptrs;
 
-
-
   @Override
   public void setPartialKey(byte[] pk) {
     this.pk = pk;

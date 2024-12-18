@@ -352,9 +352,7 @@ public class CNodeHelper {
   // region Export
 
   @Deprecated
-  /**
-   * refers to {@link InfixGroup#groupByInfix}
-   */
+  /** refers to {@link InfixGroup#groupByInfix} */
   public static List<ValuedPrefixArray> groupPrefixes(byte[][] keys, int start, int grpLen) {
     // group keys by the first byte
     Map<List<Byte>, List<byte[]>> classfier =

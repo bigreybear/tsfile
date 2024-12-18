@@ -1,12 +1,9 @@
 package optimize.resolver;
 
-import loader.PathTxtLoader;
-import seart.utils.PathUtils;
-
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import loader.PathTxtLoader;
+import seart.utils.PathUtils;
 
 public class SWResolver {
 
@@ -28,9 +25,6 @@ public class SWResolver {
   }
 
   public static void main(String[] args) throws Exception {
-    transFile(
-        "mtreedata/sw/devid.txt",
-        "mtreedata/sw/sen.txt",
-        "mtreedata/sw/path.txt");
+    transFile("mtreedata/sw/devid.txt", "mtreedata/sw/sen.txt", "mtreedata/sw/path.txt");
   }
 }

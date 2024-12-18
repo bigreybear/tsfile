@@ -16,7 +16,9 @@ public interface IMicroNode extends ITSNode {
   IMicroNode replace(byte[] key, IMicroNode node);
 
   @Override
-  default List<String> getStringKeys() {throw new UnsupportedOperationException();}
+  default List<String> getStringKeys() {
+    throw new UnsupportedOperationException();
+  }
 
   @Override
   default List<ITSNode> getLogicalChildren() {
@@ -24,8 +26,12 @@ public interface IMicroNode extends ITSNode {
   }
 
   @Override
-  default ITSNode addChild(String key, ITSNode n) {throw new UnsupportedOperationException();}
+  default ITSNode addChild(String key, ITSNode n) {
+    throw new UnsupportedOperationException();
+  }
 
   @Override
-  default void replace(String key, ITSNode node) {throw new UnsupportedOperationException();}
+  default void replace(String key, ITSNode node) {
+    throw new UnsupportedOperationException();
+  }
 }

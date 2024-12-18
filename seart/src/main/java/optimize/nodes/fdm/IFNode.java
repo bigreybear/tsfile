@@ -10,7 +10,9 @@ public interface IFNode extends INode {
 
   INode get(byte k);
 
-  default void replace(byte k, INode c) {throw new UnsupportedOperationException();}
+  default void replace(byte k, INode c) {
+    throw new UnsupportedOperationException();
+  }
 
   void setPartialKey(byte[] pk);
 

@@ -10,7 +10,7 @@ import optimize.nodes.cdm.CNode;
 import optimize.nodes.cdm.ICNode;
 import optimize.nodes.logic.LLeaf;
 
-public class CDMRefNode implements ICNode {
+public class CDMRefNodeVDev implements ICNode {
   public byte[] pk;
   public int[] pos;
   public CNode template;

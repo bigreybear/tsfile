@@ -6,14 +6,14 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
 import optimize.TSTree;
-import optimize.nodes.INode;
+import optimize.nodes.IMicroNode;
 import optimize.nodes.cdm.CLeaf;
 import optimize.nodes.cdm.ICNode;
 import optimize.nodes.fdm.FLeaf;
 import optimize.nodes.fdm.IFNode;
 import optimize.nodes.logic.LLeaf;
 
-public class MergedTreeTraversal {
+public class MergedTreeTraversalVDev {
 
   public static void CDMMergeTraverse(
       ICNode par,
@@ -93,11 +93,11 @@ public class MergedTreeTraversal {
   }
 
   public static void HashMergeTraverse(
-      INode par,
+      IMicroNode par,
       Deque<byte[]> trace,
-      INode cur,
+      IMicroNode cur,
       byte[] key,
-      TSTree.IQuadFunction<INode, byte[], INode, Deque<byte[]>> consumer) {
+      TSTree.IQuadFunction<IMicroNode, byte[], IMicroNode, Deque<byte[]>> consumer) {
     if (trace == null) trace = new ArrayDeque<>();
 
     List<byte[]> keys = cur.getKeyBytes();
@@ -107,11 +107,10 @@ public class MergedTreeTraversal {
     }
 
     for (byte[] k : keys) {
-      byte[] token =
-          concatenate(k, cur.getPartialKey() == null ? new byte[0] : cur.getPartialKey());
+      byte[] token = concatenate(k, cur.getParKey() == null ? new byte[0] : cur.getParKey());
 
       trace.addLast(token);
-      HashMergeTraverse(cur, trace, cur.getChildByBytes(k), k, consumer);
+      HashMergeTraverse(cur, trace, cur.getChild(k), k, consumer);
       trace.removeLast();
     }
 

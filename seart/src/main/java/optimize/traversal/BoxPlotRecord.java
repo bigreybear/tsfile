@@ -9,7 +9,7 @@ public class BoxPlotRecord {
 
   @Override
   public String toString() {
-    return String.format("(min, q1, med, q3, max, iqr: %d, %d, %d, %d, %d)",
-        min, q1, median, q3, max);
+    return String.format(
+        "(min, q1, med, q3, max, iqr: %d, %d, %d, %d, %d)", min, q1, median, q3, max);
   }
 }

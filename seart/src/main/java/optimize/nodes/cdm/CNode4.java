@@ -5,9 +5,8 @@ import static optimize.nodes.cdm.CNodeHelper.extractBytes;
 import static optimize.nodes.cdm.CNodeHelper.findIntervals;
 import static optimize.nodes.cdm.CNodeHelper.int2BytesFixedLen;
 import static optimize.nodes.cdm.CNodeHelper.int2BytesVarLen;
-import static optimize.nodes.fdm.vfull.SEARTNode.ubyte;
-import static optimize.util.ArrayHelper.removeTrailingZeros;
 import static optimize.nodes.cdm.CNodeHelper.setBytesByPosNoCheck;
+import static optimize.util.ArrayHelper.removeTrailingZeros;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -93,7 +92,7 @@ public class CNode4 implements INode, IInternal, ICNode {
     int[] brPosInt = ICNode.unsignedByteArr2IntArr(int2BytesVarLen(posInt));
     int[] itvPosInt = findIntervals(brPosInt);
 
-    int keyLen = brPosInt[brPosInt.length-1] - brPosInt[0] + 1;
+    int keyLen = brPosInt[brPosInt.length - 1] - brPosInt[0] + 1;
 
     int[] brRltPos = ICNode.shiftIntArr(brPosInt, -1 * brPosInt[0]);
     int[] itvRltPos = ICNode.shiftIntArr(itvPosInt, -1 * brPosInt[0]);

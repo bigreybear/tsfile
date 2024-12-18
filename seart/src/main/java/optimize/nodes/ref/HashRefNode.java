@@ -1,14 +1,12 @@
 package optimize.nodes.ref;
 
-import optimize.nodes.ILeaf;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 import optimize.nodes.INode;
 import optimize.nodes.hash.HNodeV2;
 import optimize.nodes.logic.LLeaf;
 import optimize.util.ByteArray;
-
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
 
 public class HashRefNode implements INode {
   public byte[] pk;
@@ -16,7 +14,8 @@ public class HashRefNode implements INode {
   public long[] values;
 
   public static INode buildHashTemplate(HNodeV2 node) {
-    List<byte[]> sortedKeys = node.children.keySet().stream().map(ByteArray::getVal).collect(Collectors.toList());
+    List<byte[]> sortedKeys =
+        node.children.keySet().stream().map(ByteArray::getVal).collect(Collectors.toList());
     sortedKeys.sort(Arrays::compare);
     LLeaf leaf;
     HNodeV2 tr = new HNodeV2(sortedKeys.size());

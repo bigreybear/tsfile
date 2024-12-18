@@ -3,7 +3,7 @@ package optimize.nodes;
 import java.util.List;
 
 // to evaluate various implementations
-public interface ITSNode{
+public interface ITSNode {
 
   ITSNode getLogicalChild(String pathSeg);
 

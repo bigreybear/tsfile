@@ -1,8 +1,6 @@
 package optimize.nodes.fdm;
 
 import java.util.Arrays;
-import java.util.List;
-
 import optimize.nodes.INode;
 import optimize.util.ArrayHelper;
 

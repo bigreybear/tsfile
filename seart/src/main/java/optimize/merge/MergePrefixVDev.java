@@ -1,9 +1,7 @@
 package optimize.merge;
 
-import static optimize.Main.CDM_WITH_EF;
 import static optimize.Main.REPORT_CHANNEL;
-import static optimize.merge.CDMPrefixMerge.recNextMergeOnCDM;
-import static optimize.merge.HashPrefixMerge.recNextMergeOnHashV2;
+import static optimize.merge.HashPrefixMergeVDev.recNextMergeOnHashV2VDev;
 import static optimize.nodes.cdm.CNodeHelper.strings2ByteArrays;
 
 import java.nio.charset.StandardCharsets;
@@ -11,13 +9,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
-import optimize.TSTree;
+import optimize.TSTreeVDev;
+import optimize.nodes.IMicroNode;
 import optimize.nodes.INode;
+import optimize.nodes.ITSNode;
 import optimize.nodes.hash.HNodeV2;
 import optimize.nodes.logic.LLeaf;
 import org.openjdk.jol.info.GraphLayout;
 
-public class MergePrefix {
+public class MergePrefixVDev {
   public static AtomicInteger occ = new AtomicInteger(),
       ttlLen = new AtomicInteger(),
       inc = new AtomicInteger(),
@@ -37,8 +37,13 @@ public class MergePrefix {
    * @param par the parent logical node
    * @return a function which returns node with corresponding key byte[], or parent itself with null
    */
-  public static Function<byte[], INode> getLogicalChild(final INode par) {
-    return (b -> b == null ? par : par.getChild(new String(b, StandardCharsets.UTF_8)));
+  public static Function<byte[], IMicroNode> getLogicalChildVDev(final ITSNode par) {
+    // todo make sure the down cast is correct: leaves are IMicroNode,
+    //   while the merge starts from bottom so shall be okay.
+    return (b ->
+        b == null
+            ? (IMicroNode) par
+            : (IMicroNode) par.getLogicalChild(new String(b, StandardCharsets.UTF_8)));
   }
 
   // public static void testRecNextMerge(String[] args) {
@@ -68,64 +73,64 @@ public class MergePrefix {
 
   public static final List<String> dupPaths = new ArrayList<>();
 
-  public static void mergePrefixes(TSTree tree, MapType mt, PrefixMergeStrategy ms) {
+  public static void mergePrefixes(TSTreeVDev tree, MapType mt, PrefixMergeStrategy ms) {
     switch (mt) {
       case CDM:
-        tree.traversePostOrderRec(
-            (par, key, cur, stk) -> {
-              List<String> keyList = null;
-              if ((keyList = cur.getKeys()) == null) {
-                return;
-              }
-              byte[][] keyBytes = strings2ByteArrays(keyList);
-
-              INode n2 =
-                  recNextMergeOnCDM(
-                      getLogicalChild(cur), keyBytes, 0, ms, mt, stk.size(), CDM_WITH_EF);
-
-              if (n2 != cur) {
-                if (par == null) {
-                  tree.root = n2;
-                } else {
-                  par.replace(key, n2);
-                }
-              }
-            });
-        CDMPrefixMerge.reportMergeStatus();
+        // tree.traversePostOrderRec(
+        //     (par, key, cur, stk) -> {
+        //       List<String> keyList = null;
+        //       if ((keyList = cur.getStringKeys()) == null) {
+        //         return;
+        //       }
+        //       byte[][] keyBytes = strings2ByteArrays(keyList);
+        //
+        //       INode n2 =
+        //           recNextMergeOnCDM(
+        //               getLogicalChild(cur), keyBytes, 0, ms, mt, stk.size(), CDM_WITH_EF);
+        //
+        //       if (n2 != cur) {
+        //         if (par == null) {
+        //           tree.root = n2;
+        //         } else {
+        //           par.replace(key, n2);
+        //         }
+        //       }
+        //     });
+        // CDMPrefixMerge.reportMergeStatus();
         return;
       case FDM:
-        tree.traversePostOrderRec(
-            (par, key, cur, stk) -> {
-              List<String> keyList = null;
-              if ((keyList = cur.getKeys()) == null) {
-                return;
-              }
-              byte[][] keyBytes = strings2ByteArrays(keyList);
-
-              INode n2 = FDMPrefixMerge.recNextMergeOnFDM(cur, keyBytes, 0, ms, mt, stk.size());
-
-              if (n2 != cur) {
-                if (par == null) {
-                  tree.root = n2;
-                } else {
-                  par.replace(key, n2);
-                }
-              }
-            });
-        reportMergeStatus(ms);
+        // tree.traversePostOrderRec(
+        //     (par, key, cur, stk) -> {
+        //       List<String> keyList = null;
+        //       if ((keyList = cur.getKeys()) == null) {
+        //         return;
+        //       }
+        //       byte[][] keyBytes = strings2ByteArrays(keyList);
+        //
+        //       INode n2 = FDMPrefixMerge.recNextMergeOnFDM(cur, keyBytes, 0, ms, mt, stk.size());
+        //
+        //       if (n2 != cur) {
+        //         if (par == null) {
+        //           tree.root = n2;
+        //         } else {
+        //           par.replace(key, n2);
+        //         }
+        //       }
+        //     });
+        // reportMergeStatus(ms);
         return;
       case HASH:
         tree.traversePostOrderRec(
             (par, key, cur, stk) -> {
               List<String> keyList = null;
-              if ((keyList = cur.getKeys()) == null) {
+              if ((keyList = cur.getStringKeys()) == null) {
                 return;
               }
               byte[][] keyBytes = strings2ByteArrays(keyList);
 
-              INode n2 =
-                  recNextMergeOnHashV2(
-                      getLogicalChild(cur), keyBytes, 0, ms, mt, stk.size()); // v2;
+              ITSNode n2 =
+                  recNextMergeOnHashV2VDev(
+                      getLogicalChildVDev(cur), keyBytes, 0, ms, mt, stk.size()); // v2;
 
               if (n2 != cur) {
                 if (par == null) {

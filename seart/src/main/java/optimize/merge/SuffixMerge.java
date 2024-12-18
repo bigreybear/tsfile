@@ -1,8 +1,15 @@
 package optimize.merge;
 
+import static optimize.Main.REPORT_CHANNEL;
+import static optimize.nodes.ref.CDMRefNode.buildCDMTemplate;
+import static optimize.nodes.ref.FDMRefNode.buildFDMTemplate;
+import static optimize.nodes.ref.HashRefNode.buildHashTemplate;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 import optimize.TSTree;
-import optimize.merge.MapType;
-import optimize.traversal.MergedTreeTraversal;
 import optimize.nodes.ILeaf;
 import optimize.nodes.INode;
 import optimize.nodes.cdm.CLeaf;
@@ -15,18 +22,8 @@ import optimize.nodes.logic.LLeaf;
 import optimize.nodes.ref.CDMRefNode;
 import optimize.nodes.ref.FDMRefNode;
 import optimize.nodes.ref.HashRefNode;
+import optimize.traversal.MergedTreeTraversal;
 import optimize.util.ByteArray;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
-
-import static optimize.Main.REPORT_CHANNEL;
-import static optimize.nodes.ref.CDMRefNode.buildCDMTemplate;
-import static optimize.nodes.ref.FDMRefNode.buildFDMTemplate;
-import static optimize.nodes.ref.HashRefNode.buildHashTemplate;
-import static optimize.nodes.cdm.CNodeHelper.strings2ByteArrays;
 
 public class SuffixMerge {
 
@@ -37,6 +34,7 @@ public class SuffixMerge {
     byte[] foParKey;
     byte[][] foParKeyArr;
     AtomicLong count = new AtomicLong();
+
     OccMark() {}
   }
 
@@ -46,20 +44,35 @@ public class SuffixMerge {
   static final Map<ByteArray, OccMark> NOMERGE_TEMPLATES = new HashMap<>();
 
   public static void reportHashSuffixMerge() {
-    REPORT_CHANNEL.append(String.format("template num: %d, occ: %d \n",
-        HASH_TEMPLATES.size(), HASH_TEMPLATES.values().stream().mapToLong(i->i.count.get()).sum()));
+    REPORT_CHANNEL.append(
+        String.format(
+            "template num: %d, occ: %d \n",
+            HASH_TEMPLATES.size(),
+            HASH_TEMPLATES.values().stream().mapToLong(i -> i.count.get()).sum()));
   }
+
   public static void reportFDMSuffixMerge() {
-    REPORT_CHANNEL.append(String.format("template num: %d, occ: %d \n",
-        FDM_TEMPLATES.size(), FDM_TEMPLATES.values().stream().mapToLong(i->i.count.get()).sum()));
+    REPORT_CHANNEL.append(
+        String.format(
+            "template num: %d, occ: %d \n",
+            FDM_TEMPLATES.size(),
+            FDM_TEMPLATES.values().stream().mapToLong(i -> i.count.get()).sum()));
   }
+
   public static void reportCDMSuffixMerge() {
-    REPORT_CHANNEL.append(String.format("template num: %d, occ: %d \n",
-        CDM_TEMPLATES.size(), CDM_TEMPLATES.values().stream().mapToLong(i->i.count.get()).sum()));
+    REPORT_CHANNEL.append(
+        String.format(
+            "template num: %d, occ: %d \n",
+            CDM_TEMPLATES.size(),
+            CDM_TEMPLATES.values().stream().mapToLong(i -> i.count.get()).sum()));
   }
+
   public static void reportNoMergeSuffixMerge() {
-    REPORT_CHANNEL.append(String.format("template num: %d, occ: %d \n",
-        NOMERGE_TEMPLATES.size(), NOMERGE_TEMPLATES.values().stream().mapToLong(i->i.count.get()).sum()));
+    REPORT_CHANNEL.append(
+        String.format(
+            "template num: %d, occ: %d \n",
+            NOMERGE_TEMPLATES.size(),
+            NOMERGE_TEMPLATES.values().stream().mapToLong(i -> i.count.get()).sum()));
   }
 
   public static void collectSuffixes(TSTree tree, MapType mt, final boolean replace) {
@@ -68,74 +81,82 @@ public class SuffixMerge {
       return;
     }
 
-
     switch (mt) {
       case CDM:
         // todo framework finished, fill in implementation
-        MergedTreeTraversal.CDMMergeTraverse(null, null, (ICNode) tree.root, null,
+        MergedTreeTraversal.CDMMergeTraverse(
+            null,
+            null,
+            (ICNode) tree.root,
+            null,
             (par, key, cur, stk) -> {
-          if (cur instanceof CLeaf) return;
-          byte[][] keys = cur.getKeysFromCDM();
-          if (cur instanceof LLeaf || keys == null || keys.length < 2) return;
+              if (cur instanceof CLeaf) return;
+              byte[][] keys = cur.getKeysFromCDM();
+              if (cur instanceof LLeaf || keys == null || keys.length < 2) return;
 
-          // check whether all are terminal child
-          for (byte[] b : keys) {
-            if (cur.getChildByBytes(b) instanceof LLeaf) continue;
+              // check whether all are terminal child
+              for (byte[] b : keys) {
+                if (cur.getChildByBytes(b) instanceof LLeaf) continue;
 
-            if (cur.getChildByBytes(b) instanceof CLeaf && ((CLeaf)cur.getChildByBytes(b)).ptr instanceof LLeaf) continue;
-            // any single non-LLeaf child will terminate the process
-            else return;
-          }
-
-          ByteArray tptID = ByteArray.join(keys, (byte)0);
-          if (CDM_TEMPLATES.containsKey(tptID)) {
-            OccMark mark = CDM_TEMPLATES.get(tptID);
-            if (mark.template == null) {
-              mark.template = buildCDMTemplate(cur);
-
-              CDMRefNode crn = new CDMRefNode();
-              crn.embedTemplate((ICNode) mark.firstOcc, (CNode) mark.template);
-              if (replace) {
-                mark.foPar.replace(mark.foParKey, crn);
+                if (cur.getChildByBytes(b) instanceof CLeaf
+                    && ((CLeaf) cur.getChildByBytes(b)).ptr instanceof LLeaf) continue;
+                // any single non-LLeaf child will terminate the process
+                else return;
               }
-            }
-            if (par == null) {
-              throw new RuntimeException("should not be single tree");
-            } else {
-              CDMRefNode frn = new CDMRefNode();
-              frn.embedTemplate(cur, (CNode) mark.template);
-              mark.count.incrementAndGet();
 
-              if (replace) {
-                // if (par.get(key) != cur &&
-                //     ((IFNode) par.get(key)).getFValue() != cur) {
-                //   throw new UnsupportedOperationException();
-                // }
-                par.replace(key, frn);
+              ByteArray tptID = ByteArray.join(keys, (byte) 0);
+              if (CDM_TEMPLATES.containsKey(tptID)) {
+                OccMark mark = CDM_TEMPLATES.get(tptID);
+                if (mark.template == null) {
+                  mark.template = buildCDMTemplate(cur);
+
+                  CDMRefNode crn = new CDMRefNode();
+                  crn.embedTemplate((ICNode) mark.firstOcc, (CNode) mark.template);
+                  if (replace) {
+                    mark.foPar.replace(mark.foParKey, crn);
+                  }
+                }
+                if (par == null) {
+                  throw new RuntimeException("should not be single tree");
+                } else {
+                  CDMRefNode frn = new CDMRefNode();
+                  frn.embedTemplate(cur, (CNode) mark.template);
+                  mark.count.incrementAndGet();
+
+                  if (replace) {
+                    // if (par.get(key) != cur &&
+                    //     ((IFNode) par.get(key)).getFValue() != cur) {
+                    //   throw new UnsupportedOperationException();
+                    // }
+                    par.replace(key, frn);
+                  }
+                }
+              } else {
+                OccMark mark = new OccMark();
+                mark.firstOcc = cur;
+                mark.foPar = par;
+                mark.foParKey = key;
+                CDM_TEMPLATES.put(tptID, mark);
               }
-            }
-          } else {
-            OccMark mark = new OccMark();
-            mark.firstOcc = cur;
-            mark.foPar = par;
-            mark.foParKey = key;
-            CDM_TEMPLATES.put(tptID, mark);
-          }
-        });
+            });
         reportCDMSuffixMerge();
         return;
       case FDM:
         MergedTreeTraversal.FDMMergeTraverse(
-            null, null, (IFNode) tree.root, (byte) 0,
+            null,
+            null,
+            (IFNode) tree.root,
+            (byte) 0,
             (par, key, cur, stk) -> {
               byte[] keys = cur.getKeysFromFDM();
               if (cur instanceof LLeaf || keys == null || keys.length < 2) return;
               for (byte b : keys) {
-                if ((cur.get(b) instanceof FLeaf) && (((FLeaf) cur.get(b)).getFValue() instanceof LLeaf)) continue;
+                if ((cur.get(b) instanceof FLeaf)
+                    && (((FLeaf) cur.get(b)).getFValue() instanceof LLeaf)) continue;
                 else return;
               }
 
-              ByteArray tptID = ByteArray.join(keys, (byte)0);
+              ByteArray tptID = ByteArray.join(keys, (byte) 0);
               if (FDM_TEMPLATES.containsKey(tptID)) {
                 OccMark mark = FDM_TEMPLATES.get(tptID);
                 if (mark.template == null) {
@@ -173,13 +194,15 @@ public class SuffixMerge {
                 mark.foParKey[0] = key;
                 FDM_TEMPLATES.put(tptID, mark);
               }
-            }
-        );
+            });
         reportFDMSuffixMerge();
         return;
       case HASH:
         MergedTreeTraversal.HashMergeTraverse(
-            null, null, tree.root, null,
+            null,
+            null,
+            tree.root,
+            null,
             (par, key, cur, stk) -> {
               if (cur.getChildren() == null) return;
               List<INode> children = cur.getChildren();
@@ -206,9 +229,11 @@ public class SuffixMerge {
                   // may only traversal to align the cost
                   if (replace) {
                     // todo remove debug print
-                    // System.out.println("Before rep: " + GraphLayout.parseInstance(par).totalSize());
+                    // System.out.println("Before rep: " +
+                    // GraphLayout.parseInstance(par).totalSize());
                     par.replace(key, hrn);
-                    // System.out.println("After rep: " + GraphLayout.parseInstance(par).totalSize());
+                    // System.out.println("After rep: " +
+                    // GraphLayout.parseInstance(par).totalSize());
                   }
                 }
               } else {
@@ -217,8 +242,7 @@ public class SuffixMerge {
                 mark.firstOcc = cur;
                 HASH_TEMPLATES.put(tptID, mark);
               }
-            }
-        );
+            });
         if (replace) reportHashSuffixMerge();
     }
   }

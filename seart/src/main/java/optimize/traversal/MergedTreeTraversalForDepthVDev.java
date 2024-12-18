@@ -8,14 +8,15 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
 import optimize.merge.MapType;
-import optimize.nodes.INode;
+import optimize.nodes.IMicroNode;
+import optimize.nodes.ITSNode;
 import optimize.nodes.cdm.CLeaf;
 import optimize.nodes.cdm.ICNode;
 import optimize.nodes.fdm.FLeaf;
 import optimize.nodes.fdm.IFNode;
 import optimize.nodes.logic.LLeaf;
 
-public class MergedTreeTraversalForDepth {
+public class MergedTreeTraversalForDepthVDev {
 
   public static final List<Integer> depthList = new ArrayList<>();
 
@@ -122,7 +123,8 @@ public class MergedTreeTraversalForDepth {
     }
   }
 
-  public static void HashTraverseForDepth(INode par, Deque<byte[]> trace, INode cur, int depth) {
+  public static void HashTraverseForDepth(
+      IMicroNode par, Deque<byte[]> trace, IMicroNode cur, int depth) {
     if (trace == null) trace = new ArrayDeque<>();
 
     List<byte[]> keys = cur.getKeyBytes();
@@ -132,16 +134,15 @@ public class MergedTreeTraversalForDepth {
     }
 
     for (byte[] k : keys) {
-      byte[] token =
-          concatenate(k, cur.getPartialKey() == null ? new byte[0] : cur.getPartialKey());
+      byte[] token = concatenate(k, cur.getParKey() == null ? new byte[0] : cur.getParKey());
 
       trace.addLast(token);
-      HashTraverseForDepth(cur, trace, cur.getChildByBytes(k), depth + 1);
+      HashTraverseForDepth(cur, trace, cur.getChild(k), depth + 1);
       trace.removeLast();
     }
   }
 
-  public static BoxPlotRecord collectDepths(INode root, MapType mt) {
+  public static BoxPlotRecord collectDepths(ITSNode root, MapType mt) {
     switch (mt) {
       case CDM:
         CDMTraverseForDepth(null, null, (ICNode) root, 0);
@@ -150,7 +151,7 @@ public class MergedTreeTraversalForDepth {
         FDMTraverseForDepth(null, null, (IFNode) root, 0);
         break;
       case HASH:
-        HashTraverseForDepth(null, null, root, 0);
+        HashTraverseForDepth(null, null, (IMicroNode) root, 0);
         break;
       default:
         throw new UnsupportedOperationException();

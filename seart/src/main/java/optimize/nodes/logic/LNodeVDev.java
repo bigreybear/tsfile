@@ -1,15 +1,15 @@
 package optimize.nodes.logic;
 
-import optimize.nodes.IMicroNode;
-import optimize.nodes.ITSNode;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import optimize.nodes.ITSNode;
 
-/** L for Logical Nodes <br/>
- * Both {@linkplain LNodeVDev} and {@linkplain LLeafVDev} are adaption for better encapsulation.*/
+/**
+ * L for Logical Nodes <br>
+ * Both {@linkplain LNodeVDev} and {@linkplain LLeafVDev} are adaption for better encapsulation.
+ */
 public class LNodeVDev implements ITSNode {
 
   // todo shall be private
@@ -20,7 +20,6 @@ public class LNodeVDev implements ITSNode {
   private boolean hasChild(String name) {
     return children != null && children.containsKey(name);
   }
-
 
   @Override
   public long getValue() {

@@ -1,7 +1,5 @@
 package optimize.util;
 
-import optimize.nodes.cdm.CNodeHelper;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -12,6 +10,7 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import optimize.nodes.cdm.CNodeHelper;
 
 // return type of infix group
 public class InfixGroup {
@@ -23,7 +22,9 @@ public class InfixGroup {
 
     infixMap = new HashMap<>();
     for (Map.Entry<ByteArray, List<byte[]>> entry : im.entrySet()) {
-      infixMap.put(new ByteArray(ArrayHelper.removeTrailingZeros(entry.getKey().getVal())), entry.getValue());
+      infixMap.put(
+          new ByteArray(ArrayHelper.removeTrailingZeros(entry.getKey().getVal())),
+          entry.getValue());
     }
   }
 
@@ -33,8 +34,8 @@ public class InfixGroup {
 
   /**
    * Well-defined, which is implemented with no hurry :). <br>
-   * With this method, both {@linkplain CNodeHelper#groupPrefixes} and {@linkplain InfixGroup#getBranchingPosParallel}
-   * gets Deprecated.
+   * With this method, both {@linkplain CNodeHelper#groupPrefixes} and {@linkplain
+   * InfixGroup#getBranchingPosParallel} gets Deprecated.
    */
   public static InfixGroup groupByInfix(final List<byte[]> keys, final int limit, final int start) {
     Set<Integer> positions = ConcurrentHashMap.newKeySet();
@@ -161,7 +162,10 @@ public class InfixGroup {
 
   public int[] sortedBrKeys() {
     if (brPos.length > 4) throw new RuntimeException("More than 4 branching positions.");
-    return infixMap.keySet().stream().mapToInt(ba -> CNodeHelper.bytes2Int(ba.getVal())).sorted().toArray();
+    return infixMap.keySet().stream()
+        .mapToInt(ba -> CNodeHelper.bytes2Int(ba.getVal()))
+        .sorted()
+        .toArray();
   }
 
   public byte[][] sortedBrKeyBytes() {

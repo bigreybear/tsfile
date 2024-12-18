@@ -7,7 +7,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-
 import optimize.nodes.INode;
 import optimize.nodes.cdm.CNodeHelper;
 import optimize.nodes.fdm.FLeaf;
@@ -26,12 +25,7 @@ public class FDMPrefixMerge {
   }
 
   public static INode recNextMergeOnFDM(
-      INode oriNode,
-      byte[][] keys,
-      int preLen,
-      PrefixMergeStrategy ms,
-      MapType mt,
-      int height) {
+      INode oriNode, byte[][] keys, int preLen, PrefixMergeStrategy ms, MapType mt, int height) {
     if (ms.equals(PrefixMergeStrategy.SIMPLE) || ms.equals(PrefixMergeStrategy.PARTIAL)) {
       throw new UnsupportedOperationException();
     }

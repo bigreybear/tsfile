@@ -4,7 +4,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import optimize.nodes.INode;
-import optimize.nodes.logic.LLeaf;
 
 public class CLeaf implements ICNode {
   byte[] pk;

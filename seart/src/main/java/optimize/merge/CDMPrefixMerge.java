@@ -1,17 +1,14 @@
 package optimize.merge;
 
-import static optimize.MyDataSet.BW;
 import static optimize.Main.REPORT_CHANNEL;
+import static optimize.MyDataSet.BW;
 import static optimize.merge.MergePrefix.getLogicalChild;
-
-import optimize.util.InfixGroup;
-
 import static optimize.merge.MergePrefix.partialNotMerge;
 import static optimize.merge.MergePrefix.partialToMerge;
 import static optimize.nodes.cdm.CNodeHelper.extractBytes;
 import static optimize.nodes.cdm.CNodeHelper.findIntervals;
-import static optimize.util.InfixGroup.groupByInfix;
 import static optimize.nodes.cdm.CNodeHelper.int2BytesFixedLen;
+import static optimize.util.InfixGroup.groupByInfix;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -19,7 +16,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
 import optimize.Main;
 import optimize.TSTree;
 import optimize.nodes.INode;
@@ -31,16 +27,17 @@ import optimize.nodes.cdm.CNodeHelper;
 import optimize.nodes.cdm.ICNode;
 import optimize.nodes.logic.LNode;
 import optimize.util.ByteArray;
+import optimize.util.InfixGroup;
 import org.openjdk.jol.info.GraphLayout;
 
 public class CDMPrefixMerge {
 
   public static void reportMergeStatus() {
     REPORT_CHANNEL.append(
+        String.format("CDM node 4 num: %d, CDM-final num: %d \n", evaTrueTime, evaFalseTime));
+    REPORT_CHANNEL.append(
         String.format(
-            "CDM node 4 num: %d, CDM-final num: %d \n", evaTrueTime, evaFalseTime));
-    REPORT_CHANNEL.append(String.format("Partial merge: %d, not merge: %d \n",
-        partialToMerge.get(), partialNotMerge.get()));
+            "Partial merge: %d, not merge: %d \n", partialToMerge.get(), partialNotMerge.get()));
   }
 
   public static INode recNextMergeOnCDM(
@@ -181,11 +178,9 @@ public class CDMPrefixMerge {
     INode t = tree.root.getChild("bw").getChild("baoshan").getChild("441233M03");
     byte[][] keys = CNodeHelper.strings2ByteArrays(t.getKeys());
     INode resEF =
-        recNextMergeOnCDM(
-            getLogicalChild(t), keys, 0, PrefixMergeStrategy.PARTIAL, null, 2, true);
+        recNextMergeOnCDM(getLogicalChild(t), keys, 0, PrefixMergeStrategy.PARTIAL, null, 2, true);
     INode res =
-        recNextMergeOnCDM(
-            getLogicalChild(t), keys, 0, PrefixMergeStrategy.PARTIAL, null, 2, false);
+        recNextMergeOnCDM(getLogicalChild(t), keys, 0, PrefixMergeStrategy.PARTIAL, null, 2, false);
 
     LNode lt = (LNode) t;
 

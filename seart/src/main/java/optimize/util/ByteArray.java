@@ -1,8 +1,5 @@
 package optimize.util;
 
-import optimize.nodes.cdm.CNodeHelper;
-
-import javax.imageio.plugins.jpeg.JPEGImageReadParam;
 import java.util.Arrays;
 import java.util.List;
 
@@ -47,7 +44,7 @@ public class ByteArray {
     if (pre == null || suc == null) throw new RuntimeException();
 
     byte[] tar = new byte[pre.length + suc.length];
-    System.arraycopy(pre, 0, tar  , 0, pre.length);
+    System.arraycopy(pre, 0, tar, 0, pre.length);
     System.arraycopy(suc, 0, tar, pre.length, suc.length);
     return tar;
   }

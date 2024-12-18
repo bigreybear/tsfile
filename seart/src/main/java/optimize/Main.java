@@ -1,5 +1,7 @@
 package optimize;
 
+import static optimize.merge.SuffixMerge.collectSuffixes;
+
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,8 +17,6 @@ import optimize.traversal.BoxPlotRecord;
 import optimize.traversal.MergedTreeTraversalForDepth;
 import org.openjdk.jol.info.GraphLayout;
 import seart.metric.TreeCompare;
-
-import static optimize.merge.SuffixMerge.collectSuffixes;
 
 public class Main extends MergePrefix {
 
@@ -56,7 +56,8 @@ public class Main extends MergePrefix {
         .append("\n");
   }
 
-  public static void estimateLatency(TSTree tree, MyDataSet ds, PrefixMergeStrategy ms, MapType mt) {
+  public static void estimateLatency(
+      TSTree tree, MyDataSet ds, PrefixMergeStrategy ms, MapType mt) {
     final List<String> qPaths = new ArrayList<>();
     try (PathTxtLoader loader = new PathTxtLoader(ds.qfile)) {
       qPaths.addAll(loader.getAllLines());
@@ -76,24 +77,30 @@ public class Main extends MergePrefix {
       case FDM:
         nano = System.nanoTime();
         for (int i = 0; i < qPaths.size(); i++) {
-          if (ans[i] != tree.searchFDM(qPaths.get(i))) throw new RuntimeException("Search for worng!");
-          // if (ans[i] != tree.searchFDM(pathBytes[i])) throw new RuntimeException("Search for worng!");
+          if (ans[i] != tree.searchFDM(qPaths.get(i)))
+            throw new RuntimeException("Search for worng!");
+          // if (ans[i] != tree.searchFDM(pathBytes[i])) throw new RuntimeException("Search for
+          // worng!");
         }
         nano = System.nanoTime() - nano;
         break;
       case CDM:
         nano = System.nanoTime();
         for (int i = 0; i < qPaths.size(); i++) {
-          // if (ans[i] != tree.searchCDM(pathBytes[i])) throw new RuntimeException("Search for worng!");
-          if (ans[i] != tree.searchCDM(qPaths.get(i))) throw new RuntimeException("Search for worng!");
+          // if (ans[i] != tree.searchCDM(pathBytes[i])) throw new RuntimeException("Search for
+          // worng!");
+          if (ans[i] != tree.searchCDM(qPaths.get(i)))
+            throw new RuntimeException("Search for worng!");
         }
         nano = System.nanoTime() - nano;
         break;
       case HASH:
         nano = System.nanoTime();
         for (int i = 0; i < qPaths.size(); i++) {
-          // if (ans[i] != tree.searchHash(pathBytes[i])) throw new RuntimeException("Search for worng!");
-          if (ans[i] != tree.searchHash(qPaths.get(i))) throw new RuntimeException("Search for worng!");
+          // if (ans[i] != tree.searchHash(pathBytes[i])) throw new RuntimeException("Search for
+          // worng!");
+          if (ans[i] != tree.searchHash(qPaths.get(i)))
+            throw new RuntimeException("Search for worng!");
         }
         nano = System.nanoTime() - nano;
         break;
@@ -102,10 +109,7 @@ public class Main extends MergePrefix {
     REPORT_CHANNEL.append(
         String.format(
             "%s %s query %d paths latency(ns): %s ns. \n",
-            ms == null ? "no-merge" : ms.name(),
-            mt.name(),
-            qPaths.size(),
-            dottedNanoSec(nano)));
+            ms == null ? "no-merge" : ms.name(), mt.name(), qPaths.size(), dottedNanoSec(nano)));
   }
 
   private static String dottedNanoSec(long nano) {
@@ -174,22 +178,24 @@ public class Main extends MergePrefix {
 
     BoxPlotRecord res = null;
     if (argList.contains("-depth")) {
-       res = MergedTreeTraversalForDepth.collectDepths(tree.root, mapType);
+      res = MergedTreeTraversalForDepth.collectDepths(tree.root, mapType);
     }
 
     if (argList.contains("-space") && argList.contains("-template")) {
       // REPORT_CHANNEL.append(String.format("Before Traversal: %d \n",
       //     GraphLayout.parseInstance(tree).totalSize()));
       collectSuffixes(tree, mapType, false);
-      REPORT_CHANNEL.append(String.format("Before template space: %d \n",
-          GraphLayout.parseInstance(tree).totalSize()));
+      REPORT_CHANNEL.append(
+          String.format(
+              "Before template space: %d \n", GraphLayout.parseInstance(tree).totalSize()));
     }
     // always traverse the tree for fair
     if (argList.contains("-template")) {
       collectSuffixes(tree, mapType, true);
       if (argList.contains("-space")) {
-        REPORT_CHANNEL.append(String.format("After template space: %d \n",
-            GraphLayout.parseInstance(tree).totalSize()));
+        REPORT_CHANNEL.append(
+            String.format(
+                "After template space: %d \n", GraphLayout.parseInstance(tree).totalSize()));
       }
     }
 
@@ -204,5 +210,4 @@ public class Main extends MergePrefix {
     REPORT_CHANNEL.append("\n\n");
     System.out.println(REPORT_CHANNEL);
   }
-
 }

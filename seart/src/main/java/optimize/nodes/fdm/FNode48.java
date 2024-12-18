@@ -2,10 +2,8 @@ package optimize.nodes.fdm;
 
 import static optimize.nodes.fdm.vfull.SEARTNode.ubyte;
 
-import optimize.nodes.INode;
-import optimize.util.ArrayHelper;
-
 import java.util.Arrays;
+import optimize.nodes.INode;
 
 public class FNode48 extends FNode256 {
   public final byte[] keys = new byte[256];

@@ -1,10 +1,5 @@
 package optimize.nodes.hash;
 
-import optimize.nodes.IInternal;
-import optimize.nodes.INode;
-import optimize.nodes.ref.HashRefNode;
-import optimize.util.ByteArray;
-
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -12,11 +7,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import optimize.nodes.IInternal;
+import optimize.nodes.INode;
+import optimize.nodes.ref.HashRefNode;
+import optimize.util.ByteArray;
 
 /**
- * Contrast to HNode, using ByteArray as hash key avoiding coding struggle. <p/>
- * About why it doesn't need a HLeaf: the key in each hash includes the trailing part, while
- * CDM and FDM needs a leaf holding the partial key after the split.
+ * Contrast to HNode, using ByteArray as hash key avoiding coding struggle.
+ *
+ * <p>About why it doesn't need a HLeaf: the key in each hash includes the trailing part, while CDM
+ * and FDM needs a leaf holding the partial key after the split.
  */
 public class HNodeV2 implements IInternal {
   // stored strings are iso encoded
@@ -66,20 +66,20 @@ public class HNodeV2 implements IInternal {
       if (i == sk.length) {
         // prefixed child
         return cur.children.get(new ByteArray(new byte[0]));
-      };
+      }
+      ;
 
       // try all remaining key
       INode res = cur.children.get(new ByteArray(Arrays.copyOfRange(sk, i, sk.length)));
       if (res != null) {
 
-        if (res instanceof HashRefNode) {
-
-        }
+        if (res instanceof HashRefNode) {}
 
         // Note(zx) sk exhausted, if the cur node has zero-len key, then that is the target
         //  meaning, there are some sibling prefixing the search key
         if (res instanceof HNodeV2) {
-          if (res.getPartialKey() == null && ((HNodeV2) res).children.containsKey(new ByteArray(new byte[0]))) {
+          if (res.getPartialKey() == null
+              && ((HNodeV2) res).children.containsKey(new ByteArray(new byte[0]))) {
             return ((HNodeV2) res).children.get(new ByteArray(new byte[0]));
           }
         }
@@ -87,7 +87,7 @@ public class HNodeV2 implements IInternal {
       }
 
       // no remaining, use first byte
-      res = cur.children.get(new ByteArray(Arrays.copyOfRange(sk, i, i+1)));
+      res = cur.children.get(new ByteArray(Arrays.copyOfRange(sk, i, i + 1)));
       cur = (HNodeV2) res;
     }
 

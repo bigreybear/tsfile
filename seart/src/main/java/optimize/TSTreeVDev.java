@@ -11,6 +11,7 @@ import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import optimize.nodes.INode;
+import optimize.nodes.ITSNode;
 import optimize.nodes.cdm.CLeaf;
 import optimize.nodes.cdm.CNode;
 import optimize.nodes.cdm.CNode4;
@@ -19,24 +20,25 @@ import optimize.nodes.fdm.FLeaf;
 import optimize.nodes.fdm.IFNode;
 import optimize.nodes.hash.HNodeV2;
 import optimize.nodes.logic.LLeaf;
-import optimize.nodes.logic.LNode;
+import optimize.nodes.logic.LLeafVDev;
+import optimize.nodes.logic.LNodeVDev;
 import optimize.nodes.ref.CDMRefNode;
 import optimize.nodes.ref.FDMRefNode;
 import optimize.nodes.ref.HashRefNode;
 import optimize.util.ByteArray;
 
-public class TSTree {
-  public INode root = new LNode();
+public class TSTreeVDev {
+  public ITSNode root = new LNodeVDev() {};
   AtomicLong nodeNum = new AtomicLong(1);
 
-  public TSTree() {}
+  public TSTreeVDev() {}
 
   public long search(String p) {
     String[] path = p.split("\\.");
-    INode cur = root;
+    ITSNode cur = root;
     for (int i = 1; i < path.length; i++) {
 
-      cur = cur.getChild(path[i]);
+      cur = cur.getLogicalChild(path[i]);
       if (cur == null) throw new RuntimeException("Key not found");
     }
     return cur.getValue();
@@ -429,12 +431,12 @@ public class TSTree {
       throw new RuntimeException("No heading root in :" + p);
     }
 
-    INode cur = root, child;
+    ITSNode cur = root, child;
     for (int i = 1; i < path.length; i++) {
-      child = cur.getChild(path[i]);
+      child = cur.getLogicalChild(path[i]);
       if (child == null) {
         nodeNum.incrementAndGet();
-        child = (i == path.length - 1 ? new LLeaf(value) : new LNode());
+        child = (i == path.length - 1 ? new LLeafVDev(value) : new LNodeVDev());
         cur.addChild(path[i], child);
       }
       cur = child;
@@ -442,21 +444,22 @@ public class TSTree {
     return nodeNum.get();
   }
 
-  public void traversePostOrderRec(IQuadFunction<INode, String, INode, Deque<String>> consumer) {
+  public void traversePostOrderRec(
+      IQuadFunction<ITSNode, String, ITSNode, Deque<String>> consumer) {
     traversePostOrderRec(consumer, null, root, null, null);
   }
 
   public static void traversePostOrderRec(
-      IQuadFunction<INode, String, INode, Deque<String>> consumer,
+      IQuadFunction<ITSNode, String, ITSNode, Deque<String>> consumer,
       Deque<String> trace,
-      INode cur,
-      INode par,
+      ITSNode cur,
+      ITSNode par,
       String key) {
     if (trace == null) {
       trace = new ArrayDeque<>();
     }
 
-    List<String> keys = cur.getKeys();
+    List<String> keys = cur.getStringKeys();
     if (keys == null || keys.isEmpty()) {
       consumer.apply(par, key, cur, trace);
       return;
@@ -464,24 +467,21 @@ public class TSTree {
 
     for (String k : keys) {
       String label =
-          k
-              + (cur.getPartialKey() == null
-                  ? ""
-                  : new String(cur.getPartialKey(), StandardCharsets.UTF_8));
+          k + (cur.getParKey() == null ? "" : new String(cur.getParKey(), StandardCharsets.UTF_8));
       trace.addLast(label);
-      traversePostOrderRec(consumer, trace, cur.getChild(k), cur, k);
+      traversePostOrderRec(consumer, trace, cur.getLogicalChild(k), cur, k);
       trace.removeLast();
     }
 
     consumer.apply(par, key, cur, trace);
   }
 
-  public void traversePreOrder(IQuadFunction<INode, String, INode, Deque<String>> consumer) {
+  public void traversePreOrder(IQuadFunction<ITSNode, String, ITSNode, Deque<String>> consumer) {
     class KeyedNode {
       String key;
-      INode node, par;
+      ITSNode node, par;
 
-      public KeyedNode(String k, INode i, INode p) {
+      public KeyedNode(String k, ITSNode i, ITSNode p) {
         key = k;
         node = i;
         par = p;
@@ -500,14 +500,15 @@ public class TSTree {
         continue;
       }
 
-      String label = cur.key + (cur.node.getPartialKey() == null ? "" : cur.node.getPartialKey());
+      String label = cur.key + (cur.node.getParKey() == null ? "" : cur.node.getParKey());
       trace.addLast(label);
       nodeStk.addLast(new KeyedNode(null, null, null));
 
       List<String> keys;
-      if ((keys = cur.node.getKeys()) != null) {
+      if ((keys = cur.node.getStringKeys()) != null) {
         for (int i = keys.size() - 1; i >= 0; i--) {
-          nodeStk.addLast(new KeyedNode(keys.get(i), cur.node.getChild(keys.get(i)), cur.node));
+          nodeStk.addLast(
+              new KeyedNode(keys.get(i), cur.node.getLogicalChild(keys.get(i)), cur.node));
         }
       }
 
@@ -523,7 +524,7 @@ public class TSTree {
   public static void main(String[] args) {
     String[] test = {"root.sg1.d1.v1", "root.sg1.d1.v2", "root.sg2.d1.v1", "root.sg2.d3.v1"};
 
-    TSTree tree = new TSTree();
+    TSTreeVDev tree = new TSTreeVDev();
     for (String s : test) {
       tree.insert(s, s.hashCode());
     }

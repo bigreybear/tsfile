@@ -3,14 +3,12 @@ package optimize.merge;
 import static optimize.merge.MergePrefix.partialNotMerge;
 import static optimize.merge.MergePrefix.partialToMerge;
 import static optimize.nodes.cdm.CNodeHelper.findLCPLength;
-import static optimize.util.InfixGroup.groupByInfix;
 import static optimize.nodes.cdm.CNodeHelper.groupPrefixes;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
 import optimize.nodes.INode;
 import optimize.nodes.cdm.CNodeHelper;
 import optimize.nodes.hash.HNodeV2;
@@ -33,10 +31,10 @@ public class HashPrefixMerge {
     final int len = findLCPLength(keys, preLen);
 
     if (len == 0 && ms.equals(PrefixMergeStrategy.SIMPLE)) {
-        final HNodeV2 repNode = initHashNodeWithPartialKey(keys[0], preLen, len);
-        for (byte[] key : keys) {
-          repNode.add(key, logicalChild.apply(key));
-        }
+      final HNodeV2 repNode = initHashNodeWithPartialKey(keys[0], preLen, len);
+      for (byte[] key : keys) {
+        repNode.add(key, logicalChild.apply(key));
+      }
       return repNode;
     }
 
@@ -52,9 +50,7 @@ public class HashPrefixMerge {
       List<byte[]> longerKeys =
           Arrays.stream(keys).filter(e -> e.length > len + preLen).collect(Collectors.toList());
       for (byte[] nk : longerKeys) {
-        repNode.add(
-            Arrays.copyOfRange(nk, preLen + len, nk.length),
-            logicalChild.apply(nk));
+        repNode.add(Arrays.copyOfRange(nk, preLen + len, nk.length), logicalChild.apply(nk));
       }
       MergePrefix.occ.incrementAndGet();
       MergePrefix.ttlLen.addAndGet(longerKeys.size() * len);
@@ -67,7 +63,7 @@ public class HashPrefixMerge {
     for (CNodeHelper.ValuedPrefixArray vpa : groupedPrefix) {
       // decide whether to merge
       toMergeAndExpand = false;
-      if (ms.equals(PrefixMergeStrategy.FULL) && vpa.bytes.length> 1) {
+      if (ms.equals(PrefixMergeStrategy.FULL) && vpa.bytes.length > 1) {
         toMergeAndExpand = true;
       }
       if (ms.equals(PrefixMergeStrategy.PARTIAL)) {
@@ -85,17 +81,9 @@ public class HashPrefixMerge {
         MergePrefix.occ.incrementAndGet();
         MergePrefix.ttlLen.addAndGet(vpa.prd);
         final INode recNode =
-            recNextMergeOnHashV2(
-                logicalChild,
-                vpa.bytes,
-                len + preLen + 1,
-                ms,
-                mt,
-                height);
+            recNextMergeOnHashV2(logicalChild, vpa.bytes, len + preLen + 1, ms, mt, height);
         // add the node generated in rec to the current node
-        repNode.add(
-            Arrays.copyOfRange(vpa.bytes[0],len + preLen,len+ preLen+ 1),
-            recNode);
+        repNode.add(Arrays.copyOfRange(vpa.bytes[0], len + preLen, len + preLen + 1), recNode);
       } else {
         // go-through to the no-branching child
         for (byte[] k : vpa.bytes) {
@@ -106,10 +94,7 @@ public class HashPrefixMerge {
     return repNode;
   }
 
-  public static HNodeV2 initHashNodeWithPartialKey(
-      byte[] key,
-      int preLen,
-      int len) {
+  public static HNodeV2 initHashNodeWithPartialKey(byte[] key, int preLen, int len) {
     HNodeV2 res = new HNodeV2();
     res.pk = len == 0 ? null : Arrays.copyOfRange(key, preLen, len + preLen);
     return res;
