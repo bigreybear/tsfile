@@ -11,8 +11,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import optimize.nodes.INode;
 import optimize.nodes.cdm.CNodeHelper;
-import optimize.nodes.hash.HNodeV2;
+import optimize.nodes.hash.HNodeVLegacy;
 
+@Deprecated
 public class HashPrefixMerge {
 
   /**
@@ -31,14 +32,14 @@ public class HashPrefixMerge {
     final int len = findLCPLength(keys, preLen);
 
     if (len == 0 && ms.equals(PrefixMergeStrategy.SIMPLE)) {
-      final HNodeV2 repNode = initHashNodeWithPartialKey(keys[0], preLen, len);
+      final HNodeVLegacy repNode = initHashNodeWithPartialKey(keys[0], preLen, len);
       for (byte[] key : keys) {
         repNode.add(key, logicalChild.apply(key));
       }
       return repNode;
     }
 
-    final HNodeV2 repNode = initHashNodeWithPartialKey(keys[0], preLen, len);
+    final HNodeVLegacy repNode = initHashNodeWithPartialKey(keys[0], preLen, len);
     List<byte[]> prefixedKeys =
         Arrays.stream(keys).filter(e -> e.length == len + preLen).collect(Collectors.toList());
     if (!prefixedKeys.isEmpty()) {
@@ -94,8 +95,8 @@ public class HashPrefixMerge {
     return repNode;
   }
 
-  public static HNodeV2 initHashNodeWithPartialKey(byte[] key, int preLen, int len) {
-    HNodeV2 res = new HNodeV2();
+  public static HNodeVLegacy initHashNodeWithPartialKey(byte[] key, int preLen, int len) {
+    HNodeVLegacy res = new HNodeVLegacy();
     res.pk = len == 0 ? null : Arrays.copyOfRange(key, preLen, len + preLen);
     return res;
   }

@@ -1,6 +1,6 @@
 package optimize.merge;
 
-import static optimize.Main.REPORT_CHANNEL;
+import static optimize.MainVDev.REPORT_CHANNEL;
 import static optimize.merge.HashPrefixMergeVDev.recNextMergeOnHashV2VDev;
 import static optimize.nodes.cdm.CNodeHelper.strings2ByteArrays;
 
@@ -11,11 +11,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import optimize.TSTreeVDev;
 import optimize.nodes.IMicroNode;
-import optimize.nodes.INode;
 import optimize.nodes.ITSNode;
-import optimize.nodes.hash.HNodeV2;
+import optimize.nodes.hash.HNodeVLegacy;
 import optimize.nodes.logic.LLeaf;
-import org.openjdk.jol.info.GraphLayout;
 
 public class MergePrefixVDev {
   public static AtomicInteger occ = new AtomicInteger(),
@@ -48,7 +46,7 @@ public class MergePrefixVDev {
 
   // public static void testRecNextMerge(String[] args) {
   public static void main(String[] args) {
-    HNodeV2 n1 = new HNodeV2();
+    HNodeVLegacy n1 = new HNodeVLegacy();
     byte[][] keys =
         new byte[][] {
           "aaabcg".getBytes(StandardCharsets.UTF_8),
@@ -63,12 +61,12 @@ public class MergePrefixVDev {
     }
 
     // INode res = recNextMergeOnHash(n1, keys, 0, MergeStrategy.PARTIAL, MapType.HASH, 1);
-    INode res =
-        FDMPrefixMerge.recNextMergeOnFDM(n1, keys, 0, PrefixMergeStrategy.FULL, MapType.FDM, 1);
-    System.out.println(GraphLayout.parseInstance(res).totalSize());
-    reportMergeStatus(PrefixMergeStrategy.PARTIAL);
-    INode a = res.getChild("aaabcgxxab");
-    System.out.println("HELLO");
+    // INode res =
+    //     FDMPrefixMerge.recNextMergeOnFDM(n1, keys, 0, PrefixMergeStrategy.FULL, MapType.FDM, 1);
+    // System.out.println(GraphLayout.parseInstance(res).totalSize());
+    // reportMergeStatus(PrefixMergeStrategy.PARTIAL);
+    // INode a = res.getChild("aaabcgxxab");
+    // System.out.println("HELLO");
   }
 
   public static final List<String> dupPaths = new ArrayList<>();

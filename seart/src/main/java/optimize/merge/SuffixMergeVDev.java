@@ -1,6 +1,7 @@
 package optimize.merge;
 
 import static optimize.Main.REPORT_CHANNEL;
+import static optimize.nodes.ref.FDMRefNodeVDev.buildFDMTemplate;
 import static optimize.nodes.ref.HashRefNodeVDev.buildHashTemplate;
 
 import java.util.HashMap;
@@ -10,7 +11,11 @@ import java.util.concurrent.atomic.AtomicLong;
 import optimize.TSTreeVDev;
 import optimize.nodes.ILeaf;
 import optimize.nodes.IMicroNode;
+import optimize.nodes.fdm.FLeaf;
+import optimize.nodes.fdm.IFNode;
 import optimize.nodes.hash.HNodeVDev;
+import optimize.nodes.logic.LLeafVDev;
+import optimize.nodes.ref.FDMRefNodeVDev;
 import optimize.nodes.ref.HashRefNodeVDev;
 import optimize.traversal.MergedTreeTraversalVDev;
 import optimize.util.ByteArray;
@@ -128,58 +133,58 @@ public class SuffixMergeVDev {
         // reportCDMSuffixMerge();
         return;
       case FDM:
-        // MergedTreeTraversal.FDMMergeTraverse(
-        //     null, null, (IFNode) tree.root, (byte) 0,
-        //     (par, key, cur, stk) -> {
-        //       byte[] keys = cur.getKeysFromFDM();
-        //       if (cur instanceof LLeaf || keys == null || keys.length < 2) return;
-        //       for (byte b : keys) {
-        //         if ((cur.get(b) instanceof FLeaf) && (((FLeaf) cur.get(b)).getFValue() instanceof
-        // LLeaf)) continue;
-        //         else return;
-        //       }
-        //
-        //       ByteArray tptID = ByteArray.join(keys, (byte)0);
-        //       if (FDM_TEMPLATES.containsKey(tptID)) {
-        //         OccMark mark = FDM_TEMPLATES.get(tptID);
-        //         if (mark.template == null) {
-        //           mark.template = buildFDMTemplate(cur);
-        //
-        //           // replace the first occ
-        //           FDMRefNode frn = new FDMRefNode();
-        //           frn.embedTemplate((IFNode) mark.firstOcc, (IFNode) mark.template);
-        //
-        //           if (replace) {
-        //             mark.foPar.replace(mark.foParKey, frn);
-        //           }
-        //         }
-        //
-        //         if (par == null) {
-        //           throw new RuntimeException("should not be single tree");
-        //         } else {
-        //           FDMRefNode frn = new FDMRefNode();
-        //           frn.embedTemplate(cur, (IFNode) mark.template);
-        //           mark.count.incrementAndGet();
-        //
-        //           if (replace) {
-        //             // if (par.get(key) != cur &&
-        //             //     ((IFNode) par.get(key)).getFValue() != cur) {
-        //             //   throw new UnsupportedOperationException();
-        //             // }
-        //             par.replace(key, frn);
-        //           }
-        //         }
-        //       } else {
-        //         OccMark mark = new OccMark();
-        //         mark.firstOcc = cur;
-        //         mark.foPar = par;
-        //         mark.foParKey = new byte[1];
-        //         mark.foParKey[0] = key;
-        //         FDM_TEMPLATES.put(tptID, mark);
-        //       }
-        //     }
-        // );
-        // reportFDMSuffixMerge();
+        MergedTreeTraversalVDev.FDMMergeTraverse(
+            null, null, (IFNode) tree.root, (byte) 0,
+            (par, key, cur, stk) -> {
+              byte[] keys = cur.getKeysFromFDM();
+              if (cur instanceof LLeafVDev || keys == null || keys.length < 2) return;
+              for (byte b : keys) {
+                if ((cur.get(b) instanceof FLeaf) && (((FLeaf) cur.get(b)).getFValue() instanceof
+        LLeafVDev)) continue;
+                else return;
+              }
+
+              ByteArray tptID = ByteArray.join(keys, (byte)0);
+              if (FDM_TEMPLATES.containsKey(tptID)) {
+                OccMark mark = FDM_TEMPLATES.get(tptID);
+                if (mark.template == null) {
+                  mark.template = buildFDMTemplate(cur);
+
+                  // replace the first occ
+                  FDMRefNodeVDev frn = new FDMRefNodeVDev();
+                  frn.embedTemplate((IFNode) mark.firstOcc, (IFNode) mark.template);
+
+                  if (replace) {
+                    mark.foPar.replace(mark.foParKey, frn);
+                  }
+                }
+
+                if (par == null) {
+                  throw new RuntimeException("should not be single tree");
+                } else {
+                  FDMRefNodeVDev frn = new FDMRefNodeVDev();
+                  frn.embedTemplate(cur, (IFNode) mark.template);
+                  mark.count.incrementAndGet();
+
+                  if (replace) {
+                    // if (par.get(key) != cur &&
+                    //     ((IFNode) par.get(key)).getFValue() != cur) {
+                    //   throw new UnsupportedOperationException();
+                    // }
+                    par.replace(key, frn);
+                  }
+                }
+              } else {
+                OccMark mark = new OccMark();
+                mark.firstOcc = cur;
+                mark.foPar = par;
+                mark.foParKey = new byte[1];
+                mark.foParKey[0] = key;
+                FDM_TEMPLATES.put(tptID, mark);
+              }
+            }
+        );
+        reportFDMSuffixMerge();
         return;
       case HASH:
         MergedTreeTraversalVDev.HashMergeTraverse(

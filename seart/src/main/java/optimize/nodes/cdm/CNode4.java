@@ -1,5 +1,6 @@
 package optimize.nodes.cdm;
 
+import static optimize.merge.CDMPrefixMerge.recNextMergeOnCDM;
 import static optimize.nodes.cdm.CNodeHelper.bytes2Int;
 import static optimize.nodes.cdm.CNodeHelper.extractBytes;
 import static optimize.nodes.cdm.CNodeHelper.findIntervals;
@@ -11,16 +12,19 @@ import static optimize.util.ArrayHelper.removeTrailingZeros;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
-import optimize.nodes.IInternal;
-import optimize.nodes.INode;
+import java.util.function.Function;
 
-public class CNode4 implements INode, IInternal, ICNode {
+import optimize.merge.MapType;
+import optimize.merge.PrefixMergeStrategy;
+import optimize.nodes.IMicroNode;
+import optimize.nodes.INode;
+import optimize.util.InfixGroup;
+
+public class CNode4 extends CNodeBase implements ICNode {
   // for only 4 positions
   int posInt; // an int concatenated by 4 bytes: byte p1, p2, p3, p4;
-  byte[] parKey; // partial keys
   int[] bks; // indeed a byte[][4] bks; // branching keys
-  byte[][] rmk; // remaining keys
-  public ICNode[] ptrs;
+  ICNode[] ptrs;
 
   // exactly no padding on 64-jvm, jdk-17, Compressed OOPs
 
@@ -45,6 +49,47 @@ public class CNode4 implements INode, IInternal, ICNode {
   }
 
   @Override
+  public void setContent(
+      InfixGroup group,
+      Function<byte[], IMicroNode> getLChild,
+      PrefixMergeStrategy mergeStrategy,
+      MapType mapType,
+      int height,
+      boolean EFCoded) {
+    List<byte[]> completeKeys;
+    int[] itvPos = findIntervals(group.getBranchingPos());
+    int[] sortedBrKeys = group.sortedBrKeys();
+    setBranchingKeys(sortedBrKeys);
+
+    // curNode.setContent(Arrays.stream(sortedBrKeys).boxed().collect(Collectors.toList()));
+    int validBrKeyLen = group.getBranchingPos().length;
+    for (int i = 0; i < sortedBrKeys.length; i++) {
+      // do not worry about prefixed key: handled by 0x00 key byte
+      completeKeys = group.getCompleteKeys(int2BytesFixedLen(sortedBrKeys[i], validBrKeyLen));
+
+      setInterleavedBytes(i, extractBytes(completeKeys.get(0), itvPos));
+      setBranchingPtr(
+          i,
+          (ICNode) recNextMergeOnCDM(
+              getLChild,
+              completeKeys.toArray(new byte[0][0]),
+              group.getBranchingPos()[group.getBranchingPos().length - 1] + 1,
+              mergeStrategy,
+              mapType,
+              height,
+              EFCoded));
+    }
+  }
+
+  public void setBranchingKeys(int[] collected) {
+    bks = new int[collected.length];
+    ptrs = new ICNode[collected.length];
+    System.arraycopy(collected, 0, bks, 0, bks.length);
+    // init interleaved bytes array
+    int[] itvPos = findIntervals(int2BytesVarLen(posInt));
+    if (itvPos.length > 0) rmk = new byte[collected.length][];
+  }
+
   public void setBranchingKeys(List<Integer> branchingBytes) {
     ptrs = new ICNode[branchingBytes.size()];
 
@@ -63,12 +108,10 @@ public class CNode4 implements INode, IInternal, ICNode {
     return idx;
   }
 
-  @Override
-  public void setBranchingPtr(int idx, INode ptr) {
+  public void setBranchingPtr(int idx, ICNode ptr) {
     ptrs[idx] = (ICNode) ptr;
   }
 
-  @Override
   public void setInterleavedBytes(int idx, byte[] ilb) {
     ilb = removeTrailingZeros(ilb);
     if (ilb.length > 0 && rmk == null)
@@ -78,10 +121,6 @@ public class CNode4 implements INode, IInternal, ICNode {
     rmk[idx] = ilb;
   }
 
-  @Override
-  public void setPartialKey(byte[] b) {
-    parKey = b;
-  }
 
   @Override
   public byte[] assembleKeyAt(int pos) {
@@ -193,11 +232,6 @@ public class CNode4 implements INode, IInternal, ICNode {
   }
 
   @Override
-  public ICNode getPtrByPos(int pos) {
-    return ptrs[pos];
-  }
-
-  @Override
   public List<INode> getChildren() {
     return Arrays.asList(ptrs);
   }
@@ -205,11 +239,6 @@ public class CNode4 implements INode, IInternal, ICNode {
   @Override
   public List<String> getKeys() {
     return null;
-  }
-
-  @Override
-  public byte[] getPartialKey() {
-    return parKey;
   }
 
   @Override

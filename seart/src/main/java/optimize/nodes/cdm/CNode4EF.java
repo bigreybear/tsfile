@@ -12,18 +12,17 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import optimize.eliasfano.EliasFano;
-import optimize.nodes.IInternal;
+import optimize.nodes.IMicroNode;
 import optimize.nodes.INode;
 
 // enhanced with Elias-Fano coding
-public class CNode4EF implements INode, IInternal, ICNode {
+public class CNode4EF extends CNodeBase implements ICNode<Integer> {
   // for only 4 positions
   int posInt; // an int concatenated by 4 unsigned bytes: byte p1, p2, p3, p4;
   byte[] pks; // partial keys
   byte[] pbk, nbk; // positive/negative compressed array; by negative, it uses bitwise opposite
   int plen, nlen; // length of the original pos
   int plb, nlb; // lower-bits of related array
-  byte[][] interBytes; // bytes interleaves br keys, same number as branching keys
   ICNode[] ptrs;
 
   // raw keys might with prefix
@@ -46,13 +45,16 @@ public class CNode4EF implements INode, IInternal, ICNode {
     return ICNode.unsignedByteArr2IntArr(int2BytesVarLen(posInt));
   }
 
-  @Override
+  public void setBranchingKeys(Integer[] branchingBytes) {
+    setBranchingKeys(Arrays.asList(branchingBytes));
+  }
+
   public void setBranchingKeys(List<Integer> branchingBytes) {
     ptrs = new ICNode[branchingBytes.size()];
 
     // init interleaved bytes array
     int[] itvPos = findIntervals(int2BytesVarLen(posInt));
-    if (itvPos.length > 0) interBytes = new byte[branchingBytes.size()][];
+    if (itvPos.length > 0) rmk = new byte[branchingBytes.size()][];
 
     List<Integer> positiveNumbers =
         branchingBytes.stream().filter(num -> num >= 0).collect(Collectors.toList());
@@ -84,19 +86,17 @@ public class CNode4EF implements INode, IInternal, ICNode {
     return nlen + EliasFano.select(pbk, 0, plen, plb, val);
   }
 
-  @Override
   public void setBranchingPtr(int idx, INode ptr) {
     ptrs[idx] = (ICNode) ptr;
   }
 
-  @Override
   public void setInterleavedBytes(int idx, byte[] ilb) {
     ilb = removeTrailingZeros(ilb);
-    if (ilb.length > 0 && interBytes == null)
+    if (ilb.length > 0 && rmk == null)
       throw new RuntimeException("Initial Interleave Bytes Error.");
     if (ilb.length == 0) return;
 
-    interBytes[idx] = ilb;
+    rmk[idx] = ilb;
   }
 
   @Override
@@ -119,7 +119,7 @@ public class CNode4EF implements INode, IInternal, ICNode {
 
     byte[] asmkey = new byte[keyLen];
     ICNode.setBytesByPos(asmkey, brKey, brRltPos);
-    if (interBytes != null) ICNode.setBytesByPos(asmkey, interBytes[pos], itvRltPos);
+    if (rmk != null) ICNode.setBytesByPos(asmkey, rmk[pos], itvRltPos);
 
     return asmkey;
   }
@@ -190,12 +190,7 @@ public class CNode4EF implements INode, IInternal, ICNode {
   }
 
   @Override
-  public ICNode getPtrByPos(int pos) {
-    return ptrs[pos];
-  }
-
-  @Override
-  public List<INode> getChildren() {
+  public List<IMicroNode> getChildren() {
     return Arrays.asList(ptrs);
   }
 

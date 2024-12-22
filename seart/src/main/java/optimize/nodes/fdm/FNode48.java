@@ -4,36 +4,31 @@ import static optimize.nodes.fdm.vfull.SEARTNode.ubyte;
 
 import java.util.Arrays;
 import optimize.nodes.INode;
+import optimize.nodes.NodeWithPartialKey;
 
-public class FNode48 extends FNode256 {
+public class FNode48 extends FNodeBase implements IFNode {
   public final byte[] keys = new byte[256];
   private int ptrNum = 0;
 
   public FNode48() {
-    this.ptrs = new INode[48];
+    this.ptrs = new IFNode[48];
     Arrays.fill(keys, (byte) -1);
   }
 
   @Override
-  public void add(byte k, INode v) {
+  public void add(byte k, IFNode v) {
     keys[ubyte(k)] = (byte) (ptrNum);
     ptrs[ptrNum] = v;
     ptrNum++;
   }
 
   @Override
-  public void replace(byte k, INode c) {
+  public void replace(byte k, IFNode c) {
     ptrs[keys[ubyte(k)]] = c;
   }
 
   @Override
-  public INode replace(byte[] k, INode c) {
-    ptrs[keys[ubyte(k[0])]] = c;
-    return this;
-  }
-
-  @Override
-  public INode get(byte k) {
+  public IFNode get(byte k) {
     if (keys[ubyte(k)] < 0) return null;
     return ptrs[keys[ubyte(k)]];
   }

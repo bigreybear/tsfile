@@ -83,7 +83,7 @@ public class MergedTreeTraversalVDev {
 
     for (byte k : keys) {
       byte[] token =
-          concatenate(cur.getPartialKey() == null ? new byte[0] : cur.getPartialKey(), k);
+          concatenate(cur.getParKey() == null ? new byte[0] : cur.getParKey(), k);
       trace.addLast(token);
       FDMMergeTraverse(cur, trace, (IFNode) cur.get(k), k, consumer);
       trace.removeLast();

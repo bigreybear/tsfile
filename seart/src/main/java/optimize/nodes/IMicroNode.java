@@ -13,7 +13,7 @@ public interface IMicroNode extends ITSNode {
 
   void setChild(byte[] k, IMicroNode n);
 
-  IMicroNode replace(byte[] key, IMicroNode node);
+  void replace(byte[] key, IMicroNode node);
 
   @Override
   default List<String> getStringKeys() {

@@ -8,17 +8,22 @@ import static optimize.util.ArrayHelper.removeTrailingZeros;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
-import optimize.nodes.IInternal;
+import java.util.function.Function;
+
+import optimize.merge.MapType;
+import optimize.merge.PrefixMergeStrategy;
+import optimize.nodes.IMicroNode;
 import optimize.nodes.INode;
 import optimize.util.ArrayHelper;
+import optimize.util.ByteArray;
+import optimize.util.InfixGroup;
 
-public class CNode implements ICNode, INode, IInternal {
+public class CNode extends CNodeBase implements ICNode {
   // for more than 4 positions
   byte[] pos; // indeed flags for byte p1, p2, p3, p4;
-  byte[] partialKeys; // partial keys
   byte[][] bks; // branching keys
   byte[][] rmk; // remaining keys
-  public INode[] ptrs;
+  ICNode[] ptrs;
 
   public CNode(int[] pi) {
     pos = new byte[pi.length];
@@ -34,26 +39,51 @@ public class CNode implements ICNode, INode, IInternal {
   }
 
   @Override
-  public INode getChildByBytes(byte[] k) {
+  public ICNode<byte[]> getChildByBytes(byte[] k) {
     byte[] k2 = removeTrailingZeros(k);
     int idx = getBrKeyIdx(k2);
     return ptrs[getBrKeyIdx(k2)];
   }
 
   @Override
-  public void setBranchingKeys(List<Integer> collect) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void setBranchingKeysExtended(byte[][] input) {
+  public void setContent(InfixGroup group, Function<byte[], IMicroNode> getLChild, PrefixMergeStrategy mergeStrategy, MapType mapType, int height, boolean EFCoded) {
+    byte[][] input = group.sortedBrKeyBytes();
     bks = new byte[input.length][];
     for (int i = 0; i < input.length; i++) {
       bks[i] = ArrayHelper.removeTrailingZeros(input[i]);
     }
     rmk = new byte[input.length][];
-    ptrs = new INode[input.length];
+    ptrs = new ICNode[input.length];
+
+    byte[] sk, ck;
+    List<byte[]> ckl;
+    for (int i = 0; i < input.length; i++) {
+      sk = input[i];
+      ckl = group.getInfixMap().get(new ByteArray(sk));
+      if (ckl.size() > 1) {
+        throw new UnsupportedOperationException(
+            "Too long key: " + new String(ckl.get(0), StandardCharsets.UTF_8));
+      }
+      ck = ckl.get(0);
+
+      int[] cmpPos =
+          CNodeHelper.complementaryBytePos(
+              group.getBranchingPos()[0], ck.length, group.getBranchingPos());
+      setInterleavedBytes(i, extractBytes(ck, cmpPos));
+      ptrs[i] = (ICNode) getLChild.apply(ck);
+    }
   }
+
+  // @Override
+  // public void setBranchingKeys(byte[][] input) {
+  //   bks = new byte[input.length][];
+  //   for (int i = 0; i < input.length; i++) {
+  //     bks[i] = ArrayHelper.removeTrailingZeros(input[i]);
+  //   }
+  //   rmk = new byte[input.length][];
+  //   ptrs = new ICNode[input.length];
+  //   ptrs[0].setBranchingKeys(new Object[3]);
+  // }
 
   @Override
   public int[] getBranchingPos() {
@@ -89,12 +119,6 @@ public class CNode implements ICNode, INode, IInternal {
     return -1;
   }
 
-  @Override
-  public void setBranchingPtr(int idx, INode ptr) {
-    ptrs[idx] = ptr;
-  }
-
-  @Override
   public void setInterleavedBytes(int idx, byte[] ilb) {
     if (ilb == null) {
       rmk[idx] = null;
@@ -120,7 +144,7 @@ public class CNode implements ICNode, INode, IInternal {
   }
 
   public byte[] assembleKeyAt(int tarPos, int preLen, int keyLen) {
-    preLen = partialKeys == null ? preLen : preLen + partialKeys.length;
+    preLen = pk == null ? preLen : preLen + pk.length;
 
     int[] posInt = ICNode.unsignedByteArr2IntArr(pos);
     int[] itvInt = CNodeHelper.complementaryBytePos(preLen, keyLen, posInt);
@@ -136,36 +160,11 @@ public class CNode implements ICNode, INode, IInternal {
     return removeTrailingZeros(asmkey);
   }
 
-  @Override
-  public ICNode getPtrByPos(int pos) {
-    return (ICNode) ptrs[pos];
-  }
-
-  @Override
-  public void setPartialKey(byte[] b) {
-    partialKeys = b;
-  }
-
-  @Override
-  public INode replace(String key, INode nNode) {
-    return null;
-  }
-
-  @Override
-  public INode replace(byte[] key, INode nNode) {
-    return ptrs[getBrKeyIdx(key)] = nNode;
-  }
-
-  @Override
-  public INode getChild(String name) {
-    return getChild(name.getBytes(StandardCharsets.UTF_8), 0);
-  }
-
   public INode getChild(byte[] name, int preLen) {
     int ki = preLen;
-    if (partialKeys != null) {
-      for (int i = 0; i < partialKeys.length; i++) {
-        if (name[ki] != partialKeys[i]) {
+    if (pk != null) {
+      for (int i = 0; i < pk.length; i++) {
+        if (name[ki] != pk[i]) {
           throw new RuntimeException("Key not consistent with partial key");
         }
         ki++;
@@ -193,11 +192,6 @@ public class CNode implements ICNode, INode, IInternal {
   @Override
   public List<String> getKeys() {
     return null;
-  }
-
-  @Override
-  public byte[] getPartialKey() {
-    return partialKeys;
   }
 
   @Override

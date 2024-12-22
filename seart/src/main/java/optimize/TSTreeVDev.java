@@ -10,6 +10,8 @@ import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
+
+import optimize.nodes.IMicroNode;
 import optimize.nodes.INode;
 import optimize.nodes.ITSNode;
 import optimize.nodes.cdm.CLeaf;
@@ -18,13 +20,14 @@ import optimize.nodes.cdm.CNode4;
 import optimize.nodes.cdm.ICNode;
 import optimize.nodes.fdm.FLeaf;
 import optimize.nodes.fdm.IFNode;
-import optimize.nodes.hash.HNodeV2;
+import optimize.nodes.hash.HNodeVDev;
 import optimize.nodes.logic.LLeaf;
 import optimize.nodes.logic.LLeafVDev;
 import optimize.nodes.logic.LNodeVDev;
-import optimize.nodes.ref.CDMRefNode;
-import optimize.nodes.ref.FDMRefNode;
+import optimize.nodes.ref.CDMRefNodeVDev;
+import optimize.nodes.ref.FDMRefNodeVDev;
 import optimize.nodes.ref.HashRefNode;
+import optimize.nodes.ref.HashRefNodeVDev;
 import optimize.util.ByteArray;
 
 public class TSTreeVDev {
@@ -47,16 +50,16 @@ public class TSTreeVDev {
   public long searchFDM(String p) {
     String[] path = p.split("\\.");
     IFNode cur = (IFNode) root;
-    INode res = cur;
+    IFNode res = cur;
     byte[] pk;
 
     boolean directLeaf = false, prefixedLeaf = false, resTemplate = false;
     for (int oi = 1; oi < path.length; oi++) {
       byte[] kbs = path[oi].getBytes(StandardCharsets.UTF_8);
-      pk = cur.getPartialKey();
+      pk = cur.getParKey();
 
       for (int i = 0; i < kbs.length; ) {
-        pk = cur.getPartialKey();
+        pk = cur.getParKey();
         i += IFNode.matchLen(pk, kbs, i);
 
         if (i == kbs.length && cur instanceof FLeaf) {
@@ -78,10 +81,10 @@ public class TSTreeVDev {
           else {
             // should be in template
             if (i == kbs.length) {
-              return ((FDMRefNode) res)
+              return ((FDMRefNodeVDev) res)
                   .getValFrom(path[oi + 1].getBytes(StandardCharsets.UTF_8), 0);
             } else {
-              return ((FDMRefNode) res).getValFrom(kbs, i);
+              return ((FDMRefNodeVDev) res).getValFrom(kbs, i);
             }
           }
         }
@@ -100,22 +103,22 @@ public class TSTreeVDev {
       if (directLeaf) {
         directLeaf = false;
         if (oi == path.length - 1) return cur.getFValue().getValue();
-        if (cur.getFValue() instanceof FDMRefNode) {
-          return ((FDMRefNode) cur.getFValue())
+        if (cur.getFValue() instanceof FDMRefNodeVDev) {
+          return ((FDMRefNodeVDev) cur.getFValue())
               .getValFrom(path[oi + 1].getBytes(StandardCharsets.UTF_8), 0);
         }
         cur = (IFNode) cur.getFValue();
         continue;
       }
 
-      if (res != null && res.getPartialKey() == null && res instanceof IFNode) {
+      if (res != null && res.getParKey() == null && res instanceof IFNode) {
         if (res instanceof FLeaf) {
           res = ((FLeaf) res).getFValue();
           if (res instanceof LLeaf) {
             return res.getValue();
           }
-          if (res instanceof FDMRefNode) {
-            return ((FDMRefNode) res).getValFrom(path[oi + 1].getBytes(StandardCharsets.UTF_8), 0);
+          if (res instanceof FDMRefNodeVDev) {
+            return ((FDMRefNodeVDev) res).getValFrom(path[oi + 1].getBytes(StandardCharsets.UTF_8), 0);
           }
           cur = (IFNode) res;
           continue;
@@ -127,8 +130,8 @@ public class TSTreeVDev {
       }
 
       if (res == null) throw new RuntimeException("Key not found");
-      if (res instanceof FDMRefNode) {
-        return ((FDMRefNode) res).getValFrom(path[oi + 1].getBytes(StandardCharsets.UTF_8), 0);
+      if (res instanceof FDMRefNodeVDev) {
+        return ((FDMRefNodeVDev) res).getValFrom(path[oi + 1].getBytes(StandardCharsets.UTF_8), 0);
       }
 
       if (cur instanceof FLeaf) {
@@ -150,7 +153,7 @@ public class TSTreeVDev {
       int idx = 0;
 
       if (cur instanceof CLeaf) {
-        pk = cur.getPartialKey();
+        pk = cur.getParKey();
         if (pk != null) {
           for (int j = 0; j < pk.length; j++) {
             if (pk[j] != sk[idx]) throw new RuntimeException("Inconsistent key.");
@@ -167,7 +170,7 @@ public class TSTreeVDev {
       }
 
       while (cur instanceof CNode4 && idx < sk.length) {
-        pk = cur.getPartialKey();
+        pk = cur.getParKey();
         if (pk != null) {
           for (int j = 0; j < pk.length; j++) {
             if (sk[idx] != pk[j]) throw new RuntimeException("Key not exists: " + path[oi]);
@@ -209,8 +212,8 @@ public class TSTreeVDev {
         // }
       }
 
-      if (cur instanceof CDMRefNode) {
-        return ((CDMRefNode) cur).getValFrom(sk, idx);
+      if (cur instanceof CDMRefNodeVDev) {
+        return ((CDMRefNodeVDev) cur).getValFrom(sk, idx);
       }
 
       if (idx == sk.length && !(cur instanceof CLeaf)) {
@@ -221,7 +224,7 @@ public class TSTreeVDev {
             return ((CLeaf) cur).ptr.getValue();
           } else {
             // the partial key must be for next segment, just continue
-            if (cur.getPartialKey() != null && cur.getPartialKey().length > 0) {
+            if (cur.getParKey() != null && cur.getParKey().length > 0) {
               continue;
             } else {
               // no partial key, and not final, no branching (leaf), so must proceed once more
@@ -235,8 +238,8 @@ public class TSTreeVDev {
       }
 
       if (cur instanceof CLeaf) {
-        if (cur.getPartialKey() != null) {
-          pk = cur.getPartialKey();
+        if (cur.getParKey() != null) {
+          pk = cur.getParKey();
           for (int j = 0; j < pk.length; j++) {
             if (pk[j] != sk[idx]) throw new RuntimeException("Key Inconsistent");
             idx++;
@@ -260,7 +263,7 @@ public class TSTreeVDev {
 
       while (cur instanceof CNode && idx < sk.length) {
         int pidx = idx;
-        pk = cur.getPartialKey();
+        pk = cur.getParKey();
         if (pk != null) {
           for (int j = 0; j < pk.length; j++) {
             if (sk[idx] != pk[j]) throw new RuntimeException("Key not consistent with partial key");
@@ -287,7 +290,7 @@ public class TSTreeVDev {
 
       if (idx == sk.length) {
         if (cur instanceof CLeaf) {
-          if (cur.getPartialKey() != null && cur.getPartialKey().length != 0) {
+          if (cur.getParKey() != null && cur.getParKey().length != 0) {
             continue;
           }
 
@@ -299,7 +302,7 @@ public class TSTreeVDev {
           continue;
         }
 
-        if (cur instanceof CDMRefNode) {
+        if (cur instanceof CDMRefNodeVDev) {
           // next level as template
           continue;
         }
@@ -309,8 +312,8 @@ public class TSTreeVDev {
       //   // sk exhausted, so there is an immediate-prefix node
       //   cur = cur.getPtrByPos(cur.getBrKeyIdx(0));
       // }
-      if (cur instanceof CDMRefNode) {
-        return ((CDMRefNode) cur).getValFrom(sk, idx);
+      if (cur instanceof CDMRefNodeVDev) {
+        return ((CDMRefNodeVDev) cur).getValFrom(sk, idx);
       }
 
       if (cur == null) throw new RuntimeException("Key not found");
@@ -319,7 +322,7 @@ public class TSTreeVDev {
     byte[] sk = path[path.length - 1].getBytes(StandardCharsets.UTF_8);
     int idx = 0;
     if (cur instanceof CLeaf) {
-      pk = cur.getPartialKey();
+      pk = cur.getParKey();
       if (pk != null) {
         for (int j = 0; j < pk.length; j++) {
           if (pk[j] != sk[idx]) throw new RuntimeException("Inconsistent key.");
@@ -334,17 +337,17 @@ public class TSTreeVDev {
       cur = (ICNode) ((CLeaf) cur).ptr;
     }
 
-    if (cur instanceof CDMRefNode) {
-      return ((CDMRefNode) cur).getValFrom(sk, idx);
+    if (cur instanceof CDMRefNodeVDev) {
+      return ((CDMRefNodeVDev) cur).getValFrom(sk, idx);
     }
     return cur.getValue();
   }
 
   public long searchHash(String p) {
     String[] path = p.split("\\.");
-    HNodeV2 cur = (HNodeV2) root;
-    INode res = null;
-    ByteArray EMPTY_ARRAY = new ByteArray(new byte[0]);
+    HNodeVDev cur = (HNodeVDev) root;
+    IMicroNode res = null;
+    byte[] EMPTY_ARRAY = new byte[0];
     byte[] pk;
     for (int _i = 1; _i < path.length; _i++) {
 
@@ -352,7 +355,7 @@ public class TSTreeVDev {
       // inlined
       final byte[] sk = path[_i].getBytes(StandardCharsets.UTF_8);
       for (int i = 0; i < sk.length; i++) {
-        pk = cur.getPartialKey();
+        pk = cur.getParKey();
         if (pk != null) {
           for (int j = 0; j < pk.length; j++) {
             if (sk[i] == pk[j]) i++;
@@ -363,7 +366,7 @@ public class TSTreeVDev {
         if (cur.children == null) throw new RuntimeException("Null chilren.");
         if (i == sk.length) {
           // prefixed child
-          res = cur.children.get(EMPTY_ARRAY);
+          res = cur.getChild(EMPTY_ARRAY);
           break;
         }
         ;
@@ -380,9 +383,9 @@ public class TSTreeVDev {
 
           // Note(zx) sk exhausted, if the cur node has zero-len key, then that is the target
           //  meaning, there are some sibling prefixing the search key
-          if (res instanceof HNodeV2) {
-            if (res.getPartialKey() == null && ((HNodeV2) res).children.containsKey(EMPTY_ARRAY)) {
-              res = ((HNodeV2) res).children.get(EMPTY_ARRAY);
+          if (res instanceof HNodeVDev) {
+            if (res.getParKey() == null && ((HNodeVDev) res).children.containsKey(EMPTY_ARRAY)) {
+              res = ((HNodeVDev) res).children.get(EMPTY_ARRAY);
               break;
             }
           }
@@ -392,11 +395,11 @@ public class TSTreeVDev {
         // no remaining, use first byte
         res = cur.children.get(new ByteArray(Arrays.copyOfRange(sk, i, i + 1)));
 
-        if (res instanceof HashRefNode) {
+        if (res instanceof HashRefNodeVDev) {
           return getValFromHashTemplate((HashRefNode) res, sk, i + 1);
         }
 
-        cur = (HNodeV2) res;
+        cur = (HNodeVDev) res;
       }
       if (res instanceof LLeaf) {
         return res.getValue();
@@ -405,7 +408,7 @@ public class TSTreeVDev {
         return getValFromHashTemplate(
             (HashRefNode) res, path[_i + 1].getBytes(StandardCharsets.UTF_8), 0);
       }
-      cur = (HNodeV2) res;
+      cur = (HNodeVDev) res;
       // inlined end
 
       if (cur == null) throw new RuntimeException("Key not found");

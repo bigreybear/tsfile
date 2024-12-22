@@ -20,4 +20,6 @@ public interface ITSNode {
   void setParKey(byte[] _pk);
 
   long getValue();
+
+  default boolean isLogicalLeaf() {return false;}
 }

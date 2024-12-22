@@ -38,8 +38,8 @@ public class HNodeVDev implements IMicroNode {
   }
 
   @Override
-  public IMicroNode replace(byte[] key, IMicroNode nNode) {
-    return children.put(new ByteArray(key), nNode);
+  public void replace(byte[] key, IMicroNode nNode) {
+    children.put(new ByteArray(key), nNode);
   }
 
   @Override

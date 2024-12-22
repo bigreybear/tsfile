@@ -6,18 +6,18 @@ import static optimize.util.ArrayHelper.removeTrailingZeros;
 import java.util.Arrays;
 import java.util.List;
 import optimize.nodes.INode;
+import optimize.nodes.NodeWithPartialKey;
 import optimize.nodes.cdm.CNode;
 import optimize.nodes.cdm.ICNode;
 import optimize.nodes.logic.LLeaf;
 
-public class CDMRefNodeVDev implements ICNode {
-  public byte[] pk;
+public class CDMRefNodeVDev extends NodeWithPartialKey implements ICNode {
   public int[] pos;
   public CNode template;
   public long[] values;
 
   public void embedTemplate(ICNode ori, CNode t) {
-    pk = ori.getPartialKey();
+    pk = ori.getParKey();
     byte[][] keys = ori.getKeysFromCDM();
     values = new long[keys.length];
     template = t;
@@ -41,7 +41,7 @@ public class CDMRefNodeVDev implements ICNode {
 
     for (int i = 0; i < keys.length; i++) {
       leaf = new LLeaf(i);
-      leaf.pk = node.getChildByBytes(keys[i]).getPartialKey();
+      leaf.pk = node.getChildByBytes(keys[i]).getParKey();
       tr.ptrs[i] = leaf;
     }
     return tr;
@@ -93,7 +93,7 @@ public class CDMRefNodeVDev implements ICNode {
   }
 
   @Override
-  public byte[] getPartialKey() {
+  public byte[] getParKey() {
     return pk;
   }
 
@@ -106,14 +106,5 @@ public class CDMRefNodeVDev implements ICNode {
   public INode replace(String key, INode nNode) {
     throw new UnsupportedOperationException();
   }
-
-  @Override
-  public void setBranchingKeys(List<Integer> collect) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public void setPartialKey(byte[] b) {
-    pk = b;
-  }
+  
 }

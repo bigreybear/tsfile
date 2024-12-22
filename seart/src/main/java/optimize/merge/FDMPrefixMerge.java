@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import optimize.nodes.INode;
+import optimize.nodes.ITSNode;
 import optimize.nodes.cdm.CNodeHelper;
 import optimize.nodes.fdm.FLeaf;
 import optimize.nodes.fdm.FNode16;
@@ -24,27 +25,28 @@ public class FDMPrefixMerge {
     else return new FNode256();
   }
 
-  public static INode recNextMergeOnFDM(
-      INode oriNode, byte[][] keys, int preLen, PrefixMergeStrategy ms, MapType mt, int height) {
+  public static IFNode recNextMergeOnFDM(
+      ITSNode oriNode, byte[][] keys, int preLen, PrefixMergeStrategy ms, MapType mt, int height) {
     if (ms.equals(PrefixMergeStrategy.SIMPLE) || ms.equals(PrefixMergeStrategy.PARTIAL)) {
       throw new UnsupportedOperationException();
     }
 
     if (keys.length == 1) {
-      IFNode leaf = new FLeaf();
-      leaf.setValue(oriNode.getChild(new String(keys[0], StandardCharsets.UTF_8)));
-      leaf.setPartialKey(Arrays.copyOfRange(keys[0], preLen, keys[0].length));
+      FLeaf leaf = new FLeaf();
+      // downcast must-be: either LLeaf or processed node.
+      leaf.setValue((IFNode) oriNode.getLogicalChild(new String(keys[0], StandardCharsets.UTF_8)));
+      leaf.setParKey(Arrays.copyOfRange(keys[0], preLen, keys[0].length));
       return leaf;
     }
 
     // get the ptr of 0
     final int len = findLCPLength(keys, preLen);
     // find the key exactly IS the common prefix
-    INode prefixedPtr = null;
+    IFNode prefixedPtr = null;
     List<byte[]> a =
         Arrays.stream(keys).filter(e -> e.length == len + preLen).collect(Collectors.toList());
     if (!a.isEmpty()) {
-      prefixedPtr = oriNode.getChild(new String(a.get(0), StandardCharsets.UTF_8));
+      prefixedPtr = (IFNode) oriNode.getLogicalChild(new String(a.get(0), StandardCharsets.UTF_8));
     }
 
     // the prefixed key not EXCLUDED
@@ -53,11 +55,11 @@ public class FDMPrefixMerge {
     if (prefixedPtr != null) {
       FLeaf leaf = new FLeaf();
       leaf.value = prefixedPtr;
-      leaf.setPartialKey(Arrays.copyOfRange(a.get(0), preLen + len, a.get(0).length));
+      leaf.setParKey(Arrays.copyOfRange(a.get(0), preLen + len, a.get(0).length));
       repNode.add((byte) 0, leaf);
     }
     if (len != 0) {
-      repNode.setPartialKey(Arrays.copyOfRange(keys[0], preLen, preLen + len));
+      repNode.setParKey(Arrays.copyOfRange(keys[0], preLen, preLen + len));
     }
 
     for (CNodeHelper.ValuedPrefixArray vpa : groupedPrefix) {

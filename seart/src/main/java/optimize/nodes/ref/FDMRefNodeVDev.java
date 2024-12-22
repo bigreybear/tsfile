@@ -2,19 +2,20 @@ package optimize.nodes.ref;
 
 import java.util.Arrays;
 import java.util.List;
-import optimize.nodes.INode;
+
+import optimize.nodes.IMicroNode;
+import optimize.nodes.NodeWithPartialKey;
 import optimize.nodes.fdm.FLeaf;
 import optimize.nodes.fdm.FNode256;
 import optimize.nodes.fdm.IFNode;
-import optimize.nodes.logic.LLeaf;
+import optimize.nodes.logic.LLeafVDev;
 
-public class FDMRefNodeVDev implements INode {
-  public byte[] pk;
+public class FDMRefNodeVDev extends NodeWithPartialKey implements IFNode {
   public IFNode template;
   public long[] values;
 
   public void embedTemplate(IFNode ori, IFNode t) {
-    pk = ori.getPartialKey();
+    pk = ori.getParKey();
     byte[] keys = ori.getKeysFromFDM();
     values = new long[keys.length];
     template = t;
@@ -25,14 +26,14 @@ public class FDMRefNodeVDev implements INode {
     }
   }
 
-  public static INode buildFDMTemplate(IFNode node) {
+  public static IFNode buildFDMTemplate(IFNode node) {
     byte[] keys = node.getKeysFromFDM();
     Arrays.sort(keys);
-    LLeaf leaf;
+    LLeafVDev leaf;
     IFNode tr = new FNode256();
     for (int i = 0; i < keys.length; i++) {
-      leaf = new LLeaf(i);
-      leaf.pk = node.get(keys[i]).getPartialKey();
+      leaf = new LLeafVDev(i);
+      leaf.setParKey(node.get(keys[i]).getParKey());
       tr.add(keys[i], leaf);
     }
     return tr;
@@ -55,37 +56,28 @@ public class FDMRefNodeVDev implements INode {
   }
 
   @Override
-  public long getValue() {
-    return 0;
+  public List<IMicroNode> getChildren() {
+    throw new UnsupportedOperationException();
   }
 
   @Override
-  public INode getChild(String name) {
+  public void add(byte k, IFNode v) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public IFNode get(byte k) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public byte[] getKeysFromFDM() {
+    // todo could be impl.
     return null;
   }
 
   @Override
-  public List<INode> getChildren() {
-    return null;
-  }
-
-  @Override
-  public List<String> getKeys() {
-    return null;
-  }
-
-  @Override
-  public byte[] getPartialKey() {
-    return new byte[0];
-  }
-
-  @Override
-  public INode addChild(String name, INode child) {
-    return null;
-  }
-
-  @Override
-  public INode replace(String key, INode nNode) {
-    return null;
+  public void replace(byte k, IFNode n) {
+    throw new UnsupportedOperationException();
   }
 }

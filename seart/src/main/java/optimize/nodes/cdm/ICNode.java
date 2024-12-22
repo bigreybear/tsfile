@@ -1,14 +1,22 @@
 package optimize.nodes.cdm;
 
-import java.util.List;
-import optimize.nodes.INode;
+import optimize.merge.MapType;
+import optimize.merge.PrefixMergeStrategy;
+import optimize.nodes.IMicroNode;
+import optimize.util.InfixGroup;
 
-public interface ICNode extends INode {
-  void setBranchingKeys(List<Integer> collect);
+import java.util.function.Function;
+
+public interface ICNode extends IMicroNode {
+  // exact type is constrained by context logic
+  // void setBranchingKeys(T[] collected);
+
+  // void setBranchingKeys(List<Integer> collect);
 
   // more than 4 positions
-  default void setBranchingKeysExtended(byte[][] bks) {}
-  ;
+  // void setBranchingKeys(byte[][] bks);
+
+  void setContent(InfixGroup group, Function<byte[], IMicroNode> getLChild, PrefixMergeStrategy mergeStrategy, MapType mapType, int height, boolean EFCoded);
 
   default int[] getBranchingPos() {
     throw new UnsupportedOperationException();
@@ -23,13 +31,19 @@ public interface ICNode extends INode {
     throw new UnsupportedOperationException();
   }
 
-  default void setBranchingPtr(int idx, INode ptr) {
-    throw new UnsupportedOperationException();
-  }
-  ;
+  // void setBranchingPtr(int idx, ICNode ptr);
 
-  default void setInterleavedBytes(int idx, byte[] ilb /*Inter-Leaved Bytes*/) {}
-  ;
+  // default void setInterleavedBytes(int idx, byte[] ilb /*Inter-Leaved Bytes*/) {}
+
+  /**
+   * Ignore the partial key
+   *
+   * @param pos assembled by branching and interleaved bytes
+   * @return
+   */
+  default byte[] assembleKeyAt(int pos) {
+    return null;
+  }
 
   /**
    * @param src may have trailing 0s, so could be longer than pos[-1] or res
@@ -64,21 +78,4 @@ public interface ICNode extends INode {
     }
     return intArr;
   }
-
-  /**
-   * Ignore the partial key
-   *
-   * @param pos assembled by branching and interleaved bytes
-   * @return
-   */
-  default byte[] assembleKeyAt(int pos) {
-    return null;
-  }
-  ;
-
-  default ICNode getPtrByPos(int pos) {
-    return null;
-  }
-
-  void setPartialKey(byte[] b);
 }

@@ -18,18 +18,19 @@ import optimize.util.ByteArray;
  * <p>About why it doesn't need a HLeaf: the key in each hash includes the trailing part, while CDM
  * and FDM needs a leaf holding the partial key after the split.
  */
-public class HNodeV2 implements IInternal {
+@Deprecated
+public class HNodeVLegacy implements IInternal {
   // stored strings are iso encoded
   public byte[] pk;
   public Map<ByteArray, INode> children;
 
-  public HNodeV2() {}
+  public HNodeVLegacy() {}
 
-  public HNodeV2(int c) {
+  public HNodeVLegacy(int c) {
     children = new HashMap<>(c, 1.0f);
   }
 
-  public HNodeV2(String pk) {
+  public HNodeVLegacy(String pk) {
     this.pk = pk.getBytes(StandardCharsets.UTF_8);
   }
 
@@ -52,7 +53,7 @@ public class HNodeV2 implements IInternal {
   public INode getChild(String name) {
     // equivalent to that of LNode
     final byte[] sk = name.getBytes(StandardCharsets.UTF_8);
-    HNodeV2 cur = this;
+    HNodeVLegacy cur = this;
 
     for (int i = 0; i < sk.length; i++) {
       if (cur.pk != null) {
@@ -77,10 +78,10 @@ public class HNodeV2 implements IInternal {
 
         // Note(zx) sk exhausted, if the cur node has zero-len key, then that is the target
         //  meaning, there are some sibling prefixing the search key
-        if (res instanceof HNodeV2) {
+        if (res instanceof HNodeVLegacy) {
           if (res.getPartialKey() == null
-              && ((HNodeV2) res).children.containsKey(new ByteArray(new byte[0]))) {
-            return ((HNodeV2) res).children.get(new ByteArray(new byte[0]));
+              && ((HNodeVLegacy) res).children.containsKey(new ByteArray(new byte[0]))) {
+            return ((HNodeVLegacy) res).children.get(new ByteArray(new byte[0]));
           }
         }
         return res;
@@ -88,7 +89,7 @@ public class HNodeV2 implements IInternal {
 
       // no remaining, use first byte
       res = cur.children.get(new ByteArray(Arrays.copyOfRange(sk, i, i + 1)));
-      cur = (HNodeV2) res;
+      cur = (HNodeVLegacy) res;
     }
 
     throw new RuntimeException("No key found.");

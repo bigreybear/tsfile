@@ -2,52 +2,36 @@ package optimize.nodes.fdm;
 
 import optimize.nodes.INode;
 
-public class FLeaf implements IFNode {
-  byte[] pk;
-  public INode value;
+// todo eliminate this class
+public class FLeaf extends FNodeBase implements IFNode {
+  public IFNode value;
 
   @Override
-  public void add(byte k, INode v) {
+  public void add(byte k, IFNode v) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public INode get(byte k) {
+  public IFNode get(byte k) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public INode getFValue() {
+  public byte[] getKeysFromFDM() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public IFNode getFValue() {
     return value;
   }
 
-  @Override
-  public void setValue(INode v) {
+  public void setValue(IFNode v) {
     value = v;
   }
 
   @Override
-  public void setPartialKey(byte[] pk) {
-    this.pk = (pk == null || pk.length == 0) ? null : pk;
-  }
-
-  @Override
-  public byte[] getPartialKey() {
-    return pk;
-  }
-
-  @Override
-  public INode replace(String key, INode nNode) {
-    value = nNode;
-    return this;
-  }
-
-  public INode replace(byte[] key, INode nNode) {
-    value = nNode;
-    return this;
-  }
-
-  public void replace(byte k, INode c) {
-    value = c;
+  public void replace(byte k, IFNode c) {
+    throw new UnsupportedOperationException();
   }
 }

@@ -58,8 +58,8 @@ public class HashRefNodeVDev implements IMicroNode {
   public void setChild(byte[] k, IMicroNode n) {}
 
   @Override
-  public IMicroNode replace(byte[] key, IMicroNode node) {
-    return null;
+  public void replace(byte[] key, IMicroNode node) {
+    throw new UnsupportedOperationException();
   }
 
   @Override
