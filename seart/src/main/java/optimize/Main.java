@@ -139,7 +139,7 @@ public class Main extends MergePrefix {
     res += " -ds zy";
 
     res += " -merge";
-    res += " -latency";
+    // res += " -latency";
     // res += " -space";
     res += " -depth";
     // res += " -template";
@@ -180,6 +180,7 @@ public class Main extends MergePrefix {
     if (argList.contains("-depth")) {
       res = MergedTreeTraversalForDepth.collectDepths(tree.root, mapType);
     }
+    REPORT_CHANNEL.append(res == null ? "" : res + "\n");
 
     if (argList.contains("-space") && argList.contains("-template")) {
       // REPORT_CHANNEL.append(String.format("Before Traversal: %d \n",

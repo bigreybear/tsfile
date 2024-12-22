@@ -10,12 +10,12 @@ public interface ILeaf extends INode {
 
   @Override
   default List<INode> getChildren() {
-    throw new UnsupportedOperationException();
+    return null;
   }
 
   @Override
   default List<String> getKeys() {
-    throw new UnsupportedOperationException();
+    return null;
   }
 
   @Override

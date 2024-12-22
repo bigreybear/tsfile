@@ -41,7 +41,7 @@ public class MergedTreeTraversalForDepth {
 
     for (int num : data) {
       if (num < lowerBound || num > upperBound) {
-        System.out.println(num);
+        // System.out.println(num);
         record.outliers.add(num);
       }
     }
@@ -80,7 +80,10 @@ public class MergedTreeTraversalForDepth {
     byte[][] keys = cur.getKeysFromCDM();
 
     for (byte[] k : keys) {
-      if (cur.getChildByBytes(k) instanceof LLeaf) continue;
+      if (cur.getChildByBytes(k) instanceof LLeaf) {
+        depthList.add(depth + 1);
+        continue;
+      }
 
       byte[] token =
           concatenate(cur.getPartialKey() == null ? new byte[0] : cur.getPartialKey(), k);
