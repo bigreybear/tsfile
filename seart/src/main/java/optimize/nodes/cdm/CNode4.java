@@ -13,18 +13,18 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
-import optimize.nodes.INode;
+import optimize.util.ArrayHelper;
 import optimize.util.InfixGroup;
 
 public class CNode4 extends CNodeBase implements ICNode {
   // for only 4 positions
   int posInt; // an int concatenated by 4 bytes: byte p1, p2, p3, p4;
   int[] bks; // indeed a byte[][4] bks; // branching keys
-  ICNode[] ptrs;
 
   // exactly no padding on 64-jvm, jdk-17, Compressed OOPs
 
@@ -101,18 +101,17 @@ public class CNode4 extends CNodeBase implements ICNode {
   }
 
   // get index of the target key
-  @Override
   public int getBrKeyIdx(int val) {
     int idx = Arrays.binarySearch(bks, val);
     if (idx == -1 || bks[idx] != val) throw new RuntimeException("Key not found.");
     return idx;
   }
 
-  public void setBranchingPtr(int idx, ICNode ptr) {
-    ptrs[idx] = (ICNode) ptr;
+  private void setBranchingPtr(int idx, ICNode ptr) {
+    ptrs[idx] = ptr;
   }
 
-  public void setInterleavedBytes(int idx, byte[] ilb) {
+  private void setInterleavedBytes(int idx, byte[] ilb) {
     ilb = removeTrailingZeros(ilb);
     if (ilb.length > 0 && rmk == null)
       throw new RuntimeException("Initial Interleave Bytes Error.");
@@ -145,12 +144,7 @@ public class CNode4 extends CNodeBase implements ICNode {
   }
 
   @Override
-  public INode replace(String key, INode nNode) {
-    return null;
-  }
-
-  @Override
-  public INode getChildByBytes(byte[] k) {
+  public IMicroNode getChild(byte[] k) {
     if (k.length > 4) throw new UnsupportedOperationException();
     int ans = bytes2Int(k);
     int idx = getBrKeyIdx(ans);
@@ -158,6 +152,10 @@ public class CNode4 extends CNodeBase implements ICNode {
   }
 
   @Override
+  public void setChild(byte[] k, IMicroNode n) {
+    ptrs[getBrKeyIdx(k)] = (ICNode) n;
+  }
+
   public byte[][] getKeysFromCDM() {
     byte[][] res = new byte[bks.length][];
     for (int i = 0; i < bks.length; i++) {
@@ -167,17 +165,20 @@ public class CNode4 extends CNodeBase implements ICNode {
   }
 
   @Override
-  public INode replace(byte[] key, INode nNode) {
-    return ptrs[getBrKeyIdx(key)] = (ICNode) nNode;
+  public void replace(byte[] key, IMicroNode nNode) {
+    setChild(key, nNode);
   }
 
-  @Override
+
   public int getBrKeyIdx(byte[] ba) {
     return getBrKeyIdx(bytes2Int(ba));
   }
 
+  /**
+   * Adapted from public INode getChild(String name) {
+   */
   @Override
-  public INode getChild(String name) {
+  public IMicroNode getLogicalChild(String name) {
     byte[] kb = name.getBytes(StandardCharsets.UTF_8), cpk, curBrKeys, checkBrKeys;
 
     ICNode curNode = this;
@@ -186,7 +187,7 @@ public class CNode4 extends CNodeBase implements ICNode {
     int[] brPos;
     while (idx < kb.length) {
       // check on partial key
-      if ((cpk = curNode.getPartialKey()) != null) {
+      if ((cpk = curNode.getParKey()) != null) {
         for (int i = 0; i < cpk.length && idx < kb.length; i++) {
           if (kb[idx] != cpk[i]) throw new RuntimeException("Key not exists: " + name);
           idx++;
@@ -196,7 +197,7 @@ public class CNode4 extends CNodeBase implements ICNode {
           if (curNode instanceof CLeaf) return ((CLeaf) curNode).ptr;
           // search key is exhausted on partial key, the branching key must be 0000
           channel = curNode.getBrKeyIdx(0);
-          curNode = curNode.getPtrByPos(channel);
+          curNode = curNode.getPtr(channel);
           break;
         }
       }
@@ -218,7 +219,7 @@ public class CNode4 extends CNodeBase implements ICNode {
         idx++;
       }
 
-      curNode = curNode.getPtrByPos(channel);
+      curNode = curNode.getPtr(channel);
       if (curNode instanceof CNode) {
         return ((CNode) curNode).getChild(kb, idx);
       }
@@ -226,23 +227,24 @@ public class CNode4 extends CNodeBase implements ICNode {
 
     // todo fixme IMPROVE
     if (!(curNode instanceof CLeaf)) {
-      curNode = curNode.getPtrByPos(curNode.getBrKeyIdx(0));
+      curNode = curNode.getPtr(curNode.getBrKeyIdx(0));
     }
     return ((CLeaf) curNode).ptr;
   }
 
   @Override
-  public List<INode> getChildren() {
+  public long getValue() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public List<byte[]> getKeyBytes() {
+    return Arrays.stream(bks).mapToObj(CNodeHelper::int2BytesVarLen).collect(Collectors.toList());
+  }
+
+  @Override
+  public List<IMicroNode> getChildren() {
     return Arrays.asList(ptrs);
   }
 
-  @Override
-  public List<String> getKeys() {
-    return null;
-  }
-
-  @Override
-  public INode addChild(String name, INode child) {
-    throw new UnsupportedOperationException();
-  }
 }

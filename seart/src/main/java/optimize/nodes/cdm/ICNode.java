@@ -1,5 +1,6 @@
 package optimize.nodes.cdm;
 
+import optimize.SearchStatus;
 import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
@@ -8,32 +9,39 @@ import optimize.util.InfixGroup;
 import java.util.function.Function;
 
 public interface ICNode extends IMicroNode {
-  // exact type is constrained by context logic
-  // void setBranchingKeys(T[] collected);
 
-  // void setBranchingKeys(List<Integer> collect);
+  int[] getBranchingPos();
 
-  // more than 4 positions
-  // void setBranchingKeys(byte[][] bks);
+  void setContent(InfixGroup group,
+                  Function<byte[], IMicroNode> getLChild,
+                  PrefixMergeStrategy mergeStrategy,
+                  MapType mapType,
+                  int height,
+                  boolean EFCoded);
 
-  void setContent(InfixGroup group, Function<byte[], IMicroNode> getLChild, PrefixMergeStrategy mergeStrategy, MapType mapType, int height, boolean EFCoded);
+  ICNode getPtr(int pos);
 
-  default int[] getBranchingPos() {
-    throw new UnsupportedOperationException();
-  }
+  /**
+   * Carry the search progress forward.
+   * @param sts the context of the search progress
+   * @return the target ptr w.r.t. the current progress, or itself if the leaf
+   */
+  ICNode getCDMChild(byte[] key, SearchStatus sts);
+
+  @Deprecated // todo remove it
+  default int getBrKeyIdx(int v) {throw new UnsupportedOperationException();}
+
+  @Deprecated // todo remove it
+  default int getBrKeyIdx(byte[] v) {throw new UnsupportedOperationException();}
 
   // get index of the target key
-  default int getBrKeyIdx(int val) {
-    throw new UnsupportedOperationException();
-  }
-
-  default int getBrKeyIdx(byte[] ba) {
-    throw new UnsupportedOperationException();
-  }
-
-  // void setBranchingPtr(int idx, ICNode ptr);
-
-  // default void setInterleavedBytes(int idx, byte[] ilb /*Inter-Leaved Bytes*/) {}
+  // default int getBrKeyIdx(int val) {
+  //   throw new UnsupportedOperationException();
+  // }
+  //
+  // default int getBrKeyIdx(byte[] ba) {
+  //   throw new UnsupportedOperationException();
+  // }
 
   /**
    * Ignore the partial key
@@ -44,6 +52,15 @@ public interface ICNode extends IMicroNode {
   default byte[] assembleKeyAt(int pos) {
     return null;
   }
+
+  // @Deprecated methods
+  // void setBranchingPtr(int idx, ICNode ptr);
+  // default void setInterleavedBytes(int idx, byte[] ilb /*Inter-Leaved Bytes*/) {}
+  // exact type is constrained by context logic
+  // void setBranchingKeys(T[] collected);
+  // void setBranchingKeys(List<Integer> collect);
+  // more than 4 positions
+  // void setBranchingKeys(byte[][] bks);
 
   /**
    * @param src may have trailing 0s, so could be longer than pos[-1] or res

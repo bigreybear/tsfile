@@ -6,14 +6,18 @@ import static optimize.nodes.cdm.CNodeHelper.getValidBrPosNum;
 import static optimize.util.ArrayHelper.removeTrailingZeros;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 
+import optimize.SearchStatus;
+import optimize.exception.PartialKeyCheckException;
 import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.INode;
+import optimize.nodes.ITSNode;
 import optimize.util.ArrayHelper;
 import optimize.util.ByteArray;
 import optimize.util.InfixGroup;
@@ -23,7 +27,6 @@ public class CNode extends CNodeBase implements ICNode {
   byte[] pos; // indeed flags for byte p1, p2, p3, p4;
   byte[][] bks; // branching keys
   byte[][] rmk; // remaining keys
-  ICNode[] ptrs;
 
   public CNode(int[] pi) {
     pos = new byte[pi.length];
@@ -33,16 +36,41 @@ public class CNode extends CNodeBase implements ICNode {
     }
   }
 
-  @Override
   public byte[][] getKeysFromCDM() {
     return bks;
   }
 
   @Override
-  public ICNode<byte[]> getChildByBytes(byte[] k) {
+  public ICNode getChild(byte[] k) {
     byte[] k2 = removeTrailingZeros(k);
     int idx = getBrKeyIdx(k2);
     return ptrs[getBrKeyIdx(k2)];
+  }
+
+  @Deprecated
+  public IMicroNode getChild(byte[] name, int preLen) {
+    int ki = preLen;
+    byte[] partialKey = getParKey();
+    if (getParKey() != null) {
+      for (int i = 0; i < partialKey.length; i++) {
+        if (name[ki] != partialKey[i]) {
+          throw new RuntimeException("Key not consistent with partial key");
+        }
+        ki++;
+      }
+    }
+
+    // int idx = getBrKeyIdx(removeTrailingZeros(Arrays.copyOfRange(name, ki, name.length)));
+    int idx =
+        getBrKeyIdx(
+            ArrayHelper.removeTrailingZeros(
+                extractBytes(name, ICNode.unsignedByteArr2IntArr(pos))));
+    byte[] checkKey = assembleKeyAt(idx, preLen, name.length);
+    for (int i = 0; i < checkKey.length; i++) {
+      if (name[ki + i] != checkKey[i])
+        throw new UnsupportedOperationException("Inconsistent on assemble key.");
+    }
+    return ptrs[idx];
   }
 
   @Override
@@ -74,16 +102,36 @@ public class CNode extends CNodeBase implements ICNode {
     }
   }
 
-  // @Override
-  // public void setBranchingKeys(byte[][] input) {
-  //   bks = new byte[input.length][];
-  //   for (int i = 0; i < input.length; i++) {
-  //     bks[i] = ArrayHelper.removeTrailingZeros(input[i]);
-  //   }
-  //   rmk = new byte[input.length][];
-  //   ptrs = new ICNode[input.length];
-  //   ptrs[0].setBranchingKeys(new Object[3]);
-  // }
+  @Override
+  public ICNode getCDMChild(byte[] key, SearchStatus sts) {
+    // todo refactor to non-recursive style, using a struct to carry progress and cur node
+
+    int[] bps = getBranchingPos();
+    byte[] pk = getParKey();
+    if (bps.length == 0) throw new RuntimeException();
+    int curLen = sts.getCurLen();
+    if (bps[0] < curLen) {
+      if (pk.length != bps[0] - curLen) throw new PartialKeyCheckException();
+
+      // check partial key if necessary
+      for (int i = 0; i < pk.length; i++) {
+        if (pk[i] != key[bps[0] + i]) throw new PartialKeyCheckException();
+      }
+    }
+
+    // finish searching and is PREFIXED
+    if (curLen + pk.length == key.length) {
+      sts.setFinished(true);
+      return ptrs[getBrKeyIdx(EMPTY_BYTE_ARR)];
+    }
+
+    // retrieve related br_keys and cmp_keys
+    byte[] tar = extractBytes(key, getBranchingPos());
+    int channel = getBrKeyIdx(tar);
+    // todo not assemble the key (involves more allocations) and compare directly
+
+    // continue next
+  }
 
   @Override
   public int[] getBranchingPos() {
@@ -92,11 +140,6 @@ public class CNode extends CNodeBase implements ICNode {
       pi[i] = 0xff & pos[i];
     }
     return pi;
-  }
-
-  @Override
-  public int getBrKeyIdx(int val) {
-    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -160,7 +203,14 @@ public class CNode extends CNodeBase implements ICNode {
     return removeTrailingZeros(asmkey);
   }
 
-  public INode getChild(byte[] name, int preLen) {
+
+  /**
+   * Adapted from public IMicroNode getLogicalChild(byte[] name, int preLen) {
+   */
+  @Override
+  public IMicroNode getLogicalChild(String pathSeg) {
+    int preLen = 0;
+    byte[] name = pathSeg.getBytes(StandardCharsets.UTF_8);
     int ki = preLen;
     if (pk != null) {
       for (int i = 0; i < pk.length; i++) {
@@ -185,17 +235,31 @@ public class CNode extends CNodeBase implements ICNode {
   }
 
   @Override
-  public List<INode> getChildren() {
+  public List<IMicroNode> getChildren() {
     return Arrays.asList(ptrs);
   }
 
-  @Override
   public List<String> getKeys() {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override
-  public INode addChild(String name, INode child) {
+  public List<byte[]> getKeyBytes() {
+    return Arrays.asList(bks);
+  }
+
+  @Override
+  public void setChild(byte[] k, IMicroNode n) {
+    ptrs[getBrKeyIdx(k)] = (ICNode) n;
+  }
+
+  @Override
+  public void replace(byte[] key, IMicroNode node) {
+    setChild(key, node);
+  }
+
+  @Override
+  public long getValue() {
     throw new UnsupportedOperationException();
   }
 

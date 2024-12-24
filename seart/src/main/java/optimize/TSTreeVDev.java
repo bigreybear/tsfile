@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 import optimize.nodes.IMicroNode;
-import optimize.nodes.INode;
 import optimize.nodes.ITSNode;
 import optimize.nodes.cdm.CLeaf;
 import optimize.nodes.cdm.CNode;
@@ -21,18 +20,17 @@ import optimize.nodes.cdm.ICNode;
 import optimize.nodes.fdm.FLeaf;
 import optimize.nodes.fdm.IFNode;
 import optimize.nodes.hash.HNodeVDev;
-import optimize.nodes.logic.LLeaf;
 import optimize.nodes.logic.LLeafVDev;
 import optimize.nodes.logic.LNodeVDev;
 import optimize.nodes.ref.CDMRefNodeVDev;
 import optimize.nodes.ref.FDMRefNodeVDev;
-import optimize.nodes.ref.HashRefNode;
 import optimize.nodes.ref.HashRefNodeVDev;
 import optimize.util.ByteArray;
 
 public class TSTreeVDev {
   public ITSNode root = new LNodeVDev() {};
   AtomicLong nodeNum = new AtomicLong(1);
+  private static final SearchStatus ss = new SearchStatus();
 
   public TSTreeVDev() {}
 
@@ -143,6 +141,21 @@ public class TSTreeVDev {
   }
 
   public long searchCDM(String p) {
+
+    final String[] pathNodes = p.split("\\.");
+    ICNode cur = (ICNode) root;
+
+    ss.reset().setIcNode(cur).setCurLen(0);
+
+    for (int pid = 0; pid < pathNodes.length; pid++) {
+      cur = cur.getCDMChild(pathNodes[pid].getBytes(StandardCharsets.UTF_8), ss);
+
+
+    }
+    return cur.getValue();
+  }
+
+  public long searchCDMLegacy(String p) {
     String[] path = p.split("\\.");
     ICNode cur = (ICNode) root;
     int channel = -1;
@@ -162,7 +175,7 @@ public class TSTreeVDev {
         }
 
         if (idx < sk.length) throw new RuntimeException("Should exhaust partial key on CLeaf.");
-        if (((CLeaf) cur).ptr instanceof LLeaf) {
+        if (((CLeaf) cur).ptr instanceof LLeafVDev) {
           return ((CLeaf) cur).ptr.getValue();
         }
         cur = (ICNode) ((CLeaf) cur).ptr;
@@ -184,7 +197,7 @@ public class TSTreeVDev {
             }
 
             channel = cur.getBrKeyIdx(0);
-            cur = cur.getPtrByPos(channel);
+            cur = cur.getPtr(channel);
             break;
           }
         }
@@ -201,7 +214,7 @@ public class TSTreeVDev {
           idx++;
         }
 
-        cur = cur.getPtrByPos(channel);
+        cur = cur.getPtr(channel);
 
         // if (((CNode4) cur).ptrs[channel] != null) {
         //   cur = cur.getPtrByPos(channel);
@@ -217,10 +230,10 @@ public class TSTreeVDev {
       }
 
       if (idx == sk.length && !(cur instanceof CLeaf)) {
-        cur = cur.getPtrByPos(0);
+        cur = cur.getPtr(0);
         if (cur instanceof CLeaf) {
           // a finaly leaf, just return the value
-          if (((CLeaf) cur).ptr instanceof LLeaf) {
+          if (((CLeaf) cur).ptr instanceof LLeafVDev) {
             return ((CLeaf) cur).ptr.getValue();
           } else {
             // the partial key must be for next segment, just continue
@@ -247,9 +260,9 @@ public class TSTreeVDev {
         }
         if (idx == sk.length) {
           // cur = (ICNode) ((CLeaf) cur).ptr;
-          INode res = ((CLeaf) cur).ptr;
-          if (res instanceof LLeaf) return res.getValue();
-          cur = (ICNode) res;
+          ICNode res = ((CLeaf) cur).ptr;
+          if (res instanceof LLeafVDev) return res.getValue();
+          cur = res;
           continue;
         } else {
           throw new UnsupportedOperationException();
@@ -279,11 +292,11 @@ public class TSTreeVDev {
           idx++;
         }
 
-        if (((CNode) cur).ptrs[channel] instanceof ICNode) {
-          cur = cur.getPtrByPos(channel);
+        if (((CNode) cur).getPtr(channel) instanceof ICNode) {
+          cur = cur.getPtr(channel);
         } else {
-          INode res = ((CNode) cur).ptrs[channel];
-          if (res instanceof LLeaf) return res.getValue();
+          ICNode res = ((CNode) cur).getPtr(channel);
+          if (res instanceof LLeafVDev) return res.getValue();
           else throw new UnsupportedOperationException();
         }
       }
@@ -295,7 +308,7 @@ public class TSTreeVDev {
           }
 
           // next level as normal
-          if (((CLeaf) cur).ptr instanceof LLeaf) {
+          if (((CLeaf) cur).ptr instanceof LLeafVDev) {
             return ((CLeaf) cur).ptr.getValue();
           }
           cur = (ICNode) ((CLeaf) cur).ptr;
@@ -331,7 +344,7 @@ public class TSTreeVDev {
       }
 
       if (idx < sk.length) throw new RuntimeException("Should exhaust partial key on CLeaf.");
-      if (((CLeaf) cur).ptr instanceof LLeaf) {
+      if (((CLeaf) cur).ptr instanceof LLeafVDev) {
         return ((CLeaf) cur).ptr.getValue();
       }
       cur = (ICNode) ((CLeaf) cur).ptr;

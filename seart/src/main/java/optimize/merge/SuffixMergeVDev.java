@@ -1,6 +1,6 @@
 package optimize.merge;
 
-import static optimize.Main.REPORT_CHANNEL;
+import static optimize.MainVDev.REPORT_CHANNEL;
 import static optimize.nodes.ref.FDMRefNodeVDev.buildFDMTemplate;
 import static optimize.nodes.ref.HashRefNodeVDev.buildHashTemplate;
 

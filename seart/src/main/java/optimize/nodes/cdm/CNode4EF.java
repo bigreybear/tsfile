@@ -10,13 +10,18 @@ import static optimize.util.ArrayHelper.removeTrailingZeros;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import optimize.eliasfano.EliasFano;
+import optimize.merge.MapType;
+import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.INode;
+import optimize.util.InfixGroup;
 
+@Deprecated
 // enhanced with Elias-Fano coding
-public class CNode4EF extends CNodeBase implements ICNode<Integer> {
+public class CNode4EF extends CNodeBase implements ICNode {
   // for only 4 positions
   int posInt; // an int concatenated by 4 unsigned bytes: byte p1, p2, p3, p4;
   byte[] pks; // partial keys
@@ -43,6 +48,11 @@ public class CNode4EF extends CNodeBase implements ICNode<Integer> {
   @Override
   public int[] getBranchingPos() {
     return ICNode.unsignedByteArr2IntArr(int2BytesVarLen(posInt));
+  }
+
+  @Override
+  public void setContent(InfixGroup group, Function<byte[], IMicroNode> getLChild, PrefixMergeStrategy mergeStrategy, MapType mapType, int height, boolean EFCoded) {
+
   }
 
   public void setBranchingKeys(Integer[] branchingBytes) {
@@ -76,7 +86,6 @@ public class CNode4EF extends CNodeBase implements ICNode<Integer> {
   }
 
   // get index of the target key
-  @Override
   public int getBrKeyIdx(int val) {
     if (val < 0) {
       val &= 0x7fffffff;
@@ -97,11 +106,6 @@ public class CNode4EF extends CNodeBase implements ICNode<Integer> {
     if (ilb.length == 0) return;
 
     rmk[idx] = ilb;
-  }
-
-  @Override
-  public void setPartialKey(byte[] b) {
-    pks = b;
   }
 
   @Override
@@ -135,13 +139,9 @@ public class CNode4EF extends CNodeBase implements ICNode<Integer> {
     return int2BytesFixedLen(EliasFano.get(pbk, 0, plen, plb, pos), 4);
   }
 
-  @Override
-  public INode replace(String key, INode nNode) {
-    return null;
-  }
 
   @Override
-  public INode getChild(String name) {
+  public IMicroNode getLogicalChild(String name) {
     byte[] kb = name.getBytes(StandardCharsets.UTF_8), cpk, curBrKeys, checkBrKeys;
 
     ICNode curNode = this;
@@ -150,7 +150,7 @@ public class CNode4EF extends CNodeBase implements ICNode<Integer> {
     int[] brPos;
     while (idx < kb.length) {
       // check on partial key
-      if ((cpk = curNode.getPartialKey()) != null) {
+      if ((cpk = curNode.getParKey()) != null) {
         for (int i = 0; i < cpk.length && idx < kb.length; i++) {
           if (kb[idx] != cpk[i]) throw new RuntimeException("Key not exists: " + name);
           idx++;
@@ -160,7 +160,7 @@ public class CNode4EF extends CNodeBase implements ICNode<Integer> {
           if (curNode instanceof CLeaf) return ((CLeaf) curNode).ptr;
           // search key is exhausted on partial key, the branching key must be 0000
           channel = curNode.getBrKeyIdx(0);
-          curNode = curNode.getPtrByPos(channel);
+          curNode = curNode.getPtr(channel);
           break;
         }
       }
@@ -176,7 +176,7 @@ public class CNode4EF extends CNodeBase implements ICNode<Integer> {
         idx++;
       }
 
-      curNode = curNode.getPtrByPos(channel);
+      curNode = curNode.getPtr(channel);
       if (curNode instanceof CNode) {
         return ((CNode) curNode).getChild(kb, idx);
       }
@@ -184,9 +184,19 @@ public class CNode4EF extends CNodeBase implements ICNode<Integer> {
 
     // todo fixme IMPROVE
     if (!(curNode instanceof CLeaf)) {
-      curNode = curNode.getPtrByPos(curNode.getBrKeyIdx(0));
+      curNode = curNode.getPtr(curNode.getBrKeyIdx(0));
     }
     return ((CLeaf) curNode).ptr;
+  }
+
+  @Override
+  public long getValue() {
+    return 0;
+  }
+
+  @Override
+  public List<byte[]> getKeyBytes() {
+    return null;
   }
 
   @Override
@@ -195,16 +205,31 @@ public class CNode4EF extends CNodeBase implements ICNode<Integer> {
   }
 
   @Override
-  public List<String> getKeys() {
+  public IMicroNode getChild(byte[] key) {
     return null;
   }
 
   @Override
+  public void setChild(byte[] k, IMicroNode n) {
+
+  }
+
+  @Override
+  public void replace(byte[] key, IMicroNode node) {
+
+  }
+
+  // legacy
+  public List<String> getKeys() {
+    return null;
+  }
+
+  // legacy
   public byte[] getPartialKey() {
     return pks;
   }
 
-  @Override
+  // legacy
   public INode addChild(String name, INode child) {
     throw new UnsupportedOperationException();
   }

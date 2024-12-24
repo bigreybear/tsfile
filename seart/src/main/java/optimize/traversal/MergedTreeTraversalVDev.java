@@ -6,6 +6,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
 import optimize.TSTree;
+import optimize.TSTreeVDev;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.cdm.CLeaf;
 import optimize.nodes.cdm.ICNode;
@@ -60,7 +61,7 @@ public class MergedTreeTraversalVDev {
       Deque<byte[]> trace,
       IFNode cur,
       byte key,
-      TSTree.IQuadFunction<IFNode, Byte, IFNode, Deque<byte[]>> consumer) {
+      TSTreeVDev.IQuadFunction<IFNode, Byte, IFNode, Deque<byte[]>> consumer) {
     if (trace == null) trace = new ArrayDeque<>();
 
     if (cur instanceof LLeaf || cur.getFValue() instanceof LLeaf) {
@@ -97,7 +98,7 @@ public class MergedTreeTraversalVDev {
       Deque<byte[]> trace,
       IMicroNode cur,
       byte[] key,
-      TSTree.IQuadFunction<IMicroNode, byte[], IMicroNode, Deque<byte[]>> consumer) {
+      TSTreeVDev.IQuadFunction<IMicroNode, byte[], IMicroNode, Deque<byte[]>> consumer) {
     if (trace == null) trace = new ArrayDeque<>();
 
     List<byte[]> keys = cur.getKeyBytes();

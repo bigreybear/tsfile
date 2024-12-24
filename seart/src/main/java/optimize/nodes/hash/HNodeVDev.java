@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import optimize.nodes.IMicroNode;
-import optimize.nodes.ref.HashRefNode;
+import optimize.nodes.ref.HashRefNodeVDev;
 import optimize.util.ByteArray;
 
 /**
@@ -72,7 +72,7 @@ public class HNodeVDev implements IMicroNode {
       IMicroNode res = cur.children.get(new ByteArray(Arrays.copyOfRange(sk, i, sk.length)));
       if (res != null) {
 
-        if (res instanceof HashRefNode) {}
+        if (res instanceof HashRefNodeVDev) {}
 
         // Note(zx) sk exhausted, if the cur node has zero-len key, then that is the target
         //  meaning, there are some sibling prefixing the search key
