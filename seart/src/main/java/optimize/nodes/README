@@ -4,3 +4,21 @@ LNodes for logical Nodes
 SNodes for simple-merged nodes, indeed a LNode with a partial key
 FNodes for fdm nodes, indeed a single ART node (which could point to other type nodes)
 CNodes for cdn nodes, default for 4 diff positions, and related strings
+
+
+## Why We Need Micro-Leaf (CLeaf, FLeaf)
+
+In short, to represent the dot.
+Speculating the dot by the length of processed bytes is not sufficient.
+Consider following keys:
+"abcd.r1, abcdef.r2, abcdfg.r3"
+And now we are processing "abcd.r1" and that "abcd" has been processed.
+Coincidentally, there three keys are routed by same pointer, i.e.,
+in the node we are at now, we should do an "empty jump" to avoid verifying on "ef.r2" or "fg.r3".
+However, by calculating the processed bytes length, the next path "r1" has been passed in and
+it is impossible to differ whether we should do the empty jump.
+
+两种方案，
+1. 无论当前状态如何，都要尝试 empty jump，没有空间开销，但需要更多时间
+2. 设置一种 micro leaf 来代表分隔符，时间上简单了，但增加了很多空间
+方案 2 最终会被避免：当我们将 path 看作完整的字符串而不是分段字符串，其实 2 就被回避了。

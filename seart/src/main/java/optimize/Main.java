@@ -18,7 +18,7 @@ import optimize.traversal.MergedTreeTraversalForDepthVDev;
 import org.openjdk.jol.info.GraphLayout;
 import seart.metric.TreeCompare;
 
-public class MainVDev {
+public class Main {
 
   private static String getBuildTimestamp() {
     try {
@@ -34,8 +34,9 @@ public class MainVDev {
     return "Unknown";
   }
 
-  public static TSTreeVDev buildLogicalTree(MyDataSet ds) {
+  public static TSTreeVDev buildLogicalTree(MyDataSet ds, boolean twoLevel) {
     TSTreeVDev tree = new TSTreeVDev();
+    tree.setTwoLevelPath(twoLevel);
     try (PathTxtLoader loader = new PathTxtLoader(ds.rfile)) {
       List<String> paths = loader.getAllLines();
       for (String s : paths) {
@@ -48,15 +49,16 @@ public class MainVDev {
     return tree;
   }
 
-  public static void measureSpace(TSTreeVDev tree, PrefixMergeStrategy ms, MapType mt) {
+  public static long measureSpace(TSTreeVDev tree, PrefixMergeStrategy ms, MapType mt) {
     long size = GraphLayout.parseInstance(tree).totalSize();
     REPORT_CHANNEL
         .append(String.format("%s %s total Size: ", ms == null ? "no-merge" : ms.name(), mt.name()))
         .append(size)
         .append("\n");
+    return size;
   }
 
-  public static void estimateLatency(
+  public static long estimateLatency(
       TSTreeVDev tree, MyDataSet ds, PrefixMergeStrategy ms, MapType mt) {
     final List<String> qPaths = new ArrayList<>();
     try (PathTxtLoader loader = new PathTxtLoader(ds.qfile)) {
@@ -110,9 +112,10 @@ public class MainVDev {
         String.format(
             "%s %s query %d paths latency(ns): %s ns. \n",
             ms == null ? "no-merge" : ms.name(), mt.name(), qPaths.size(), dottedNanoSec(nano)));
+    return nano;
   }
 
-  private static String dottedNanoSec(long nano) {
+  public static String dottedNanoSec(long nano) {
     return String.format("%d.%06d", nano / 1_000_000, nano % 1_000_000);
   }
 
@@ -125,23 +128,24 @@ public class MainVDev {
 
   public static String[] defaultArgs() {
     String res = "";
-    // res += " -mt hash";
+    res += " -mt hash";
     // res += " -mt fdm";
-    res += " -mt cdm";
+    // res += " -mt cdm";
 
-    // res += " -ms full";
-    res += " -ms partial";
+    res += " -ms full";
+    // res += " -ms partial";
     // res += " -ms simple";
 
     // res += " -ds bw";
-    // res += " -ds xyzc";
+    res += " -ds xyzc";
     // res += " -ds sw";
-    res += " -ds zy";
+    // res += " -ds zy";
 
+    // res += " -twoLevel";
     res += " -merge";
     res += " -latency";
     // res += " -space";
-    res += " -depth";
+    // res += " -depth";
     // res += " -template";
 
     return res.split(" ");
@@ -152,6 +156,7 @@ public class MainVDev {
   public static MapType mapType;
 
   public static void main(String[] args) {
+    ExpResult result = new ExpResult();
     System.out.println(getBuildTimestamp());
     args = args.length == 0 ? defaultArgs() : args;
     List<String> argList = Arrays.stream(args).distinct().collect(Collectors.toList());
@@ -159,18 +164,23 @@ public class MainVDev {
     int argIdx = 0;
     if ((argIdx = argList.indexOf("-ms")) != -1) {
       mergeStrategy = PrefixMergeStrategy.valueOf(argList.get(argIdx + 1).toUpperCase());
+      result.pms = mergeStrategy;
     }
     if ((argIdx = argList.indexOf("-ds")) != -1) {
       dataSet = MyDataSet.valueOf(argList.get(argIdx + 1).toUpperCase());
+      result.mds = dataSet;
     }
     if ((argIdx = argList.indexOf("-mt")) != -1) {
       mapType = MapType.valueOf(argList.get(argIdx + 1).toUpperCase());
+      result.mapType = mapType;
       if (mapType.equals(MapType.FDM)) {
         mergeStrategy = PrefixMergeStrategy.FULL;
+        result.pms = mergeStrategy;
       }
     }
 
-    TSTreeVDev tree = buildLogicalTree(dataSet);
+    TSTreeVDev tree = buildLogicalTree(dataSet, argList.contains("-twoLevel"));
+    result.twoLevel = argList.contains("-twoLevel");
 
     if (argList.contains("-merge")) {
       MergePrefixVDev.mergePrefixes(tree, mapType, mergeStrategy);
@@ -200,11 +210,15 @@ public class MainVDev {
     }
 
     if (argList.contains("-space")) {
-      measureSpace(tree, mergeStrategy, mapType);
+      long r = measureSpace(tree, mergeStrategy, mapType);
+      result.space = r;
+      result.recordSpace();
     }
 
     if (argList.contains("-latency")) {
-      estimateLatency(tree, dataSet, mergeStrategy, mapType);
+      long l = estimateLatency(tree, dataSet, mergeStrategy, mapType);
+      result.latency = l;
+      result.recordLatency();
     }
     REPORT_CHANNEL.append("FINISH:" + String.join(" ", argList) + " with EF code: " + CDM_WITH_EF);
     REPORT_CHANNEL.append("\n\n");

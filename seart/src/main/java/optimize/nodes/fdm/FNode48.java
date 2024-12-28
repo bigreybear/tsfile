@@ -3,11 +3,10 @@ package optimize.nodes.fdm;
 import static optimize.nodes.fdm.vfull.SEARTNode.ubyte;
 
 import java.util.Arrays;
-import optimize.nodes.INode;
-import optimize.nodes.NodeWithPartialKey;
 
-public class FNode48 extends FNodeBase implements IFNode {
+public class FNode48 extends FNodeBase {
   public final byte[] keys = new byte[256];
+  protected IFNode[] ptrs;
   private int ptrNum = 0;
 
   public FNode48() {
@@ -41,5 +40,10 @@ public class FNode48 extends FNodeBase implements IFNode {
       if (curLen == ptrNum) break;
     }
     return res;
+  }
+
+  @Override
+  protected IFNode[] getPtrs() {
+    return ptrs;
   }
 }

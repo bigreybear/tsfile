@@ -1,47 +1,45 @@
 package optimize.nodes.cdm;
 
+import java.util.function.Function;
 import optimize.SearchStatus;
 import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
 import optimize.util.InfixGroup;
 
-import java.util.function.Function;
-
 public interface ICNode extends IMicroNode {
 
   int[] getBranchingPos();
 
-  void setContent(InfixGroup group,
-                  Function<byte[], IMicroNode> getLChild,
-                  PrefixMergeStrategy mergeStrategy,
-                  MapType mapType,
-                  int height,
-                  boolean EFCoded);
+  byte[][] getBranchingKeys();
+
+  void setContent(
+      InfixGroup group,
+      Function<byte[], IMicroNode> getLChild,
+      PrefixMergeStrategy mergeStrategy,
+      MapType mapType,
+      int height,
+      boolean EFCoded);
 
   ICNode getPtr(int pos);
 
   /**
    * Carry the search progress forward.
+   *
    * @param sts the context of the search progress
-   * @return the target ptr w.r.t. the current progress, or itself if the leaf
+   * @return
    */
-  ICNode getCDMChild(byte[] key, SearchStatus sts);
+  ICNode getCDMChild(final byte[] key, final SearchStatus sts);
 
   @Deprecated // todo remove it
-  default int getBrKeyIdx(int v) {throw new UnsupportedOperationException();}
+  default int getBrKeyIdx(int v) {
+    throw new UnsupportedOperationException();
+  }
 
   @Deprecated // todo remove it
-  default int getBrKeyIdx(byte[] v) {throw new UnsupportedOperationException();}
-
-  // get index of the target key
-  // default int getBrKeyIdx(int val) {
-  //   throw new UnsupportedOperationException();
-  // }
-  //
-  // default int getBrKeyIdx(byte[] ba) {
-  //   throw new UnsupportedOperationException();
-  // }
+  default int getBrKeyIdx(byte[] v) {
+    throw new UnsupportedOperationException();
+  }
 
   /**
    * Ignore the partial key
@@ -66,7 +64,7 @@ public interface ICNode extends IMicroNode {
    * @param src may have trailing 0s, so could be longer than pos[-1] or res
    * @param pos controlled len of the res
    */
-  static byte[] setBytesByPos(byte[] res, byte[] src, int[] pos) {
+  static void setBytesByPos(byte[] res, byte[] src, int[] pos) {
     if (res == null
         || src == null
         || pos == null
@@ -76,8 +74,6 @@ public interface ICNode extends IMicroNode {
     for (int i = 0; i < pos.length; i++) {
       res[pos[i]] = src[i];
     }
-
-    return res;
   }
 
   static int[] shiftIntArr(int[] b, int shift) {

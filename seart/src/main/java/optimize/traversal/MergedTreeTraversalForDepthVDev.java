@@ -78,15 +78,14 @@ public class MergedTreeTraversalForDepthVDev {
       return;
     }
 
-    byte[][] keys = cur.getKeysFromCDM();
+    byte[][] keys = cur.getBranchingKeys();
 
     for (byte[] k : keys) {
-      if (cur.getChildByBytes(k) instanceof LLeaf) continue;
+      if (cur.getChild(k) instanceof LLeaf) continue;
 
-      byte[] token =
-          concatenate(cur.getPartialKey() == null ? new byte[0] : cur.getPartialKey(), k);
+      byte[] token = concatenate(cur.getParKey() == null ? new byte[0] : cur.getParKey(), k);
       trace.addLast(token);
-      CDMTraverseForDepth(cur, trace, (ICNode) cur.getChildByBytes(k), depth + 1);
+      CDMTraverseForDepth(cur, trace, (ICNode) cur.getChild(k), depth + 1);
       trace.removeLast();
     }
   }
@@ -115,8 +114,7 @@ public class MergedTreeTraversalForDepthVDev {
     }
 
     for (byte k : keys) {
-      byte[] token =
-          concatenate(cur.getPartialKey() == null ? new byte[0] : cur.getPartialKey(), k);
+      byte[] token = concatenate(cur.getParKey() == null ? new byte[0] : cur.getParKey(), k);
       trace.addLast(token);
       FDMTraverseForDepth(cur, trace, (IFNode) cur.get(k), depth + 1);
       trace.removeLast();

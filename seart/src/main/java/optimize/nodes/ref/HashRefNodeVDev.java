@@ -5,29 +5,29 @@ import java.util.List;
 import java.util.stream.Collectors;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.ITSNode;
-import optimize.nodes.hash.HNodeVDev;
-import optimize.nodes.logic.LLeafVDev;
+import optimize.nodes.hash.HNodeV3;
+import optimize.nodes.logic.LLeaf;
 import optimize.util.ByteArray;
 
 public class HashRefNodeVDev implements IMicroNode {
   public byte[] pk;
-  public HNodeVDev template;
+  public HNodeV3 template;
   public long[] values;
 
-  public static IMicroNode buildHashTemplate(HNodeVDev node) {
+  public static IMicroNode buildHashTemplate(HNodeV3 node) {
     List<byte[]> sortedKeys =
         node.children.keySet().stream().map(ByteArray::getVal).collect(Collectors.toList());
     sortedKeys.sort(Arrays::compare);
-    LLeafVDev leaf;
-    HNodeVDev tr = new HNodeVDev(sortedKeys.size());
+    LLeaf leaf;
+    HNodeV3 tr = new HNodeV3(sortedKeys.size());
     for (int i = 0; i < sortedKeys.size(); i++) {
-      leaf = new LLeafVDev(i);
+      leaf = new LLeaf(i);
       tr.setChild(sortedKeys.get(i), leaf);
     }
     return tr;
   }
 
-  public void embedTemplate(HNodeVDev ori, HNodeVDev t) {
+  public void embedTemplate(HNodeV3 ori, HNodeV3 t) {
     pk = ori.getParKey();
     List<byte[]> keys = ori.getKeyBytes();
     values = new long[keys.size()];

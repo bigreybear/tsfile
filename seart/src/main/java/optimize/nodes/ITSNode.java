@@ -21,5 +21,7 @@ public interface ITSNode {
 
   long getValue();
 
-  default boolean isLogicalLeaf() {return false;}
+  default boolean isLogicalLeaf() {
+    return false;
+  }
 }

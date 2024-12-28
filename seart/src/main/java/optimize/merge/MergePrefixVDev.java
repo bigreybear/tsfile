@@ -1,7 +1,9 @@
 package optimize.merge;
 
-import static optimize.MainVDev.REPORT_CHANNEL;
-import static optimize.merge.HashPrefixMergeVDev.recNextMergeOnHashV2VDev;
+import static optimize.Main.CDM_WITH_EF;
+import static optimize.Main.REPORT_CHANNEL;
+import static optimize.merge.CDMPrefixMerge.recNextMergeOnCDM;
+import static optimize.merge.HashPrefixMerge.recNextMergeOnHashV2VDev;
 import static optimize.nodes.cdm.CNodeHelper.strings2ByteArrays;
 
 import java.nio.charset.StandardCharsets;
@@ -12,7 +14,9 @@ import java.util.function.Function;
 import optimize.TSTreeVDev;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.ITSNode;
-import optimize.nodes.hash.HNodeVLegacy;
+import optimize.nodes.cdm.ICNode;
+import optimize.nodes.fdm.IFNode;
+import optimize.nodes.hash.HNodeV3;
 import optimize.nodes.logic.LLeaf;
 
 public class MergePrefixVDev {
@@ -46,7 +50,7 @@ public class MergePrefixVDev {
 
   // public static void testRecNextMerge(String[] args) {
   public static void main(String[] args) {
-    HNodeVLegacy n1 = new HNodeVLegacy();
+    HNodeV3 n1 = new HNodeV3();
     byte[][] keys =
         new byte[][] {
           "aaabcg".getBytes(StandardCharsets.UTF_8),
@@ -57,7 +61,7 @@ public class MergePrefixVDev {
         };
 
     for (byte[] k : keys) {
-      n1.add(k, new LLeaf(k.length));
+      n1.setChild(k, new LLeaf(k.length));
     }
 
     // INode res = recNextMergeOnHash(n1, keys, 0, MergeStrategy.PARTIAL, MapType.HASH, 1);
@@ -74,48 +78,49 @@ public class MergePrefixVDev {
   public static void mergePrefixes(TSTreeVDev tree, MapType mt, PrefixMergeStrategy ms) {
     switch (mt) {
       case CDM:
-        // tree.traversePostOrderRec(
-        //     (par, key, cur, stk) -> {
-        //       List<String> keyList = null;
-        //       if ((keyList = cur.getStringKeys()) == null) {
-        //         return;
-        //       }
-        //       byte[][] keyBytes = strings2ByteArrays(keyList);
-        //
-        //       INode n2 =
-        //           recNextMergeOnCDM(
-        //               getLogicalChild(cur), keyBytes, 0, ms, mt, stk.size(), CDM_WITH_EF);
-        //
-        //       if (n2 != cur) {
-        //         if (par == null) {
-        //           tree.root = n2;
-        //         } else {
-        //           par.replace(key, n2);
-        //         }
-        //       }
-        //     });
-        // CDMPrefixMerge.reportMergeStatus();
+        tree.traversePostOrderRec(
+            (par, key, cur, stk) -> {
+              List<String> keyList = null;
+              if ((keyList = cur.getStringKeys()) == null) {
+                return;
+              }
+              byte[][] keyBytes = strings2ByteArrays(keyList);
+
+              ICNode n2 =
+                  (ICNode)
+                      recNextMergeOnCDM(
+                          getLogicalChildVDev(cur), keyBytes, 0, ms, mt, stk.size(), CDM_WITH_EF);
+
+              if (n2 != cur) {
+                if (par == null) {
+                  tree.root = n2;
+                } else {
+                  par.replace(key, n2);
+                }
+              }
+            });
+        CDMPrefixMerge.reportMergeStatus();
         return;
       case FDM:
-        // tree.traversePostOrderRec(
-        //     (par, key, cur, stk) -> {
-        //       List<String> keyList = null;
-        //       if ((keyList = cur.getKeys()) == null) {
-        //         return;
-        //       }
-        //       byte[][] keyBytes = strings2ByteArrays(keyList);
-        //
-        //       INode n2 = FDMPrefixMerge.recNextMergeOnFDM(cur, keyBytes, 0, ms, mt, stk.size());
-        //
-        //       if (n2 != cur) {
-        //         if (par == null) {
-        //           tree.root = n2;
-        //         } else {
-        //           par.replace(key, n2);
-        //         }
-        //       }
-        //     });
-        // reportMergeStatus(ms);
+        tree.traversePostOrderRec(
+            (par, key, cur, stk) -> {
+              List<String> keyList = null;
+              if ((keyList = cur.getStringKeys()) == null) {
+                return;
+              }
+              byte[][] keyBytes = strings2ByteArrays(keyList);
+
+              IFNode n2 = FDMPrefixMerge.recNextMergeOnFDM(cur, keyBytes, 0, ms, mt, stk.size());
+
+              if (n2 != cur) {
+                if (par == null) {
+                  tree.root = n2;
+                } else {
+                  par.replace(key, n2);
+                }
+              }
+            });
+        reportMergeStatus(ms);
         return;
       case HASH:
         tree.traversePostOrderRec(

@@ -2,6 +2,7 @@ package optimize.nodes.cdm;
 
 import static optimize.merge.CDMPrefixMerge.recNextMergeOnCDM;
 import static optimize.nodes.cdm.CNodeHelper.bytes2Int;
+import static optimize.nodes.cdm.CNodeHelper.complementaryBytePos;
 import static optimize.nodes.cdm.CNodeHelper.extractBytes;
 import static optimize.nodes.cdm.CNodeHelper.findIntervals;
 import static optimize.nodes.cdm.CNodeHelper.int2BytesFixedLen;
@@ -14,11 +15,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
+import optimize.SearchStatus;
 import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
-import optimize.util.ArrayHelper;
 import optimize.util.InfixGroup;
 
 public class CNode4 extends CNodeBase implements ICNode {
@@ -57,28 +57,66 @@ public class CNode4 extends CNodeBase implements ICNode {
       int height,
       boolean EFCoded) {
     List<byte[]> completeKeys;
-    int[] itvPos = findIntervals(group.getBranchingPos());
+    int[] itvPos;
     int[] sortedBrKeys = group.sortedBrKeys();
+
     setBranchingKeys(sortedBrKeys);
 
-    // curNode.setContent(Arrays.stream(sortedBrKeys).boxed().collect(Collectors.toList()));
     int validBrKeyLen = group.getBranchingPos().length;
     for (int i = 0; i < sortedBrKeys.length; i++) {
       // do not worry about prefixed key: handled by 0x00 key byte
       completeKeys = group.getCompleteKeys(int2BytesFixedLen(sortedBrKeys[i], validBrKeyLen));
 
+      // if only one key, needless to recur
+      if (NO_ORPHAN_CLEAF && completeKeys.size() == 1) {
+        int[] cmpPos =
+            complementaryBytePos(
+                group.getBranchingPos()[0], completeKeys.get(0).length, group.getBranchingPos());
+
+        setInterleavedBytes(i, extractBytes(completeKeys.get(0), cmpPos));
+        ptrs[i] = (ICNode) getLChild.apply(completeKeys.get(0));
+        continue;
+      }
+
+      itvPos = findIntervals(group.getBranchingPos());
       setInterleavedBytes(i, extractBytes(completeKeys.get(0), itvPos));
       setBranchingPtr(
           i,
-          (ICNode) recNextMergeOnCDM(
-              getLChild,
-              completeKeys.toArray(new byte[0][0]),
-              group.getBranchingPos()[group.getBranchingPos().length - 1] + 1,
-              mergeStrategy,
-              mapType,
-              height,
-              EFCoded));
+          (ICNode)
+              recNextMergeOnCDM(
+                  getLChild,
+                  completeKeys.toArray(new byte[0][0]),
+                  group.getBranchingPos()[group.getBranchingPos().length - 1] + 1,
+                  mergeStrategy,
+                  mapType,
+                  height,
+                  EFCoded));
     }
+  }
+
+  @Override
+  public ICNode getCDMChild(byte[] key, SearchStatus sts) {
+    if (sts.getCurLen() == key.length) {
+      int idx = getBrKeyIdx(0);
+      sts.setFinished(true);
+      return idx < 0 ? this : ptrs[idx];
+    }
+
+    int[] bps = getBranchingPos();
+    if (bps.length == 0) throw new RuntimeException();
+    int curLen = sts.getCurLen();
+    curLen = checkPartialKey(key, curLen, bps[0]);
+
+    // finish searching and is PREFIXED
+    if (curLen == key.length) {
+      sts.setFinished(true);
+      return ptrs[getBrKeyIdx(0)];
+    }
+
+    int channel = getBrKeyIdx(bytes2Int(extractBytes(key, bps)));
+    sts.setCurLen(checkKeyBytes(key, channel, bps));
+    // sts.setFinished(sts.getCurLen() == key.length);
+    return ptrs[channel];
   }
 
   public void setBranchingKeys(int[] collected) {
@@ -87,7 +125,7 @@ public class CNode4 extends CNodeBase implements ICNode {
     System.arraycopy(collected, 0, bks, 0, bks.length);
     // init interleaved bytes array
     int[] itvPos = findIntervals(int2BytesVarLen(posInt));
-    if (itvPos.length > 0) rmk = new byte[collected.length][];
+    if (itvPos.length > 0 || NO_ORPHAN_CLEAF) rmk = new byte[collected.length][];
   }
 
   public void setBranchingKeys(List<Integer> branchingBytes) {
@@ -103,23 +141,13 @@ public class CNode4 extends CNodeBase implements ICNode {
   // get index of the target key
   public int getBrKeyIdx(int val) {
     int idx = Arrays.binarySearch(bks, val);
-    if (idx == -1 || bks[idx] != val) throw new RuntimeException("Key not found.");
+    if (idx >= 0 && bks[idx] != val) throw new RuntimeException("Key not found.");
     return idx;
   }
 
   private void setBranchingPtr(int idx, ICNode ptr) {
     ptrs[idx] = ptr;
   }
-
-  private void setInterleavedBytes(int idx, byte[] ilb) {
-    ilb = removeTrailingZeros(ilb);
-    if (ilb.length > 0 && rmk == null)
-      throw new RuntimeException("Initial Interleave Bytes Error.");
-    if (ilb.length == 0) return;
-
-    rmk[idx] = ilb;
-  }
-
 
   @Override
   public byte[] assembleKeyAt(int pos) {
@@ -153,10 +181,11 @@ public class CNode4 extends CNodeBase implements ICNode {
 
   @Override
   public void setChild(byte[] k, IMicroNode n) {
-    ptrs[getBrKeyIdx(k)] = (ICNode) n;
+    ptrs[getBrKeyIdx(bytes2Int(k))] = (ICNode) n;
   }
 
-  public byte[][] getKeysFromCDM() {
+  @Override
+  public byte[][] getBranchingKeys() {
     byte[][] res = new byte[bks.length][];
     for (int i = 0; i < bks.length; i++) {
       res[i] = int2BytesFixedLen(bks[i], 4);
@@ -169,14 +198,7 @@ public class CNode4 extends CNodeBase implements ICNode {
     setChild(key, nNode);
   }
 
-
-  public int getBrKeyIdx(byte[] ba) {
-    return getBrKeyIdx(bytes2Int(ba));
-  }
-
-  /**
-   * Adapted from public INode getChild(String name) {
-   */
+  /** Adapted from public INode getChild(String name) { */
   @Override
   public IMicroNode getLogicalChild(String name) {
     byte[] kb = name.getBytes(StandardCharsets.UTF_8), cpk, curBrKeys, checkBrKeys;
@@ -243,8 +265,12 @@ public class CNode4 extends CNodeBase implements ICNode {
   }
 
   @Override
+  protected byte[] getBrKeyAt(int channel) {
+    return int2BytesVarLen(bks[channel]);
+  }
+
+  @Override
   public List<IMicroNode> getChildren() {
     return Arrays.asList(ptrs);
   }
-
 }

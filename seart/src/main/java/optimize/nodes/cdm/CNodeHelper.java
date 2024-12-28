@@ -164,6 +164,7 @@ public class CNodeHelper {
     int brBeforeKey = getValidBrPosNum(keyLen, brPos);
     int[] res = new int[keyLen - preLen - brBeforeKey];
     for (int i = 0, bpi = 0; i < res.length; ) {
+      // i+preLen+bpi indicates the position now iterated
       if (bpi < brBeforeKey && i + preLen + bpi == brPos[bpi]) {
         bpi++;
         continue;
@@ -253,6 +254,10 @@ public class CNodeHelper {
   // endregion
 
   public static void main(String[] args) {
+    System.out.println(Arrays.toString(complementaryBytePos(3, 10, new int[] {5, 6, 7})));
+  }
+
+  public static void main4(String[] args) {
     byte[] t = new byte[] {1, 2, 88, 4};
     int[] ti = new int[] {1, 3};
     System.out.println(Arrays.toString(findIntervals(ti)));

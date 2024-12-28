@@ -8,14 +8,14 @@ import optimize.nodes.ITSNode;
 
 /**
  * L for Logical Nodes <br>
- * Both {@linkplain LNodeVDev} and {@linkplain LLeafVDev} are adaption for better encapsulation.
+ * Both {@linkplain LNodeV3} and {@linkplain LLeaf} are adaption for better encapsulation.
  */
-public class LNodeVDev implements ITSNode {
+public class LNodeV3 implements ITSNode {
 
   // todo shall be private
   private Map<String, ITSNode> children;
 
-  public LNodeVDev() {}
+  public LNodeV3() {}
 
   private boolean hasChild(String name) {
     return children != null && children.containsKey(name);

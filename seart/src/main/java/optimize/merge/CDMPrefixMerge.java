@@ -1,34 +1,23 @@
 package optimize.merge;
 
-import static optimize.MainVDev.REPORT_CHANNEL;
+import static optimize.Main.REPORT_CHANNEL;
 import static optimize.MyDataSet.BW;
-import static optimize.merge.MergePrefixVDev.getLogicalChildVDev;
 import static optimize.merge.MergePrefixVDev.partialNotMerge;
 import static optimize.merge.MergePrefixVDev.partialToMerge;
-import static optimize.nodes.cdm.CNodeHelper.extractBytes;
-import static optimize.nodes.cdm.CNodeHelper.findIntervals;
-import static optimize.nodes.cdm.CNodeHelper.int2BytesFixedLen;
 import static optimize.util.InfixGroup.groupByInfix;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Function;
-
-import optimize.MainVDev;
+import optimize.Main;
 import optimize.TSTreeVDev;
 import optimize.nodes.IMicroNode;
-import optimize.nodes.INode;
-import optimize.nodes.ITSNode;
 import optimize.nodes.cdm.CLeaf;
 import optimize.nodes.cdm.CNode;
 import optimize.nodes.cdm.CNode4;
 import optimize.nodes.cdm.CNode4EF;
-import optimize.nodes.cdm.CNodeHelper;
 import optimize.nodes.cdm.ICNode;
-import optimize.nodes.logic.LLeafVDev;
 import optimize.util.InfixGroup;
-import org.openjdk.jol.info.GraphLayout;
 
 public class CDMPrefixMerge {
 
@@ -84,33 +73,13 @@ public class CDMPrefixMerge {
     if (useNode4) {
       List<byte[]> completeKeys;
       evaTrueTime++;
-      // CNode4EF curNode = new CNode4EF(group.getBranchingPos());
       ICNode curNode =
           withEFCode ? new CNode4EF(group.getBranchingPos()) : new CNode4(group.getBranchingPos());
       if (preLen < group.getBranchingPos()[0]) {
         curNode.setParKey(Arrays.copyOfRange(keys[0], preLen, group.getBranchingPos()[0]));
       }
 
-      // int[] itvPos = findIntervals(group.getBranchingPos());
-      // int[] sortedBrKeys = group.sortedBrKeys();
       curNode.setContent(group, getLChild, ms, mt, height, withEFCode);
-      // int validBrKeyLen = group.getBranchingPos().length;
-      // for (int i = 0; i < sortedBrKeys.length; i++) {
-      //   // do not worry about prefixed key: handled by 0x00 key byte
-      //   completeKeys = group.getCompleteKeys(int2BytesFixedLen(sortedBrKeys[i], validBrKeyLen));
-      //
-      //   curNode.setInterleavedBytes(i, extractBytes(completeKeys.get(0), itvPos));
-      //   curNode.setBranchingPtr(
-      //       i,
-      //       recNextMergeOnCDM(
-      //           getLChild,
-      //           completeKeys.toArray(new byte[0][0]),
-      //           group.getBranchingPos()[group.getBranchingPos().length - 1] + 1,
-      //           ms,
-      //           mt,
-      //           height,
-      //           withEFCode));
-      // }
       return curNode;
     } else {
       InfixGroup group1;
@@ -121,30 +90,8 @@ public class CDMPrefixMerge {
       if (preLen < group1.getBranchingPos()[0]) {
         curNode.setParKey(Arrays.copyOfRange(keys[0], preLen, group1.getBranchingPos()[0]));
       }
-      curNode.setContent(group1, getLChild, ms, mt, height, withEFCode);
 
-      // byte[][] sortedBrKeys = group1.sortedBrKeyBytes();
-      // curNode.setBranchingKeysExtended(sortedBrKeys);
-      // fixme for CNode, not interleaved but complementary, because no succeeding nodes
-      // int [] itvPos = findIntervals(group.getBranchingPos()), curItvPos;
-      // int prolongItvPos = 0;
-      // byte[] sk, ck;
-      // List<byte[]> ckl;
-      // for (int i = 0; i < sortedBrKeys.length; i++) {
-      //   sk = sortedBrKeys[i];
-      //   ckl = group1.getInfixMap().get(new ByteArray(sk));
-      //   if (ckl.size() > 1) {
-      //     throw new UnsupportedOperationException(
-      //         "Too long key: " + new String(ckl.get(0), StandardCharsets.UTF_8));
-      //   }
-      //   ck = ckl.get(0);
-      //
-      //   int[] cmpPos =
-      //       CNodeHelper.complementaryBytePos(
-      //           group1.getBranchingPos()[0], ck.length, group1.getBranchingPos());
-      //   curNode.setInterleavedBytes(i, extractBytes(ck, cmpPos));
-      //   curNode.setBranchingPtr(i, getLChild.apply(ck));
-      // }
+      curNode.setContent(group1, getLChild, ms, mt, height, withEFCode);
       return curNode;
     }
   }
@@ -174,7 +121,7 @@ public class CDMPrefixMerge {
   public static void main(String[] args) {
     // Main.main("-mt cdm -ms partial -ds bw -merge -latency".split(" "));
 
-    TSTreeVDev tree = MainVDev.buildLogicalTree(BW);
+    TSTreeVDev tree = Main.buildLogicalTree(BW, true);
     // root.bw.baoshan.441233M03.`01`.速度.I.hz
     // ITSNode t = tree.root
     //     .getLogicalChild("bw")
@@ -182,9 +129,11 @@ public class CDMPrefixMerge {
     //     .getLogicalChild("441233M03");
     // byte[][] keys = CNodeHelper.strings2ByteArrays(t.getStringKeys());
     // ITSNode resEF =
-    //     recNextMergeOnCDM(getLogicalChildVDev(t), keys, 0, PrefixMergeStrategy.PARTIAL, null, 2, true);
+    //     recNextMergeOnCDM(getLogicalChildVDev(t), keys, 0, PrefixMergeStrategy.PARTIAL, null, 2,
+    // true);
     // ITSNode res =
-    //     recNextMergeOnCDM(getLogicalChildVDev(t), keys, 0, PrefixMergeStrategy.PARTIAL, null, 2, false);
+    //     recNextMergeOnCDM(getLogicalChildVDev(t), keys, 0, PrefixMergeStrategy.PARTIAL, null, 2,
+    // false);
     //
     // LLeafVDev lt = (LLeafVDev) t;
     //

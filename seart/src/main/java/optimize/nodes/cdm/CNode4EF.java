@@ -12,6 +12,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import optimize.SearchStatus;
 import optimize.eliasfano.EliasFano;
 import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
@@ -51,8 +52,36 @@ public class CNode4EF extends CNodeBase implements ICNode {
   }
 
   @Override
-  public void setContent(InfixGroup group, Function<byte[], IMicroNode> getLChild, PrefixMergeStrategy mergeStrategy, MapType mapType, int height, boolean EFCoded) {
+  public void setContent(
+      InfixGroup group,
+      Function<byte[], IMicroNode> getLChild,
+      PrefixMergeStrategy mergeStrategy,
+      MapType mapType,
+      int height,
+      boolean EFCoded) {
+    throw new UnsupportedOperationException();
+  }
 
+  @Override
+  public ICNode getCDMChild(byte[] key, SearchStatus sts) {
+    int[] bps = getBranchingPos();
+    if (bps.length == 0) throw new RuntimeException();
+    byte[] pk = getParKey();
+    int curLen = sts.getCurLen();
+    curLen = checkPartialKey(key, curLen, bps[0]);
+
+    // finish searching and is PREFIXED
+    if (curLen == key.length) {
+      sts.setFinished(true);
+      return ptrs[getBrKeyIdx(EMPTY_BYTE_ARR)];
+    }
+
+    byte[] tar = extractBytes(key, bps);
+    int channel = getBrKeyIdx(bytes2Int(tar));
+
+    sts.setCurLen(checkKeyBytes(key, channel, bps));
+    sts.setFinished(sts.getCurLen() == key.length);
+    return ptrs[channel];
   }
 
   public void setBranchingKeys(Integer[] branchingBytes) {
@@ -85,6 +114,7 @@ public class CNode4EF extends CNodeBase implements ICNode {
     nbk = nlen == 0 ? null : EliasFano.compress(arr, 0, nlen);
   }
 
+  @Override
   // get index of the target key
   public int getBrKeyIdx(int val) {
     if (val < 0) {
@@ -128,7 +158,8 @@ public class CNode4EF extends CNodeBase implements ICNode {
     return asmkey;
   }
 
-  private byte[] getBrKeyAt(int pos) {
+  @Override
+  protected byte[] getBrKeyAt(int pos) {
     if (pos < nlen) {
       int i = EliasFano.get(nbk, 0, nlen, nlb, pos);
       i |= 0x80000000;
@@ -138,7 +169,6 @@ public class CNode4EF extends CNodeBase implements ICNode {
     pos -= nlen;
     return int2BytesFixedLen(EliasFano.get(pbk, 0, plen, plb, pos), 4);
   }
-
 
   @Override
   public IMicroNode getLogicalChild(String name) {
@@ -191,12 +221,12 @@ public class CNode4EF extends CNodeBase implements ICNode {
 
   @Override
   public long getValue() {
-    return 0;
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public List<byte[]> getKeyBytes() {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -206,31 +236,21 @@ public class CNode4EF extends CNodeBase implements ICNode {
 
   @Override
   public IMicroNode getChild(byte[] key) {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public void setChild(byte[] k, IMicroNode n) {
-
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public void replace(byte[] key, IMicroNode node) {
-
+    throw new UnsupportedOperationException();
   }
 
-  // legacy
-  public List<String> getKeys() {
-    return null;
-  }
-
-  // legacy
-  public byte[] getPartialKey() {
-    return pks;
-  }
-
-  // legacy
-  public INode addChild(String name, INode child) {
+  @Override
+  public byte[][] getBranchingKeys() {
     throw new UnsupportedOperationException();
   }
 }

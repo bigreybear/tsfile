@@ -7,7 +7,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-import optimize.nodes.INode;
 import optimize.nodes.ITSNode;
 import optimize.nodes.cdm.CNodeHelper;
 import optimize.nodes.fdm.FLeaf;
@@ -32,11 +31,16 @@ public class FDMPrefixMerge {
     }
 
     if (keys.length == 1) {
-      FLeaf leaf = new FLeaf();
+      // FLeaf leaf = new FLeaf();
       // downcast must-be: either LLeaf or processed node.
-      leaf.setValue((IFNode) oriNode.getLogicalChild(new String(keys[0], StandardCharsets.UTF_8)));
-      leaf.setParKey(Arrays.copyOfRange(keys[0], preLen, keys[0].length));
-      return leaf;
+      // leaf.setValue((IFNode) oriNode.getLogicalChild(new String(keys[0],
+      // StandardCharsets.UTF_8)));
+      // leaf.setParKey(Arrays.copyOfRange(keys[0], preLen, keys[0].length));
+      // to eliminate trivial leaf
+      // return leaf.getParKey() == null ? leaf.getFValue() : leaf;
+      return FLeaf.constructFLeaf(
+          (IFNode) oriNode.getLogicalChild(new String(keys[0], StandardCharsets.UTF_8)),
+          Arrays.copyOfRange(keys[0], preLen, keys[0].length));
     }
 
     // get the ptr of 0
@@ -53,10 +57,13 @@ public class FDMPrefixMerge {
     List<CNodeHelper.ValuedPrefixArray> groupedPrefix = groupPrefixes(keys, len + preLen, 1);
     IFNode repNode = generateFNode(groupedPrefix.size() + (prefixedPtr != null ? 1 : 0));
     if (prefixedPtr != null) {
-      FLeaf leaf = new FLeaf();
-      leaf.value = prefixedPtr;
-      leaf.setParKey(Arrays.copyOfRange(a.get(0), preLen + len, a.get(0).length));
-      repNode.add((byte) 0, leaf);
+      // FLeaf leaf = new FLeaf();
+      // leaf.value = prefixedPtr;
+      // leaf.setParKey(Arrays.copyOfRange(a.get(0), preLen + len, a.get(0).length));
+      repNode.add(
+          (byte) 0,
+          FLeaf.constructFLeaf(
+              prefixedPtr, Arrays.copyOfRange(a.get(0), preLen + len, a.get(0).length)));
     }
     if (len != 0) {
       repNode.setParKey(Arrays.copyOfRange(keys[0], preLen, preLen + len));

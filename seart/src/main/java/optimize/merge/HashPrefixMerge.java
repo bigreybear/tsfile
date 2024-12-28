@@ -1,19 +1,18 @@
 package optimize.merge;
 
-import static optimize.merge.MergePrefix.partialNotMerge;
-import static optimize.merge.MergePrefix.partialToMerge;
+import static optimize.merge.MergePrefixVDev.partialNotMerge;
+import static optimize.merge.MergePrefixVDev.partialToMerge;
 import static optimize.nodes.cdm.CNodeHelper.findLCPLength;
 import static optimize.nodes.cdm.CNodeHelper.groupPrefixes;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
-import java.util.stream.Collectors;
-import optimize.nodes.INode;
+import optimize.nodes.IMicroNode;
 import optimize.nodes.cdm.CNodeHelper;
-import optimize.nodes.hash.HNodeVLegacy;
+import optimize.nodes.hash.HNodeV3;
 
-@Deprecated
 public class HashPrefixMerge {
 
   /**
@@ -21,8 +20,8 @@ public class HashPrefixMerge {
    *
    * @param logicalChild wrapping oriNode for its getChild function
    */
-  public static INode recNextMergeOnHashV2(
-      Function<byte[], INode> logicalChild,
+  public static IMicroNode recNextMergeOnHashV2VDev(
+      Function<byte[], IMicroNode> logicalChild,
       byte[][] keys,
       int preLen,
       PrefixMergeStrategy ms,
@@ -30,31 +29,35 @@ public class HashPrefixMerge {
       int height) {
 
     final int len = findLCPLength(keys, preLen);
+    final IMicroNode repNode = initHashNodeWithPartialKey(keys[0], preLen, len);
 
+    // nothing shared, just transform the nodes
     if (len == 0 && ms.equals(PrefixMergeStrategy.SIMPLE)) {
-      final HNodeVLegacy repNode = initHashNodeWithPartialKey(keys[0], preLen, len);
       for (byte[] key : keys) {
-        repNode.add(key, logicalChild.apply(key));
+        repNode.setChild(key, logicalChild.apply(key));
       }
       return repNode;
     }
 
-    final HNodeVLegacy repNode = initHashNodeWithPartialKey(keys[0], preLen, len);
-    List<byte[]> prefixedKeys =
-        Arrays.stream(keys).filter(e -> e.length == len + preLen).collect(Collectors.toList());
-    if (!prefixedKeys.isEmpty()) {
-      repNode.add(new byte[0], logicalChild.apply(prefixedKeys.get(0)));
+    List<byte[]> longerKeys = new ArrayList<>();
+    for (byte[] k : keys) {
+      if (k.length == len + preLen) {
+        if (repNode.getChild(k) != null) throw new RuntimeException("Duplicate Keys.");
+        repNode.setChild(new byte[0], logicalChild.apply(k));
+      } else if (k.length > len + preLen) {
+        longerKeys.add(k);
+      } else {
+        throw new RuntimeException("Shall be no shorter keys.");
+      }
     }
 
     if (ms.equals(PrefixMergeStrategy.SIMPLE)) {
       // all keys longer than prefix will be added AS IS
-      List<byte[]> longerKeys =
-          Arrays.stream(keys).filter(e -> e.length > len + preLen).collect(Collectors.toList());
       for (byte[] nk : longerKeys) {
-        repNode.add(Arrays.copyOfRange(nk, preLen + len, nk.length), logicalChild.apply(nk));
+        repNode.setChild(Arrays.copyOfRange(nk, preLen + len, nk.length), logicalChild.apply(nk));
       }
-      MergePrefix.occ.incrementAndGet();
-      MergePrefix.ttlLen.addAndGet(longerKeys.size() * len);
+      MergePrefixVDev.occ.incrementAndGet();
+      MergePrefixVDev.ttlLen.addAndGet(longerKeys.size() * len);
       return repNode;
     }
 
@@ -79,25 +82,25 @@ public class HashPrefixMerge {
       // deliver the decision
       if (toMergeAndExpand) {
         // when to execute: Full merge or evaluated worthy, and shared by more than ONE key
-        MergePrefix.occ.incrementAndGet();
-        MergePrefix.ttlLen.addAndGet(vpa.prd);
-        final INode recNode =
-            recNextMergeOnHashV2(logicalChild, vpa.bytes, len + preLen + 1, ms, mt, height);
+        MergePrefixVDev.occ.incrementAndGet();
+        MergePrefixVDev.ttlLen.addAndGet(vpa.prd);
+        final IMicroNode recNode =
+            recNextMergeOnHashV2VDev(logicalChild, vpa.bytes, len + preLen + 1, ms, mt, height);
         // add the node generated in rec to the current node
-        repNode.add(Arrays.copyOfRange(vpa.bytes[0], len + preLen, len + preLen + 1), recNode);
+        repNode.setChild(Arrays.copyOfRange(vpa.bytes[0], len + preLen, len + preLen + 1), recNode);
       } else {
         // go-through to the no-branching child
         for (byte[] k : vpa.bytes) {
-          repNode.add(Arrays.copyOfRange(k, preLen + len, k.length), logicalChild.apply(k));
+          repNode.setChild(Arrays.copyOfRange(k, preLen + len, k.length), logicalChild.apply(k));
         }
       }
     }
     return repNode;
   }
 
-  public static HNodeVLegacy initHashNodeWithPartialKey(byte[] key, int preLen, int len) {
-    HNodeVLegacy res = new HNodeVLegacy();
-    res.pk = len == 0 ? null : Arrays.copyOfRange(key, preLen, len + preLen);
+  public static IMicroNode initHashNodeWithPartialKey(byte[] key, int preLen, int len) {
+    IMicroNode res = new HNodeV3(1);
+    res.setParKey(len == 0 ? null : Arrays.copyOfRange(key, preLen, len + preLen));
     return res;
   }
 }

@@ -1,21 +1,21 @@
 package optimize.nodes.fdm;
 
+import static optimize.nodes.fdm.vfull.SEARTNode.ubyte;
+
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
+import optimize.SearchStatus;
 import optimize.nodes.IMicroNode;
-import optimize.nodes.INode;
 import optimize.nodes.ITSNode;
-
-import static optimize.nodes.fdm.vfull.SEARTNode.ubyte;
 
 public interface IFNode extends IMicroNode {
 
+  IFNode getFDMChild(final byte[] key, final SearchStatus sts);
+
   /** Copy and modify from {@linkplain Arrays#binarySearch}. */
-  static int binarySearchUnsignedByteArray(
-      byte[] a, int fromIndex, int toIndex, byte key) {
+  static int binarySearchUnsignedByteArray(byte[] a, int fromIndex, int toIndex, byte key) {
     int low = fromIndex;
     int high = toIndex - 1;
     int sk = ubyte(key);
@@ -46,7 +46,6 @@ public interface IFNode extends IMicroNode {
 
   byte[] getKeysFromFDM();
 
-
   default List<byte[]> getKeyBytes() {
     byte[] r = getKeysFromFDM();
     List<byte[]> res = new ArrayList<>();
@@ -67,7 +66,9 @@ public interface IFNode extends IMicroNode {
     throw new UnsupportedOperationException();
   }
 
-  default IFNode getFValue() {throw new UnsupportedOperationException();}
+  default IFNode getFValue() {
+    throw new UnsupportedOperationException();
+  }
 
   @Override
   default ITSNode getLogicalChild(String name) {
@@ -84,7 +85,7 @@ public interface IFNode extends IMicroNode {
       }
     }
 
-    IFNode res = cur.get((byte)0);
+    IFNode res = cur.get((byte) 0);
     return res == null ? cur : res;
     // return cur instanceof FLeaf ? cur.getFValue() : ((IFNode) cur.get((byte) 0)).getFValue();
   }

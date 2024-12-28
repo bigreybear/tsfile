@@ -7,7 +7,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import optimize.SearchStatus;
 import optimize.nodes.IMicroNode;
+import optimize.nodes.NodeWithPartialKey;
 import optimize.nodes.ref.HashRefNodeVDev;
 import optimize.util.ByteArray;
 
@@ -17,19 +19,15 @@ import optimize.util.ByteArray;
  * <p>About why it doesn't need a HLeaf: the key in each hash includes the trailing part, while CDM
  * and FDM needs a leaf holding the partial key after the split.
  */
-public class HNodeVDev implements IMicroNode {
+public class HNodeV3 extends NodeWithPartialKey implements IMicroNode {
   // stored strings are iso encoded
-  public byte[] pk;
   public Map<ByteArray, IMicroNode> children;
+  protected static ByteArray EMPTY_BA = new ByteArray(new byte[0]);
 
-  public HNodeVDev() {}
+  public HNodeV3() {}
 
-  public HNodeVDev(int c) {
+  public HNodeV3(int c) {
     children = new HashMap<>(c, 1.0f);
-  }
-
-  public HNodeVDev(String pk) {
-    this.pk = pk.getBytes(StandardCharsets.UTF_8);
   }
 
   @Override
@@ -44,14 +42,14 @@ public class HNodeVDev implements IMicroNode {
 
   @Override
   public IMicroNode getChild(byte[] k) {
-    return children.get(new ByteArray(k));
+    return (k == null || k.length == 0) ? children.get(EMPTY_BA) : children.get(new ByteArray(k));
   }
 
   @Override
   public IMicroNode getLogicalChild(String name) {
     // equivalent to that of LNode
     final byte[] sk = name.getBytes(StandardCharsets.UTF_8);
-    HNodeVDev cur = this;
+    HNodeV3 cur = this;
 
     for (int i = 0; i < sk.length; i++) {
       if (cur.pk != null) {
@@ -76,10 +74,10 @@ public class HNodeVDev implements IMicroNode {
 
         // Note(zx) sk exhausted, if the cur node has zero-len key, then that is the target
         //  meaning, there are some sibling prefixing the search key
-        if (res instanceof HNodeVDev) {
+        if (res instanceof HNodeV3) {
           if (res.getParKey() == null
-              && ((HNodeVDev) res).children.containsKey(new ByteArray(new byte[0]))) {
-            return ((HNodeVDev) res).children.get(new ByteArray(new byte[0]));
+              && ((HNodeV3) res).children.containsKey(new ByteArray(new byte[0]))) {
+            return ((HNodeV3) res).children.get(new ByteArray(new byte[0]));
           }
         }
         return res;
@@ -87,7 +85,7 @@ public class HNodeVDev implements IMicroNode {
 
       // no remaining, use first byte
       res = cur.children.get(new ByteArray(Arrays.copyOfRange(sk, i, i + 1)));
-      cur = (HNodeVDev) res;
+      cur = (HNodeV3) res;
     }
 
     throw new RuntimeException("No key found.");
@@ -96,16 +94,6 @@ public class HNodeVDev implements IMicroNode {
   @Override
   public List<IMicroNode> getChildren() {
     return new ArrayList<>(children.values());
-  }
-
-  @Override
-  public byte[] getParKey() {
-    return pk;
-  }
-
-  @Override
-  public void setParKey(byte[] _pk) {
-    pk = _pk;
   }
 
   @Override
@@ -118,5 +106,36 @@ public class HNodeVDev implements IMicroNode {
     if (children == null) children = new HashMap<>(1, 1.0f);
 
     children.put(new ByteArray(key), uc);
+  }
+
+  public IMicroNode getHashChild(final byte[] key, final SearchStatus sts) {
+    if (sts.getCurLen() == key.length) {
+      sts.setFinished(true);
+      IMicroNode res = getChild(null);
+      return res == null ? this : res;
+    }
+
+    int curLen = pk == null ? sts.getCurLen() : checkPartialKey(key, sts.getCurLen(), -1);
+    if (curLen == key.length) {
+      sts.setFinished(true);
+      return getChild(null);
+    }
+
+    // try the remaining bytes then the first byte
+    IMicroNode res = getChild(Arrays.copyOfRange(key, curLen, key.length));
+    if (res != null) {
+      sts.setFinished(true); // fixme should set or not?
+      if (res.getParKey() != null) {
+        return res;
+      }
+
+      // sts.setCurLen(key.length);
+      IMicroNode res2 = res.getChild(null);
+      return res2 == null ? res : res2;
+    }
+
+    res = getChild(Arrays.copyOfRange(key, curLen, curLen + 1));
+    sts.setCurLen(curLen + 1);
+    return res;
   }
 }

@@ -5,7 +5,6 @@ import static optimize.util.ByteArray.concatenate;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
-import optimize.TSTree;
 import optimize.TSTreeVDev;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.cdm.CLeaf;
@@ -21,7 +20,7 @@ public class MergedTreeTraversalVDev {
       Deque<byte[]> trace,
       ICNode cur,
       byte[] key,
-      TSTree.IQuadFunction<ICNode, byte[], ICNode, Deque<byte[]>> consumer) {
+      TSTreeVDev.IQuadFunction<ICNode, byte[], ICNode, Deque<byte[]>> consumer) {
     if (trace == null) trace = new ArrayDeque<>();
 
     if (cur instanceof LLeaf) {
@@ -40,16 +39,15 @@ public class MergedTreeTraversalVDev {
       return;
     }
 
-    byte[][] keys = cur.getKeysFromCDM();
+    byte[][] keys = cur.getBranchingKeys();
     if (keys == null || keys.length == 0) return;
 
     for (byte[] k : keys) {
-      if (cur.getChildByBytes(k) instanceof LLeaf) continue;
+      if (cur.getChild(k) instanceof LLeaf) continue;
 
-      byte[] token =
-          concatenate(cur.getPartialKey() == null ? new byte[0] : cur.getPartialKey(), k);
+      byte[] token = concatenate(cur.getParKey() == null ? new byte[0] : cur.getParKey(), k);
       trace.addLast(token);
-      CDMMergeTraverse(cur, trace, (ICNode) cur.getChildByBytes(k), k, consumer);
+      CDMMergeTraverse(cur, trace, (ICNode) cur.getChild(k), k, consumer);
       trace.removeLast();
     }
 
@@ -83,8 +81,7 @@ public class MergedTreeTraversalVDev {
     }
 
     for (byte k : keys) {
-      byte[] token =
-          concatenate(cur.getParKey() == null ? new byte[0] : cur.getParKey(), k);
+      byte[] token = concatenate(cur.getParKey() == null ? new byte[0] : cur.getParKey(), k);
       trace.addLast(token);
       FDMMergeTraverse(cur, trace, (IFNode) cur.get(k), k, consumer);
       trace.removeLast();

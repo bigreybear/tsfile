@@ -2,6 +2,7 @@ package optimize.nodes;
 
 import java.util.ArrayList;
 import java.util.List;
+import optimize.SearchStatus;
 
 public interface IMicroNode extends ITSNode {
 
@@ -14,6 +15,10 @@ public interface IMicroNode extends ITSNode {
   void setChild(byte[] k, IMicroNode n);
 
   void replace(byte[] key, IMicroNode node);
+
+  default IMicroNode getHashChild(final byte[] key, final SearchStatus sts) {
+    throw new UnsupportedOperationException();
+  }
 
   @Override
   default List<String> getStringKeys() {

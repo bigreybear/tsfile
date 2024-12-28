@@ -3,13 +3,17 @@ package optimize.nodes.ref;
 import static optimize.nodes.cdm.CNodeHelper.extractBytes;
 import static optimize.util.ArrayHelper.removeTrailingZeros;
 
-import java.util.Arrays;
 import java.util.List;
-import optimize.nodes.INode;
+import java.util.function.Function;
+import optimize.SearchStatus;
+import optimize.merge.MapType;
+import optimize.merge.PrefixMergeStrategy;
+import optimize.nodes.IMicroNode;
+import optimize.nodes.ITSNode;
 import optimize.nodes.NodeWithPartialKey;
 import optimize.nodes.cdm.CNode;
 import optimize.nodes.cdm.ICNode;
-import optimize.nodes.logic.LLeaf;
+import optimize.util.InfixGroup;
 
 public class CDMRefNodeVDev extends NodeWithPartialKey implements ICNode {
   public int[] pos;
@@ -18,33 +22,16 @@ public class CDMRefNodeVDev extends NodeWithPartialKey implements ICNode {
 
   public void embedTemplate(ICNode ori, CNode t) {
     pk = ori.getParKey();
-    byte[][] keys = ori.getKeysFromCDM();
+    byte[][] keys = ori.getBranchingKeys();
     values = new long[keys.length];
     template = t;
     pos = ori.getBranchingPos();
     for (byte[] k : keys) {
-      long ov = ori.getChildByBytes(k).getValue();
-      int order = (int) t.getChildByBytes(k).getValue();
-      values[order] = ov;
+      // fixme finish this
+      // long ov = ori.getChildByBytes(k).getValue();
+      // int order = (int) t.getChildByBytes(k).getValue();
+      // values[order] = ov;
     }
-  }
-
-  public static INode buildCDMTemplate(ICNode node) {
-    byte[][] keys = node.getKeysFromCDM();
-    int[] fakePos = new int[keys[0].length];
-
-    // why to sort: CNode4 is sorted by int and could be different from byte[]
-    Arrays.sort(keys, Arrays::compare);
-    LLeaf leaf;
-    CNode tr = new CNode(fakePos);
-    tr.setBranchingKeysExtended(keys);
-
-    for (int i = 0; i < keys.length; i++) {
-      leaf = new LLeaf(i);
-      leaf.pk = node.getChildByBytes(keys[i]).getParKey();
-      tr.ptrs[i] = leaf;
-    }
-    return tr;
   }
 
   public long getValFrom(byte k) {
@@ -57,7 +44,7 @@ public class CDMRefNodeVDev extends NodeWithPartialKey implements ICNode {
     // return values[getChildByBytes(k)]
     byte[] tar = extractBytes(k, pos);
     tar = removeTrailingZeros(tar);
-    int vid = (int) template.getChildByBytes(tar).getValue();
+    int vid = (int) template.getChild(tar).getValue();
     return values[vid];
 
     //
@@ -73,38 +60,68 @@ public class CDMRefNodeVDev extends NodeWithPartialKey implements ICNode {
   }
 
   @Override
+  public ITSNode getLogicalChild(String pathSeg) {
+    return null;
+  }
+
+  @Override
   public long getValue() {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public INode getChild(String name) {
+  public List<byte[]> getKeyBytes() {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public List<INode> getChildren() {
+  public List<IMicroNode> getChildren() {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public List<String> getKeys() {
+  public IMicroNode getChild(byte[] key) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public byte[] getParKey() {
-    return pk;
-  }
-
-  @Override
-  public INode addChild(String name, INode child) {
+  public void setChild(byte[] k, IMicroNode n) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public INode replace(String key, INode nNode) {
+  public void replace(byte[] key, IMicroNode node) {
     throw new UnsupportedOperationException();
   }
-  
+
+  @Override
+  public int[] getBranchingPos() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public byte[][] getBranchingKeys() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void setContent(
+      InfixGroup group,
+      Function<byte[], IMicroNode> getLChild,
+      PrefixMergeStrategy mergeStrategy,
+      MapType mapType,
+      int height,
+      boolean EFCoded) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public ICNode getPtr(int pos) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public ICNode getCDMChild(byte[] key, SearchStatus sts) {
+    throw new UnsupportedOperationException();
+  }
 }

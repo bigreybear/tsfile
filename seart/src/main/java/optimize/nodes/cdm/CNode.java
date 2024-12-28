@@ -6,27 +6,22 @@ import static optimize.nodes.cdm.CNodeHelper.getValidBrPosNum;
 import static optimize.util.ArrayHelper.removeTrailingZeros;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
-
 import optimize.SearchStatus;
-import optimize.exception.PartialKeyCheckException;
 import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
-import optimize.nodes.INode;
-import optimize.nodes.ITSNode;
+import optimize.nodes.logic.LLeaf;
 import optimize.util.ArrayHelper;
 import optimize.util.ByteArray;
 import optimize.util.InfixGroup;
 
 public class CNode extends CNodeBase implements ICNode {
   // for more than 4 positions
+  byte[][] bks;
   byte[] pos; // indeed flags for byte p1, p2, p3, p4;
-  byte[][] bks; // branching keys
-  byte[][] rmk; // remaining keys
 
   public CNode(int[] pi) {
     pos = new byte[pi.length];
@@ -36,15 +31,33 @@ public class CNode extends CNodeBase implements ICNode {
     }
   }
 
-  public byte[][] getKeysFromCDM() {
+  public static ICNode buildCDMTemplate(ICNode node) {
+    byte[][] keys = node.getBranchingKeys();
+    int[] fakePos = new int[keys[0].length];
+
+    // why to sort: CNode4 is sorted by int and could be different from byte[]
+    Arrays.sort(keys, Arrays::compare);
+    LLeaf leaf;
+    CNode tr = new CNode(fakePos);
+
+    // todo remove member access to instance method
+    tr.bks = keys;
+    for (int i = 0; i < keys.length; i++) {
+      leaf = new LLeaf(i);
+      leaf.setParKey(node.getChild(keys[i]).getParKey());
+      tr.ptrs[i] = leaf;
+    }
+    return tr;
+  }
+
+  @Override
+  public byte[][] getBranchingKeys() {
     return bks;
   }
 
   @Override
   public ICNode getChild(byte[] k) {
-    byte[] k2 = removeTrailingZeros(k);
-    int idx = getBrKeyIdx(k2);
-    return ptrs[getBrKeyIdx(k2)];
+    return ptrs[getBrKeyIdx(removeTrailingZeros(k))];
   }
 
   @Deprecated
@@ -74,7 +87,13 @@ public class CNode extends CNodeBase implements ICNode {
   }
 
   @Override
-  public void setContent(InfixGroup group, Function<byte[], IMicroNode> getLChild, PrefixMergeStrategy mergeStrategy, MapType mapType, int height, boolean EFCoded) {
+  public void setContent(
+      InfixGroup group,
+      Function<byte[], IMicroNode> getLChild,
+      PrefixMergeStrategy mergeStrategy,
+      MapType mapType,
+      int height,
+      boolean EFCoded) {
     byte[][] input = group.sortedBrKeyBytes();
     bks = new byte[input.length][];
     for (int i = 0; i < input.length; i++) {
@@ -103,34 +122,30 @@ public class CNode extends CNodeBase implements ICNode {
   }
 
   @Override
-  public ICNode getCDMChild(byte[] key, SearchStatus sts) {
-    // todo refactor to non-recursive style, using a struct to carry progress and cur node
-
-    int[] bps = getBranchingPos();
-    byte[] pk = getParKey();
-    if (bps.length == 0) throw new RuntimeException();
-    int curLen = sts.getCurLen();
-    if (bps[0] < curLen) {
-      if (pk.length != bps[0] - curLen) throw new PartialKeyCheckException();
-
-      // check partial key if necessary
-      for (int i = 0; i < pk.length; i++) {
-        if (pk[i] != key[bps[0] + i]) throw new PartialKeyCheckException();
-      }
+  public ICNode getCDMChild(final byte[] key, SearchStatus sts) {
+    if (sts.getCurLen() == key.length) {
+      int idx = getBrKeyIdx(EMPTY_BYTE_ARR);
+      sts.setFinished(true);
+      return idx < 0 ? this : ptrs[idx];
     }
 
+    int[] bps = getBranchingPos();
+    if (bps.length == 0) throw new RuntimeException();
+    int curLen = sts.getCurLen();
+    curLen = checkPartialKey(key, curLen, bps[0]);
+
     // finish searching and is PREFIXED
-    if (curLen + pk.length == key.length) {
+    if (curLen == key.length) {
       sts.setFinished(true);
       return ptrs[getBrKeyIdx(EMPTY_BYTE_ARR)];
     }
 
     // retrieve related br_keys and cmp_keys
-    byte[] tar = extractBytes(key, getBranchingPos());
-    int channel = getBrKeyIdx(tar);
-    // todo not assemble the key (involves more allocations) and compare directly
+    int channel = getBrKeyIdx(removeTrailingZeros(extractBytes(key, bps)));
 
-    // continue next
+    sts.setCurLen(checkKeyBytes(key, channel, bps));
+    // sts.setFinished(sts.getCurLen() == key.length);
+    return ptrs[channel];
   }
 
   @Override
@@ -160,14 +175,6 @@ public class CNode extends CNodeBase implements ICNode {
       }
     }
     return -1;
-  }
-
-  public void setInterleavedBytes(int idx, byte[] ilb) {
-    if (ilb == null) {
-      rmk[idx] = null;
-    }
-    ilb = removeTrailingZeros(ilb);
-    rmk[idx] = ilb.length == 0 ? null : ilb;
   }
 
   @Override
@@ -203,10 +210,7 @@ public class CNode extends CNodeBase implements ICNode {
     return removeTrailingZeros(asmkey);
   }
 
-
-  /**
-   * Adapted from public IMicroNode getLogicalChild(byte[] name, int preLen) {
-   */
+  /** Adapted from public IMicroNode getLogicalChild(byte[] name, int preLen) { */
   @Override
   public IMicroNode getLogicalChild(String pathSeg) {
     int preLen = 0;
@@ -246,6 +250,11 @@ public class CNode extends CNodeBase implements ICNode {
   @Override
   public List<byte[]> getKeyBytes() {
     return Arrays.asList(bks);
+  }
+
+  @Override
+  protected byte[] getBrKeyAt(int channel) {
+    return bks[channel];
   }
 
   @Override

@@ -18,6 +18,7 @@ public final class SearchStatus {
     icNode = null;
     ifNode = null;
     imNode = null;
+    isFinished = false;
     return this;
   }
 
@@ -64,5 +65,10 @@ public final class SearchStatus {
   public SearchStatus setFinished(boolean finished) {
     isFinished = finished;
     return this;
+  }
+
+  @Override
+  public String toString() {
+    return String.format("cur_len: %d, finished: %b", curLen, isFinished);
   }
 }

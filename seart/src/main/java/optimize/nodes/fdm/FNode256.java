@@ -3,7 +3,9 @@ package optimize.nodes.fdm;
 import static optimize.nodes.fdm.vfull.SEARTNode.ubyte;
 import static optimize.util.ArrayHelper.removeTrailingZeros;
 
-public class FNode256 extends FNodeBase implements IFNode {
+public class FNode256 extends FNodeBase {
+  protected IFNode[] ptrs;
+
   // no prefixed key, but deem b\'00' as prefixed-pointer
   @Override
   public void add(byte k, IFNode v) {
@@ -37,4 +39,8 @@ public class FNode256 extends FNodeBase implements IFNode {
     throw new UnsupportedOperationException();
   }
 
+  @Override
+  protected IFNode[] getPtrs() {
+    return ptrs;
+  }
 }

@@ -1,11 +1,11 @@
 package optimize.nodes.fdm;
 
 import java.util.Arrays;
-import optimize.nodes.INode;
 import optimize.util.ArrayHelper;
 
-public class FNode4 extends FNodeBase implements IFNode {
+public class FNode4 extends FNodeBase {
   public byte[] keys;
+  protected IFNode[] ptrs;
 
   public FNode4() {
     this.keys = new byte[4];
@@ -36,5 +36,10 @@ public class FNode4 extends FNodeBase implements IFNode {
     for (int i = 0; i < keys.length && ptrs[i] != null; i++) {
       if (keys[i] == k) ptrs[i] = c;
     }
+  }
+
+  @Override
+  protected IFNode[] getPtrs() {
+    return ptrs;
   }
 }

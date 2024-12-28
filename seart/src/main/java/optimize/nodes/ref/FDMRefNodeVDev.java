@@ -2,13 +2,13 @@ package optimize.nodes.ref;
 
 import java.util.Arrays;
 import java.util.List;
-
+import optimize.SearchStatus;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.NodeWithPartialKey;
 import optimize.nodes.fdm.FLeaf;
 import optimize.nodes.fdm.FNode256;
 import optimize.nodes.fdm.IFNode;
-import optimize.nodes.logic.LLeafVDev;
+import optimize.nodes.logic.LLeaf;
 
 public class FDMRefNodeVDev extends NodeWithPartialKey implements IFNode {
   public IFNode template;
@@ -29,10 +29,10 @@ public class FDMRefNodeVDev extends NodeWithPartialKey implements IFNode {
   public static IFNode buildFDMTemplate(IFNode node) {
     byte[] keys = node.getKeysFromFDM();
     Arrays.sort(keys);
-    LLeafVDev leaf;
+    LLeaf leaf;
     IFNode tr = new FNode256();
     for (int i = 0; i < keys.length; i++) {
-      leaf = new LLeafVDev(i);
+      leaf = new LLeaf(i);
       leaf.setParKey(node.get(keys[i]).getParKey());
       tr.add(keys[i], leaf);
     }
@@ -78,6 +78,12 @@ public class FDMRefNodeVDev extends NodeWithPartialKey implements IFNode {
 
   @Override
   public void replace(byte k, IFNode n) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public IFNode getFDMChild(byte[] key, SearchStatus sts) {
+    // todo
     throw new UnsupportedOperationException();
   }
 }
