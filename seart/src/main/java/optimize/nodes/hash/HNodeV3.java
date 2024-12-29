@@ -9,9 +9,12 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import optimize.SearchStatus;
 import optimize.nodes.IMicroNode;
+import optimize.nodes.NodeInspector;
 import optimize.nodes.NodeWithPartialKey;
 import optimize.nodes.ref.HashRefNodeVDev;
 import optimize.util.ByteArray;
+
+import static optimize.Main.tableField;
 
 /**
  * Contrast to HNode, using ByteArray as hash key avoiding coding struggle.
@@ -137,5 +140,17 @@ public class HNodeV3 extends NodeWithPartialKey implements IMicroNode {
     res = getChild(Arrays.copyOfRange(key, curLen, curLen + 1));
     sts.setCurLen(curLen + 1);
     return res;
+  }
+
+  @Override
+  public void acceptInspector(NodeInspector noi) {
+    if (getParKey() != null) noi.appendEntry("HNode_pk_len", getParKey().length);
+    noi.appendEntry("HNode_chd_siz", children.size());
+    noi.appendEntry("HNode_chd_key_len", children.keySet().stream().mapToInt(i->i.getVal().length).sum());
+    try {
+      noi.appendEntry("HNode_map_cap", ((Object[]) tableField.get(children)).length);
+    } catch (IllegalAccessException e) {
+      throw new RuntimeException(e);
+    }
   }
 }

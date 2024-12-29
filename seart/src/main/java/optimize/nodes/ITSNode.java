@@ -24,4 +24,6 @@ public interface ITSNode {
   default boolean isLogicalLeaf() {
     return false;
   }
+
+  default void acceptInspector(NodeInspector noi) {throw new UnsupportedOperationException();}
 }

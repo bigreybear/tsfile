@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import optimize.nodes.ITSNode;
+import optimize.nodes.NodeInspector;
 
 /**
  * L for Logical Nodes <br>
@@ -66,5 +67,10 @@ public class LNodeV3 implements ITSNode {
       throw new RuntimeException("Duplicated children: " + name);
     }
     return children.put(name, child);
+  }
+
+  @Override
+  public void acceptInspector(NodeInspector noi) {
+    return;
   }
 }

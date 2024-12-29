@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
-import optimize.TSTreeVDev;
+import optimize.TSTree;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.ITSNode;
 import optimize.nodes.cdm.ICNode;
@@ -75,7 +75,7 @@ public class MergePrefixVDev {
 
   public static final List<String> dupPaths = new ArrayList<>();
 
-  public static void mergePrefixes(TSTreeVDev tree, MapType mt, PrefixMergeStrategy ms) {
+  public static void mergePrefixes(TSTree tree, MapType mt, PrefixMergeStrategy ms) {
     switch (mt) {
       case CDM:
         tree.traversePostOrderRec(

@@ -13,6 +13,7 @@ import optimize.SearchStatus;
 import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
+import optimize.nodes.NodeInspector;
 import optimize.nodes.logic.LLeaf;
 import optimize.util.ArrayHelper;
 import optimize.util.ByteArray;
@@ -99,7 +100,7 @@ public class CNode extends CNodeBase implements ICNode {
     for (int i = 0; i < input.length; i++) {
       bks[i] = ArrayHelper.removeTrailingZeros(input[i]);
     }
-    rmk = new byte[input.length][];
+    // rmk = new byte[input.length][];
     ptrs = new ICNode[input.length];
 
     byte[] sk, ck;
@@ -241,6 +242,12 @@ public class CNode extends CNodeBase implements ICNode {
   @Override
   public List<IMicroNode> getChildren() {
     return Arrays.asList(ptrs);
+  }
+
+  @Override
+  public void acceptInspector(NodeInspector noi) {
+    noi.incEntry("CNode_cnt", 1);
+    inspectRMK(noi, "CNode");
   }
 
   public List<String> getKeys() {

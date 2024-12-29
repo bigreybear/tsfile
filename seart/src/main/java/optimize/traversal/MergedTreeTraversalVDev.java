@@ -5,7 +5,7 @@ import static optimize.util.ByteArray.concatenate;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
-import optimize.TSTreeVDev;
+import optimize.TSTree;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.cdm.CLeaf;
 import optimize.nodes.cdm.ICNode;
@@ -20,7 +20,7 @@ public class MergedTreeTraversalVDev {
       Deque<byte[]> trace,
       ICNode cur,
       byte[] key,
-      TSTreeVDev.IQuadFunction<ICNode, byte[], ICNode, Deque<byte[]>> consumer) {
+      TSTree.IQuadFunction<ICNode, byte[], ICNode, Deque<byte[]>> consumer) {
     if (trace == null) trace = new ArrayDeque<>();
 
     if (cur instanceof LLeaf) {
@@ -59,7 +59,7 @@ public class MergedTreeTraversalVDev {
       Deque<byte[]> trace,
       IFNode cur,
       byte key,
-      TSTreeVDev.IQuadFunction<IFNode, Byte, IFNode, Deque<byte[]>> consumer) {
+      TSTree.IQuadFunction<IFNode, Byte, IFNode, Deque<byte[]>> consumer) {
     if (trace == null) trace = new ArrayDeque<>();
 
     if (cur instanceof LLeaf || cur.getFValue() instanceof LLeaf) {
@@ -95,7 +95,7 @@ public class MergedTreeTraversalVDev {
       Deque<byte[]> trace,
       IMicroNode cur,
       byte[] key,
-      TSTreeVDev.IQuadFunction<IMicroNode, byte[], IMicroNode, Deque<byte[]>> consumer) {
+      TSTree.IQuadFunction<IMicroNode, byte[], IMicroNode, Deque<byte[]>> consumer) {
     if (trace == null) trace = new ArrayDeque<>();
 
     List<byte[]> keys = cur.getKeyBytes();

@@ -1,6 +1,6 @@
 package optimize.nodes.cdm;
 
-import static optimize.nodes.fdm.vfull.SEARTNode.ubyte;
+import static optimize.nodes.fdm.FNodeBase.ubyte;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;

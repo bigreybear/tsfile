@@ -1,6 +1,8 @@
 package optimize.nodes.fdm;
 
 import java.util.Arrays;
+
+import optimize.nodes.NodeInspector;
 import optimize.util.ArrayHelper;
 
 public class FNode4 extends FNodeBase {
@@ -41,5 +43,10 @@ public class FNode4 extends FNodeBase {
   @Override
   protected IFNode[] getPtrs() {
     return ptrs;
+  }
+
+  @Override
+  protected String getInspectCode() {
+    return "F004";
   }
 }

@@ -3,6 +3,7 @@ package optimize.nodes.cdm;
 import static optimize.util.ArrayHelper.removeTrailingZeros;
 
 import optimize.exception.KeyNotFound;
+import optimize.nodes.NodeInspector;
 import optimize.nodes.NodeWithPartialKey;
 
 public abstract class CNodeBase extends NodeWithPartialKey {
@@ -48,11 +49,10 @@ public abstract class CNodeBase extends NodeWithPartialKey {
   }
 
   void setInterleavedBytes(int idx, byte[] ilb) {
-    if (ilb == null || ilb.length == 0) {
-      rmk[idx] = null;
-      return;
+    if (ilb != null && ilb.length > 0) {
+      if (rmk == null) rmk = new byte[ptrs.length][];
+      rmk[idx] = removeTrailingZeros(ilb);
     }
-    rmk[idx] = removeTrailingZeros(ilb);
   }
 
   public static int[] byteArr2IntArr(byte[] a) {
@@ -61,5 +61,29 @@ public abstract class CNodeBase extends NodeWithPartialKey {
       r[i] = 0xff & a[i];
     }
     return r;
+  }
+
+  protected void inspectRMK(NodeInspector ni, String nodePrefix) {
+    if (rmk == null) {
+      ni.incEntry(nodePrefix + "_rmk_null", 1);
+      return;
+    }
+    if (rmk.length == 0) {
+      ni.incEntry(nodePrefix + "_rmk_empty", 1);
+      return;
+    }
+
+    int nulNum = 0, ttlLen = 0;
+    for (byte[] bytes : rmk) {
+      if (bytes == null) nulNum++;
+      else ttlLen += bytes.length;
+    }
+    ni.incEntry(nodePrefix + "_rmk_null_elem", nulNum);
+
+    ni.appendEntry(nodePrefix + "_rmk_arr_len", rmk.length);
+    if (ttlLen == 0) {
+      System.out.println('A');
+    }
+    ni.appendEntry(nodePrefix + "_rmk_elem_avg_len", ttlLen);
   }
 }

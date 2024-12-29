@@ -7,6 +7,7 @@ import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.ITSNode;
+import optimize.nodes.NodeInspector;
 import optimize.nodes.NodeWithPartialKey;
 import optimize.nodes.cdm.ICNode;
 import optimize.nodes.fdm.IFNode;
@@ -35,6 +36,41 @@ public class LLeaf extends NodeWithPartialKey implements IMicroNode, IFNode, ICN
   }
 
   @Override
+  public IFNode get(byte k) {
+    return null;
+  }
+
+  @Override
+  public List<byte[]> getKeyBytes() {
+    return null;
+  }
+
+  @Override
+  public ICNode getCDMChild(byte[] key, SearchStatus sts) {
+    if (sts.getCurLen() != key.length) {
+      throw new RuntimeException("Key Search Failed for unknown reason.");
+    }
+    sts.setFinished(true);
+    return this;
+  }
+
+  @Override
+  public IFNode getFDMChild(byte[] key, SearchStatus sts) {
+    if (sts.getCurLen() != key.length) {
+      throw new RuntimeException("Key Search Failed for unknown reason.");
+    }
+    sts.setFinished(true);
+    return this;
+  }
+
+  @Override
+  public IMicroNode getChild(byte[] k) {
+    return null;
+  }
+
+  // Note(zx) follows are unsupported
+
+  @Override
   public void replace(byte k, IFNode n) {
     throw new UnsupportedOperationException();
   }
@@ -45,11 +81,6 @@ public class LLeaf extends NodeWithPartialKey implements IMicroNode, IFNode, ICN
   }
 
   @Override
-  public IFNode get(byte k) {
-    return null;
-  }
-
-  @Override
   public byte[] getKeysFromFDM() {
     throw new UnsupportedOperationException();
   }
@@ -57,11 +88,6 @@ public class LLeaf extends NodeWithPartialKey implements IMicroNode, IFNode, ICN
   @Override
   public ITSNode getLogicalChild(String pathSeg) {
     throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public List<byte[]> getKeyBytes() {
-    return null;
   }
 
   @Override
@@ -96,25 +122,7 @@ public class LLeaf extends NodeWithPartialKey implements IMicroNode, IFNode, ICN
   }
 
   @Override
-  public ICNode getCDMChild(byte[] key, SearchStatus sts) {
-    if (sts.getCurLen() != key.length) {
-      throw new RuntimeException("Key Search Failed for unknown reason.");
-    }
-    sts.setFinished(true);
-    return this;
-  }
-
-  @Override
-  public IFNode getFDMChild(byte[] key, SearchStatus sts) {
-    if (sts.getCurLen() != key.length) {
-      throw new RuntimeException("Key Search Failed for unknown reason.");
-    }
-    sts.setFinished(true);
-    return this;
-  }
-
-  @Override
-  public IMicroNode getChild(byte[] k) {
-    return null;
+  public void acceptInspector(NodeInspector noi) {
+    if (pk != null) noi.appendEntry("LLeaf_pk_len", pk.length);
   }
 }

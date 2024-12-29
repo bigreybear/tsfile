@@ -9,8 +9,9 @@ import static optimize.util.InfixGroup.groupByInfix;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
-import optimize.Main;
-import optimize.TSTreeVDev;
+
+import optimize.MainSupport;
+import optimize.TSTree;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.cdm.CLeaf;
 import optimize.nodes.cdm.CNode;
@@ -121,7 +122,7 @@ public class CDMPrefixMerge {
   public static void main(String[] args) {
     // Main.main("-mt cdm -ms partial -ds bw -merge -latency".split(" "));
 
-    TSTreeVDev tree = Main.buildLogicalTree(BW, true);
+    TSTree tree = MainSupport.buildLogicalTree(BW, true);
     // root.bw.baoshan.441233M03.`01`.速度.I.hz
     // ITSNode t = tree.root
     //     .getLogicalChild("bw")

@@ -1,6 +1,7 @@
 package optimize.nodes.cdm;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 import optimize.SearchStatus;
@@ -8,6 +9,7 @@ import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.ITSNode;
+import optimize.nodes.NodeInspector;
 import optimize.nodes.NodeWithPartialKey;
 import optimize.util.InfixGroup;
 
@@ -20,6 +22,11 @@ public class CLeaf extends NodeWithPartialKey implements ICNode {
     if (pk[0].length < preLen) this.pk = null;
     else this.pk = Arrays.copyOfRange(pk[0], preLen, pk[0].length);
     this.ptr = ptr;
+  }
+
+  @Override
+  public void acceptInspector(NodeInspector noi) {
+    noi.incEntry("CLeaf_Count", 1);
   }
 
   @Override
@@ -43,7 +50,7 @@ public class CLeaf extends NodeWithPartialKey implements ICNode {
 
   @Override
   public List<IMicroNode> getChildren() {
-    throw new UnsupportedOperationException();
+    return Collections.singletonList(ptr);
   }
 
   @Override

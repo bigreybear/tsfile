@@ -1,6 +1,7 @@
 package optimize.nodes.fdm;
 
-import static optimize.nodes.fdm.vfull.SEARTNode.ubyte;
+
+import optimize.nodes.NodeInspector;
 
 import java.util.Arrays;
 
@@ -45,5 +46,10 @@ public class FNode48 extends FNodeBase {
   @Override
   protected IFNode[] getPtrs() {
     return ptrs;
+  }
+
+  @Override
+  protected String getInspectCode() {
+    return "F048";
   }
 }

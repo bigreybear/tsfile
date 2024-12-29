@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import optimize.SearchStatus;
 import optimize.nodes.IMicroNode;
+import optimize.nodes.NodeInspector;
 import optimize.nodes.NodeWithPartialKey;
 
 public abstract class FNodeBase extends NodeWithPartialKey implements IFNode {
@@ -50,4 +51,29 @@ public abstract class FNodeBase extends NodeWithPartialKey implements IFNode {
     sts.setCurLen(curLen + 1);
     return get(key[curLen]);
   }
+
+  public static int ubyte(byte b) {
+    return b & 0xff;
+  }
+
+  protected int countValidPointers() {
+    IFNode[] p = getPtrs();
+    for (int i = 0, c = 0; ;) {
+      if (i == p.length) {
+        return c;
+      }
+      if (p[i++] != null) c++;
+    }
+  }
+
+  @Override
+  public void acceptInspector(NodeInspector noi) {
+    String c = getInspectCode();
+    noi.incEntry(c + "_cnt", 1);
+    if (getParKey() != null) noi.appendEntry(c + "_pk_len", getParKey().length);
+    noi.appendEntry(c + "_dep", noi.getCurDepth());
+    noi.appendEntry(c + "_val_ptr", countValidPointers());
+  }
+
+  protected abstract String getInspectCode();
 }

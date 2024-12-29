@@ -4,7 +4,6 @@ import static optimize.util.ByteArray.concatenate;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
 import optimize.merge.MapType;
@@ -16,47 +15,9 @@ import optimize.nodes.fdm.FLeaf;
 import optimize.nodes.fdm.IFNode;
 import optimize.nodes.logic.LLeaf;
 
-public class MergedTreeTraversalForDepthVDev {
+public class MergedTreeTraversalForDepth {
 
   public static final List<Integer> depthList = new ArrayList<>();
-
-  public static BoxPlotRecord calculateBoxPlot(List<Integer> data) {
-    if (data == null || data.isEmpty()) {
-      throw new IllegalArgumentException("Data list cannot be null or empty");
-    }
-
-    BoxPlotRecord record = new BoxPlotRecord();
-
-    List<Integer> res = new ArrayList<>();
-    Collections.sort(data);
-    record.min = data.get(0);
-    record.max = data.get(data.size() - 1);
-
-    record.median = getMedian(data);
-    record.q1 = getMedian(data.subList(0, data.size() / 2));
-    record.q3 = getMedian(data.subList((data.size() + 1) / 2, data.size()));
-    record.iqr = record.q3 - record.q1;
-
-    int lowerBound = (int) (record.q1 - 1.5 * record.iqr);
-    int upperBound = (int) (record.q3 + 1.5 * record.iqr);
-
-    for (int num : data) {
-      if (num < lowerBound || num > upperBound) {
-        System.out.println(num);
-        record.outliers.add(num);
-      }
-    }
-    return record;
-  }
-
-  private static int getMedian(List<Integer> data) {
-    int size = data.size();
-    if (size % 2 == 0) {
-      return (int) ((data.get(size / 2 - 1) + data.get(size / 2)) / 2.0);
-    } else {
-      return data.get(size / 2);
-    }
-  }
 
   public static void CDMTraverseForDepth(ICNode par, Deque<byte[]> trace, ICNode cur, int depth) {
     if (trace == null) trace = new ArrayDeque<>();
@@ -154,6 +115,6 @@ public class MergedTreeTraversalForDepthVDev {
       default:
         throw new UnsupportedOperationException();
     }
-    return calculateBoxPlot(depthList);
+    return BoxPlotRecord.calculateBoxPlot(depthList);
   }
 }

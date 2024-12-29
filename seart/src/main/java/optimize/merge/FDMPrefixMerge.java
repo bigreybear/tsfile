@@ -31,13 +31,6 @@ public class FDMPrefixMerge {
     }
 
     if (keys.length == 1) {
-      // FLeaf leaf = new FLeaf();
-      // downcast must-be: either LLeaf or processed node.
-      // leaf.setValue((IFNode) oriNode.getLogicalChild(new String(keys[0],
-      // StandardCharsets.UTF_8)));
-      // leaf.setParKey(Arrays.copyOfRange(keys[0], preLen, keys[0].length));
-      // to eliminate trivial leaf
-      // return leaf.getParKey() == null ? leaf.getFValue() : leaf;
       return FLeaf.constructFLeaf(
           (IFNode) oriNode.getLogicalChild(new String(keys[0], StandardCharsets.UTF_8)),
           Arrays.copyOfRange(keys[0], preLen, keys[0].length));
@@ -57,9 +50,6 @@ public class FDMPrefixMerge {
     List<CNodeHelper.ValuedPrefixArray> groupedPrefix = groupPrefixes(keys, len + preLen, 1);
     IFNode repNode = generateFNode(groupedPrefix.size() + (prefixedPtr != null ? 1 : 0));
     if (prefixedPtr != null) {
-      // FLeaf leaf = new FLeaf();
-      // leaf.value = prefixedPtr;
-      // leaf.setParKey(Arrays.copyOfRange(a.get(0), preLen + len, a.get(0).length));
       repNode.add(
           (byte) 0,
           FLeaf.constructFLeaf(

@@ -2,13 +2,12 @@ package optimize.nodes.fdm;
 
 import optimize.SearchStatus;
 import optimize.exception.KeyNotFound;
+import optimize.nodes.NodeInspector;
 
-// todo eliminate this class
 public class FLeaf extends FNodeBase {
   public IFNode value;
 
   private FLeaf() {}
-  ;
 
   public static IFNode constructFLeaf(IFNode ptr, byte[] parKey) {
     // to eliminate trivial leaf
@@ -66,6 +65,17 @@ public class FLeaf extends FNodeBase {
 
   @Override
   protected IFNode[] getPtrs() {
-    throw new UnsupportedOperationException();
+    return new IFNode[] {value};
+  }
+
+  @Override
+  public void acceptInspector(NodeInspector noi) {
+    noi.appendEntry("FLeaf_dep", noi.getCurDepth());
+    noi.appendEntry("FLeaf_pk_len", getParKey().length);
+  }
+
+  @Override
+  protected String getInspectCode() {
+    return "FLeaf";
   }
 }

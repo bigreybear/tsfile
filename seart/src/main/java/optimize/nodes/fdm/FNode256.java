@@ -1,6 +1,5 @@
 package optimize.nodes.fdm;
 
-import static optimize.nodes.fdm.vfull.SEARTNode.ubyte;
 import static optimize.util.ArrayHelper.removeTrailingZeros;
 
 public class FNode256 extends FNodeBase {
@@ -42,5 +41,10 @@ public class FNode256 extends FNodeBase {
   @Override
   protected IFNode[] getPtrs() {
     return ptrs;
+  }
+
+  @Override
+  protected String getInspectCode() {
+    return "F256";
   }
 }

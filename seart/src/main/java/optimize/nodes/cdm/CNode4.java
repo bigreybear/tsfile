@@ -19,6 +19,7 @@ import optimize.SearchStatus;
 import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
+import optimize.nodes.NodeInspector;
 import optimize.util.InfixGroup;
 
 public class CNode4 extends CNodeBase implements ICNode {
@@ -119,13 +120,19 @@ public class CNode4 extends CNodeBase implements ICNode {
     return ptrs[channel];
   }
 
+  @Override
+  public void acceptInspector(NodeInspector noi) {
+    noi.incEntry("CNode4_cnt", 1);
+    inspectRMK(noi, "CNode4");
+  }
+
   public void setBranchingKeys(int[] collected) {
     bks = new int[collected.length];
     ptrs = new ICNode[collected.length];
     System.arraycopy(collected, 0, bks, 0, bks.length);
     // init interleaved bytes array
     int[] itvPos = findIntervals(int2BytesVarLen(posInt));
-    if (itvPos.length > 0 || NO_ORPHAN_CLEAF) rmk = new byte[collected.length][];
+    // if (itvPos.length > 0 || NO_ORPHAN_CLEAF) rmk = new byte[collected.length][];
   }
 
   public void setBranchingKeys(List<Integer> branchingBytes) {

@@ -1,6 +1,5 @@
 package optimize.nodes.fdm;
 
-import static optimize.nodes.fdm.vfull.SEARTNode.ubyte;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -9,6 +8,8 @@ import java.util.List;
 import optimize.SearchStatus;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.ITSNode;
+
+import static optimize.nodes.fdm.FNodeBase.ubyte;
 
 public interface IFNode extends IMicroNode {
 

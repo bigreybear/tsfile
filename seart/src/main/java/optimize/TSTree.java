@@ -13,13 +13,13 @@ import optimize.nodes.fdm.IFNode;
 import optimize.nodes.logic.LLeaf;
 import optimize.nodes.logic.LNodeV3;
 
-public class TSTreeVDev {
+public class TSTree {
   public ITSNode root = new LNodeV3();
   AtomicLong nodeNum = new AtomicLong(1);
   private boolean TWO_LEVEL_PATH = true;
   private static final SearchStatus ss = new SearchStatus();
 
-  public TSTreeVDev() {}
+  public TSTree() {}
 
   public void setTwoLevelPath(boolean twoLevelPath) {
     TWO_LEVEL_PATH = twoLevelPath;
@@ -88,6 +88,15 @@ public class TSTreeVDev {
       // update kb, set ss.curLen to 0
       ss.setCurLen(0);
       ss.setFinished(false);
+    }
+    return cur.getValue();
+  }
+
+  public long searchLogical(String p) {
+    final String[] pathNodes = parsePathString(p);
+    ITSNode cur = root;
+    for (int pid = 1; pid < pathNodes.length; pid++) {
+      cur = cur.getLogicalChild(pathNodes[pid]);
     }
     return cur.getValue();
   }
@@ -188,7 +197,7 @@ public class TSTreeVDev {
   public static void main(String[] args) {
     String[] test = {"root.sg1.d1.v1", "root.sg1.d1.v2", "root.sg2.d1.v1", "root.sg2.d3.v1"};
 
-    TSTreeVDev tree = new TSTreeVDev();
+    TSTree tree = new TSTree();
     for (String s : test) {
       tree.insert(s, s.hashCode());
     }

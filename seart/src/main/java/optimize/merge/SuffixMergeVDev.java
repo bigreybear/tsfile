@@ -9,7 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
-import optimize.TSTreeVDev;
+import optimize.TSTree;
 import optimize.nodes.ILeaf;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.cdm.CLeaf;
@@ -75,7 +75,7 @@ public class SuffixMergeVDev {
             NOMERGE_TEMPLATES.values().stream().mapToLong(i -> i.count.get()).sum()));
   }
 
-  public static void collectSuffixes(TSTreeVDev tree, MapType mt, final boolean replace) {
+  public static void collectSuffixes(TSTree tree, MapType mt, final boolean replace) {
     if (mt == null) {
 
       return;
