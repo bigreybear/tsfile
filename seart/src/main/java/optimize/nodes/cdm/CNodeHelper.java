@@ -27,6 +27,17 @@ public class CNodeHelper {
     return res;
   }
 
+  public static byte[] extractBytes(byte[] src, byte... p){
+    byte[] r = null;
+    for (int i = p.length-1; i >=0; i--) {
+      if (p[i] == 0) r = new byte[i + 1];
+    }
+
+    assert r != null;
+    System.arraycopy(src, 0, r, 0, r.length - 1 + 1);
+    return r;
+  }
+
   // region Basics
   public static byte[][] extBytes(byte[][] rsc, int[] pos) {
     byte[][] res = new byte[rsc.length][pos.length];

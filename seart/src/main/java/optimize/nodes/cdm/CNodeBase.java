@@ -64,6 +64,8 @@ public abstract class CNodeBase extends NodeWithPartialKey {
   }
 
   protected void inspectRMK(NodeInspector ni, String nodePrefix) {
+    ni.appendEntry("CNode/4_ptr", ptrs.length);
+
     if (rmk == null) {
       ni.incEntry(nodePrefix + "_rmk_null", 1);
       return;
@@ -78,12 +80,9 @@ public abstract class CNodeBase extends NodeWithPartialKey {
       if (bytes == null) nulNum++;
       else ttlLen += bytes.length;
     }
-    ni.incEntry(nodePrefix + "_rmk_null_elem", nulNum);
+    // ni.incEntry(nodePrefix + "_rmk_null_elem", nulNum);
 
-    ni.appendEntry(nodePrefix + "_rmk_arr_len", rmk.length);
-    if (ttlLen == 0) {
-      System.out.println('A');
-    }
-    ni.appendEntry(nodePrefix + "_rmk_elem_avg_len", ttlLen);
+    // ni.appendEntry(nodePrefix + "_rmk_arr_len", rmk.length);
+    // ni.appendEntry(nodePrefix + "_rmk_elem_avg_len", ttlLen);
   }
 }

@@ -123,6 +123,7 @@ public class CNode4 extends CNodeBase implements ICNode {
   @Override
   public void acceptInspector(NodeInspector noi) {
     noi.incEntry("CNode4_cnt", 1);
+    noi.appendEntry("CNode4_valid_br", int2BytesVarLen(posInt).length);
     inspectRMK(noi, "CNode4");
   }
 
@@ -131,7 +132,6 @@ public class CNode4 extends CNodeBase implements ICNode {
     ptrs = new ICNode[collected.length];
     System.arraycopy(collected, 0, bks, 0, bks.length);
     // init interleaved bytes array
-    int[] itvPos = findIntervals(int2BytesVarLen(posInt));
     // if (itvPos.length > 0 || NO_ORPHAN_CLEAF) rmk = new byte[collected.length][];
   }
 

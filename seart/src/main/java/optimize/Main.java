@@ -6,6 +6,7 @@ import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Scanner;
 import java.util.stream.Collectors;
 
 import optimize.merge.MapType;
@@ -43,26 +44,28 @@ public class Main {
     // res += " -ms simple";
 
     // res += " -ds bw";
-    // res += " -ds xyzc";
     // res += " -ds sw";
+    // res += " -ds xyzc";
     res += " -ds zy";
 
-    res += " -twoLevel";
+    res += " -oneTree";
     res += " -latency";
-    res += " -space";
+    // res += " -space";
     res += " -spaceDetail";
-    res += " -depth";
+    // res += " -depth";
     // res += " -template";
     res += " -inspect";
+
+    // res += " -profile";
 
     return res.split(" ");
   }
 
-  public static MyDataSet dataSet;
-  public static PrefixMergeStrategy mergeStrategy;
-  public static MapType mapType;
+  public MyDataSet dataSet;
+  public PrefixMergeStrategy mergeStrategy;
+  public MapType mapType;
 
-  public static void main(String[] args) {
+  public void mainbody(String[] args) {
     ExpResultLogger resultPrinter = new ExpResultLogger();
     System.out.println(MainSupport.getBuildTimestamp());
     args = args.length == 0 ? defaultArgs() : args;
@@ -93,8 +96,8 @@ public class Main {
       }
     }
 
-    TSTree tree = MainSupport.buildLogicalTree(dataSet, argList.contains("-twoLevel"));
-    resultPrinter.twoLevel = argList.contains("-twoLevel");
+    TSTree tree = MainSupport.buildLogicalTree(dataSet, argList.contains("-oneTree"));
+    resultPrinter.oneTree = argList.contains("-oneTree");
 
     if (argList.contains("-merge")) {
       MergePrefixVDev.mergePrefixes(tree, mapType, mergeStrategy);
@@ -127,10 +130,29 @@ public class Main {
       resultPrinter.recordSpace();
     }
 
+    int loop = 1;
+    if (argList.contains("-profile")) {
+      Scanner scanner = new Scanner(System.in);
+      System.out.println("Estimate latency for how many times:");
+      String input = scanner.nextLine();
+      loop = Integer.valueOf(input);
+      while (loop != 0) {
+        MainSupport.estimateLatency(tree, dataSet, mergeStrategy, mapType);
+
+        if (loop-- == 1) {
+          System.out.println("Last loop finished, again? enter -1 to equit.");
+          loop = Integer.valueOf(scanner.nextLine());
+        }
+
+        if (loop == -1) break;
+      }
+    }
+
     if (argList.contains("-latency")) {
-      long l = MainSupport.estimateLatency(tree, dataSet, mergeStrategy, mapType);
-      resultPrinter.latency = l;
-      resultPrinter.recordLatency();
+      for (int i = 0; i < loop; i++) {
+        resultPrinter.latency = MainSupport.estimateLatency(tree, dataSet, mergeStrategy, mapType);
+        resultPrinter.recordLatency();
+      }
     }
 
     if (argList.contains("-inspect") || argList.contains("-depth")) {
@@ -148,5 +170,10 @@ public class Main {
     REPORT_CHANNEL.append("FINISH:" + String.join(" ", argList) + " with EF code: " + CDM_WITH_EF);
     REPORT_CHANNEL.append("\n");
     System.out.println(REPORT_CHANNEL);
+  }
+
+  public static void main(String[] args) {
+    Main m = new Main();
+    m.mainbody(args);
   }
 }

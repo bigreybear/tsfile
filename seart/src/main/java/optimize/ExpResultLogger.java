@@ -20,7 +20,7 @@ public class ExpResultLogger {
   public MyDataSet mds;
   public PrefixMergeStrategy pms;
   public MapType mapType;
-  public boolean twoLevel;
+  public boolean oneTree;
 
   public static boolean checkEmptyFile(String path) {
     File f = new File(path);
@@ -46,7 +46,7 @@ public class ExpResultLogger {
 
       writer.write(
           String.format(
-              "%s\t%s\t%s\t%s\t%s", pms.name(), mds.name(), mapType.name(), twoLevel, space));
+              "%s\t%s\t%s\t%s\t%s", pms.name(), mds.name(), mapType.name(), oneTree, space));
       writer.newLine();
     } catch (IOException e) {
       throw new RuntimeException(e);
@@ -64,7 +64,7 @@ public class ExpResultLogger {
       writer.write(
           String.format(
               "%s\t%s\t%s\t%s\t%s",
-              pms.name(), mds.name(), mapType.name(), twoLevel, dottedNanoSec(latency)));
+              pms.name(), mds.name(), mapType.name(), oneTree, dottedNanoSec(latency)));
       writer.newLine();
     } catch (IOException e) {
       throw new RuntimeException(e);
@@ -82,7 +82,7 @@ public class ExpResultLogger {
       writer.write(
           String.format(
               "%s\t%s\t%s\t%s\t%d\t%d\t%d\t%d\t%d",
-              pms.name(), mds.name(), mapType.name(), twoLevel,
+              pms.name(), mds.name(), mapType.name(), oneTree,
               bpr.min, bpr.q1, bpr.median, bpr.q3, bpr.max));
       writer.newLine();
     } catch (IOException e) {

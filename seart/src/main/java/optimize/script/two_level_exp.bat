@@ -30,7 +30,7 @@ for /L %%i in (0,1,3) do (
     for /L %%j in (0,1,7) do (
         java !vmarg! -jar seart-1.0.1-SNAPSHOT.jar !mm[%%j]! -ds !ds[%%i]! -space -depth >> %filename% 2>&1
         echo. >> %filename%
-        java !vmarg! -jar seart-1.0.1-SNAPSHOT.jar !mm[%%j]! -ds !ds[%%i]! -space -twoLevel -depth >> %filename% 2>&1
+        java !vmarg! -jar seart-1.0.1-SNAPSHOT.jar !mm[%%j]! -ds !ds[%%i]! -space -oneTree -depth >> %filename% 2>&1
         echo. >> %filename%
     )
     echo. >> %filename%
@@ -46,11 +46,11 @@ for /L %%i in (0,1,3) do (
         java !vmarg! -jar seart-1.0.1-SNAPSHOT.jar !mm[%%j]! -ds !ds[%%i]! -latency >> %filename% 2>&1
         java !vmarg! -jar seart-1.0.1-SNAPSHOT.jar !mm[%%j]! -ds !ds[%%i]! -latency >> %filename% 2>&1
         echo. >> %filename%
-        java !vmarg! -jar seart-1.0.1-SNAPSHOT.jar !mm[%%j]! -ds !ds[%%i]! -twoLevel -latency  >> %filename% 2>&1
-        java !vmarg! -jar seart-1.0.1-SNAPSHOT.jar !mm[%%j]! -ds !ds[%%i]! -twoLevel -latency >> %filename% 2>&1
-        java !vmarg! -jar seart-1.0.1-SNAPSHOT.jar !mm[%%j]! -ds !ds[%%i]! -twoLevel -latency >> %filename% 2>&1
-        java !vmarg! -jar seart-1.0.1-SNAPSHOT.jar !mm[%%j]! -ds !ds[%%i]! -twoLevel -latency >> %filename% 2>&1
-        java !vmarg! -jar seart-1.0.1-SNAPSHOT.jar !mm[%%j]! -ds !ds[%%i]! -twoLevel -latency >> %filename% 2>&1
+        java !vmarg! -jar seart-1.0.1-SNAPSHOT.jar !mm[%%j]! -ds !ds[%%i]! -oneTree -latency  >> %filename% 2>&1
+        java !vmarg! -jar seart-1.0.1-SNAPSHOT.jar !mm[%%j]! -ds !ds[%%i]! -oneTree -latency >> %filename% 2>&1
+        java !vmarg! -jar seart-1.0.1-SNAPSHOT.jar !mm[%%j]! -ds !ds[%%i]! -oneTree -latency >> %filename% 2>&1
+        java !vmarg! -jar seart-1.0.1-SNAPSHOT.jar !mm[%%j]! -ds !ds[%%i]! -oneTree -latency >> %filename% 2>&1
+        java !vmarg! -jar seart-1.0.1-SNAPSHOT.jar !mm[%%j]! -ds !ds[%%i]! -oneTree -latency >> %filename% 2>&1
         echo. >> %filename%
     )
     echo. >> %filename%
