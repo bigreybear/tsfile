@@ -17,7 +17,7 @@ public class InfixGroup {
   int[] brPos;
   Map<ByteArray, List<byte[]>> infixMap;
 
-  public InfixGroup(int[] bp, Map<ByteArray, List<byte[]>> im) {
+  private InfixGroup(int[] bp, Map<ByteArray, List<byte[]>> im) {
     brPos = bp;
 
     infixMap = new HashMap<>();

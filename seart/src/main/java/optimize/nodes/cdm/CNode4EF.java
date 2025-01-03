@@ -25,7 +25,6 @@ import optimize.util.InfixGroup;
 public class CNode4EF extends CNodeBase implements ICNode {
   // for only 4 positions
   int posInt; // an int concatenated by 4 unsigned bytes: byte p1, p2, p3, p4;
-  byte[] pks; // partial keys
   byte[] pbk, nbk; // positive/negative compressed array; by negative, it uses bitwise opposite
   int plen, nlen; // length of the original pos
   int plb, nlb; // lower-bits of related array
