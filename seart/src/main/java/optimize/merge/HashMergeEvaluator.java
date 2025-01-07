@@ -63,31 +63,6 @@ public class HashMergeEvaluator {
 
   private static Random dice = new Random();
 
-  /**
-   * @param keys keys AFTER prefix truncated.
-   */
-  public static boolean canFinalIndex(List<String> keys, MapType type) {
-    switch (type) {
-      case HASH:
-        return true;
-      case CDM:
-        return CNodeHelper.parallelGetBranchingPositions(keys, 5).size() <= 4;
-      case FDM:
-        // first byte differs
-        BitSet bitmap = new BitSet(256);
-        for (String s : keys) {
-          byte[] sb = s.getBytes(StandardCharsets.UTF_8);
-          if (bitmap.get(sb[0])) {
-            return false;
-          }
-          bitmap.set(sb[0]);
-        }
-        return true;
-    }
-
-    return false;
-  }
-
   // keys should be prefix-truncated
   public static int estSpaceGain(List<String> keys, MapType type) {
     switch (type) {

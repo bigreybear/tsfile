@@ -229,11 +229,6 @@ public class CNode4EF extends CNodeBase implements ICNode {
   }
 
   @Override
-  public List<IMicroNode> getChildren() {
-    return Arrays.asList(ptrs);
-  }
-
-  @Override
   public IMicroNode getChild(byte[] key) {
     throw new UnsupportedOperationException();
   }

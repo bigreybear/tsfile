@@ -3,8 +3,13 @@ package optimize.nodes.cdm;
 import static optimize.util.ArrayHelper.removeTrailingZeros;
 
 import optimize.exception.KeyNotFound;
+import optimize.nodes.IMicroNode;
 import optimize.nodes.NodeInspector;
 import optimize.nodes.NodeWithPartialKey;
+import optimize.util.ArrayHelper;
+
+import java.util.Arrays;
+import java.util.List;
 
 public abstract class CNodeBase extends NodeWithPartialKey {
   public byte[][] rmk;
@@ -84,5 +89,9 @@ public abstract class CNodeBase extends NodeWithPartialKey {
 
     // ni.appendEntry(nodePrefix + "_rmk_arr_len", rmk.length);
     // ni.appendEntry(nodePrefix + "_rmk_elem_avg_len", ttlLen);
+  }
+
+  public List<IMicroNode> getChildren() {
+    return Arrays.asList(ptrs);
   }
 }

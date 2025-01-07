@@ -240,11 +240,6 @@ public class CNode extends CNodeBase implements ICNode {
   }
 
   @Override
-  public List<IMicroNode> getChildren() {
-    return Arrays.asList(ptrs);
-  }
-
-  @Override
   public void acceptInspector(NodeInspector noi) {
     noi.incEntry("CNode_cnt", 1);
     inspectRMK(noi, "CNode");

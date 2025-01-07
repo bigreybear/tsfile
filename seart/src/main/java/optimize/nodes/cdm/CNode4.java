@@ -127,12 +127,10 @@ public class CNode4 extends CNodeBase implements ICNode {
     inspectRMK(noi, "CNode4");
   }
 
-  public void setBranchingKeys(int[] collected) {
+  private void setBranchingKeys(int[] collected) {
     bks = new int[collected.length];
     ptrs = new ICNode[collected.length];
     System.arraycopy(collected, 0, bks, 0, bks.length);
-    // init interleaved bytes array
-    // if (itvPos.length > 0 || NO_ORPHAN_CLEAF) rmk = new byte[collected.length][];
   }
 
   public void setBranchingKeys(List<Integer> branchingBytes) {
@@ -276,8 +274,4 @@ public class CNode4 extends CNodeBase implements ICNode {
     return int2BytesVarLen(bks[channel]);
   }
 
-  @Override
-  public List<IMicroNode> getChildren() {
-    return Arrays.asList(ptrs);
-  }
 }

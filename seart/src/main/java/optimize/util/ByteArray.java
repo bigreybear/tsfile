@@ -4,7 +4,7 @@ import java.util.Arrays;
 import java.util.List;
 
 // A hashable byte array, can be key in hash map
-public class ByteArray {
+public class ByteArray implements Comparable<ByteArray> {
   final byte[] val;
 
   public ByteArray() {
@@ -87,5 +87,17 @@ public class ByteArray {
       res[curLen++] = sep;
     }
     throw new RuntimeException();
+  }
+
+  @Override
+  public int compareTo(ByteArray other) {
+    int minLen = Math.min(val.length, other.val.length);
+    for (int i = 0; i < minLen; i++) {
+      int diff = Byte.compare(val[i], other.val[i]);
+      if (diff != 0) {
+        return diff;
+      }
+    }
+    return Integer.compare(val.length, other.val.length);
   }
 }

@@ -153,24 +153,6 @@ public class CNodeHelper {
     return res;
   }
 
-  public static Set<Integer> parallelGetBranchingPositions(List<String> keys, boolean posLimit) {
-    return posLimit
-        ? parallelGetBranchingPositions(keys, POS_SIZE)
-        : parallelGetBranchingPositions(keys, Integer.MAX_VALUE);
-  }
-
-  public static Set<Integer> parallelGetBranchingPositions(List<String> keys, int limit) {
-    // todo remove the sort after thorough dev
-    keys = keys.parallelStream().sorted().collect(Collectors.toList());
-
-    List<byte[]> byteKeys =
-        keys.parallelStream()
-            .map(s -> s.getBytes(StandardCharsets.UTF_8))
-            .collect(Collectors.toList());
-
-    return InfixGroup.getBranchingPosParallel(byteKeys, limit);
-  }
-
   public static int[] complementaryBytePos(int preLen, int keyLen, int[] brPos) {
     int brBeforeKey = getValidBrPosNum(keyLen, brPos);
     int[] res = new int[keyLen - preLen - brBeforeKey];
@@ -351,18 +333,6 @@ public class CNodeHelper {
 
     PathTxtLoader loader = new PathTxtLoader(PathTxtLoader.FILE_PATH);
     List<String> kl = loader.getAllLines();
-
-    long time = System.nanoTime();
-    Set<Integer> res = parallelGetBranchingPositions(kl, false);
-    time = System.nanoTime() - time;
-    System.out.println(time / 1000000);
-    System.out.println(res);
-
-    byte[][] a = strings2ByteArrays(test);
-    System.out.println(Arrays.toString(bytes2Strings(a)));
-
-    byte[][] res2 = extBytes(a, new int[] {1, 2, 3, 4});
-    System.out.println(Arrays.toString(bytes2Strings(res2)));
   }
 
   // region Export
@@ -467,15 +437,6 @@ public class CNodeHelper {
     return r;
   }
 
-  public static int bytes2IntLegacy(byte[] b) {
-    // preceding bytes on higher bits
-    // fixme and its wrong! cannot differ [1,2,3] and [0,1,2,3] as 0 on highest byte
-    return (((b.length >= 1 ? b[0] : 0) & 0xFF) << 24)
-        | (((b.length >= 2 ? b[1] : 0) & 0xFF) << 16)
-        | (((b.length >= 3 ? b[2] : 0) & 0xFF) << 8)
-        | ((b.length >= 4 ? b[3] : 0) & 0xFF);
-  }
-
   public static int bytes2Int(byte[] b) {
     // put prior pos on lower bytes
     int len = b.length, r = 0;
@@ -504,14 +465,37 @@ public class CNodeHelper {
   public static byte[] int2BytesVarLen(final int i) {
     byte[] b = new byte[4];
     int k = 0;
-    for (; k < 4; ) {
+    while (k < 4) {
       b[k] = (byte) ((i >> (8 * k)) & 0xff);
       if (b[k] == 0 && k != 0) break; // 0 after any non-zero are ignored
       k++;
     }
-
     return Arrays.copyOfRange(b, 0, k);
   }
+
+  public static byte[] short2BytesVarLen(final short s) {
+    if ((s & 0xff00) == 0) {
+      return new byte[] {(byte) (s & 0xff)};
+    }
+
+    return new byte[] {
+        (byte) (s & 0xff),
+        (byte) ((s >>> 8) & 0xff)
+    };
+  }
+
+  public static byte[] long2BytesVarLen(final long s) {
+    byte[] b = new byte[4];
+    int k = 0;
+    while (k < 8) {
+      b[k] = (byte) ((s >> (8 * k)) & 0xff);
+      if (b[k] == 0 && k != 0) break; // 0 after any non-zero are ignored
+      k++;
+    }
+    return Arrays.copyOfRange(b, 0, k);
+  }
+
+
 
   private static final Comparator<byte[]> BYTE_ARRAY_COMPARATOR =
       (a, b) -> {
