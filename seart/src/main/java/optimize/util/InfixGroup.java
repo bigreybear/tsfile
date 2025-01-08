@@ -14,28 +14,42 @@ import java.util.stream.Collectors;
 
 import optimize.nodes.cdm.CNodeHelper;
 
+import static optimize.nodes.cdm.CNodeHelper.strings2ByteArrays;
+
 // return type of infix group
 public class InfixGroup {
   List<Integer> brPos;
   Map<ByteArray, List<byte[]>> infixMap;
-  int maxKeyLen = -1;
 
-  private InfixGroup(int[] bp, Map<ByteArray, List<byte[]>> im) {
+  // initial states, and partial key is implied by offset and the first in brPos
+  final int maxKeyLen, offset;
+
+  private InfixGroup(int[] bp, Map<ByteArray, List<byte[]>> im, int ofs) {
     brPos = Arrays.stream(bp).boxed().collect(Collectors.toList());
 
     infixMap = new TreeMap<>();
     ByteArray key;
+    int mkl = -1;
     for (Map.Entry<ByteArray, List<byte[]>> entry : im.entrySet()) {
       key = new ByteArray(ArrayHelper.removeTrailingZeros(entry.getKey().getVal()));
-      maxKeyLen = Math.max(key.val.length, maxKeyLen);
+      for (byte[] ck : entry.getValue()) {
+        mkl = Math.max(mkl, ck.length);
+      }
       infixMap.put(
           key,
           entry.getValue());
     }
+
+    maxKeyLen = mkl;
+    offset = ofs;
   }
 
   public static InfixGroup groupByInfix(final byte[][] keys, final int limit, final int start) {
     return groupByInfix(Arrays.asList(keys), limit, start);
+  }
+
+  public static InfixGroup groupByInfix(final byte[][] keys, final int off) {
+    return groupByInfix(keys, 1, off);
   }
 
   /**
@@ -48,48 +62,58 @@ public class InfixGroup {
 
   /**
    * Well-defined, which is implemented with no hurry :).
+   * Actual action method.
    */
   public static InfixGroup groupByInfix(final List<byte[]> keys, final int limit, final int start) {
     List<Integer> positions = new ArrayList<>();
-    Map<ByteArray, List<byte[]>> infixKeyMap = new ConcurrentHashMap<>();
+
+    Map<ByteArray, List<byte[]>>
+        infixKeyMap = new ConcurrentHashMap<>(),
+        brKeys = new ConcurrentHashMap<>(),
+        nonBrKeys = new ConcurrentHashMap<>(),
+        tempRef; // make sure only 3 map instances are created
 
     infixKeyMap.put(new ByteArray(), keys);
     int depth = start;
     OptionalInt maxLen = keys.stream().mapToInt(e -> e.length).max();
-    boolean isBranch;
     while (positions.size() < limit && !infixKeyMap.isEmpty() && depth < maxLen.getAsInt()) {
-      int thisDepth = depth;
-
       // when split, branching keys immediately obtain its brKeys, while non-brs obtain after others
       // finished.
-      Map<ByteArray, List<byte[]>> branchingKeys = new ConcurrentHashMap<>();
-      Map<ByteArray, List<byte[]>> nonBranchingKeys = new ConcurrentHashMap<>();
 
-      isBranch = parallelCheckSplit(
+      parallelCheckSplit(
           infixKeyMap,
-          branchingKeys,
-          nonBranchingKeys,
-          thisDepth
+          brKeys,
+          nonBrKeys,
+          depth
       );
 
-      if (isBranch) {
+      if (!brKeys.isEmpty()) {
         positions.add(depth);
         // improve: choose the smaller one as the base
-        infixKeyMap = branchingKeys;
-        for (Map.Entry<ByteArray, List<byte[]>> nbe : nonBranchingKeys.entrySet()) {
+        tempRef = infixKeyMap;
+        infixKeyMap = brKeys;
+        for (Map.Entry<ByteArray, List<byte[]>> nbe : nonBrKeys.entrySet()) {
           // all keys in this entry must agree on thisDepth
           byte[] k1 = nbe.getValue().get(0);
           infixKeyMap.put(
-              new ByteArray(nbe.getKey(), k1.length > thisDepth ? k1[thisDepth] : 0),
+              new ByteArray(nbe.getKey(), k1.length > depth ? k1[depth] : 0),
               nbe.getValue());
         }
+
+        brKeys = tempRef;
+        // the two map instances could be reused other than garbage collected.
+        brKeys.clear();
+        nonBrKeys.clear();
       } else {
-        // no key split at this depth
-        infixKeyMap = nonBranchingKeys;
+        // no branching, swap infix and nonBrKeys and clear content in coming nonBrKeys
+        tempRef = infixKeyMap;
+        infixKeyMap = nonBrKeys;
+        nonBrKeys = tempRef;
+        nonBrKeys.clear();
       }
       depth++;
     }
-    return new InfixGroup(positions.stream().mapToInt(i -> i).sorted().toArray(), infixKeyMap);
+    return new InfixGroup(positions.stream().mapToInt(i -> i).sorted().toArray(), infixKeyMap, start);
   }
 
   /**
@@ -118,52 +142,63 @@ public class InfixGroup {
     return map;
   }
 
-  public void findNextBranch() {
-    int oriPosLen = brPos.size();
-    int dep = brPos.get(oriPosLen- 1);
-    boolean foundBranch;
-    while (true) {
-      // imitate groupByInfix method
-      int thisDepth = dep;
-      Map<ByteArray, List<byte[]>> branchingKeys = new ConcurrentHashMap<>();
-      Map<ByteArray, List<byte[]>> nonBranchingKeys = new ConcurrentHashMap<>();
+  // return true if next branch found otherwise false
+  public boolean findNextBranch() {
+    final int oriPosLen = brPos.size();
+    int dep = brPos.get(oriPosLen- 1), thisDepth = dep;
 
-      foundBranch = parallelCheckSplit(
-          infixMap,
-          branchingKeys,
-          nonBranchingKeys,
+    Map<ByteArray, List<byte[]>>
+        nextRun = new ConcurrentHashMap<>(infixMap),
+        brcKeys = new ConcurrentHashMap<>(),
+        nonBrcKeys = new ConcurrentHashMap<>(),
+        refChange;
+    while (dep < maxKeyLen) {
+      parallelCheckSplit(
+          nextRun,
+          brcKeys,
+          nonBrcKeys,
           dep
       );
 
-      if (foundBranch) {
+      if (!brcKeys.isEmpty()) {
         brPos.add(dep);
-        infixMap = branchingKeys;
-        for (Map.Entry<ByteArray, List<byte[]>> nbe : nonBranchingKeys.entrySet()) {
+        nextRun = brcKeys;
+        // there IS a branch, and those non-branching shall fill the corresponding byte to provide branch key
+        for (Map.Entry<ByteArray, List<byte[]>> nbe : nonBrcKeys.entrySet()) {
+          // k1 and other elements are identical on thisDepth
           byte[] k1 = nbe.getValue().get(0);
-          infixMap.put(
+          nextRun.put(
               new ByteArray(nbe.getKey(), k1.length > thisDepth ? k1[thisDepth] : 0),
               nbe.getValue());
         }
         break;
       }
 
-      infixMap = nonBranchingKeys;
+      // swap nextRun and nonBrcKeys
+      refChange = nextRun;
+      nextRun = nonBrcKeys;
+      nonBrcKeys = refChange;
+
+      // brKeys is already emtpy
+      nonBrcKeys.clear();
       dep++;
     }
-    infixMap = new TreeMap<>(infixMap);
+    // infixMap = new TreeMap<>(infixMap);
+    infixMap.clear();
+    infixMap.putAll(nextRun);
+    return oriPosLen != brPos.size();
   }
 
-  private static boolean parallelCheckSplit(final Map<ByteArray, List<byte[]>> oriMap,
+  // check result with brcMap.size()
+  private static void parallelCheckSplit(final Map<ByteArray, List<byte[]>> oriMap,
                                          final Map<ByteArray, List<byte[]>> brcMap,
                                          final Map<ByteArray, List<byte[]>> nbrMap,
                                          final int dep) {
-    AtomicBoolean flag = new AtomicBoolean(false);
     oriMap.entrySet().parallelStream()
         .forEach(
             e -> {
               Map<Byte, List<byte[]>> res = splitAt(e.getValue(), dep);
               if (res.size() > 1) {
-                flag.set(true);
                 for (Map.Entry<Byte, List<byte[]>> resEnt : res.entrySet()) {
                   brcMap.put(
                       new ByteArray(e.getKey(), resEnt.getKey()), resEnt.getValue());
@@ -173,7 +208,6 @@ public class InfixGroup {
                 nbrMap.put(e.getKey(), e.getValue());
               }
             });
-    return flag.get();
   }
 
   public List<byte[]> getCompleteKeys(byte[] brKey) {
@@ -223,8 +257,9 @@ public class InfixGroup {
       }
     }
 
+    builder.append(String.format(" Branches num: %d", infixMap.size()));
     builder.append("\n");
-    builder.append("ctn: {\n");
+    builder.append("content: {\n");
 
     List<Map.Entry<ByteArray, List<byte[]>>> lst = new ArrayList<>(infixMap.entrySet());
     for (int i = 0; i < lst.size(); i++) {
@@ -236,5 +271,21 @@ public class InfixGroup {
     }
     builder.append("}");
     return builder.toString();
+  }
+
+  public static void main(String[] args) {
+    List<String> keysList =
+        Arrays.asList(
+            "aaa", "aaa", "aabdd", "aabdc", "aac");
+
+    InfixGroup ig = groupByInfix(strings2ByteArrays(keysList), 0);
+    boolean f;
+    System.out.println(ig);
+    f = ig.findNextBranch();
+    System.out.println(f);
+    System.out.println(ig);
+    f = ig.findNextBranch();
+    System.out.println(f);
+    System.out.println(ig);
   }
 }
