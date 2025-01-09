@@ -24,8 +24,8 @@ public class InfixGroup {
   // initial states, and partial key is implied by offset and the first in brPos
   final int maxKeyLen, offset;
 
-  private InfixGroup(int[] bp, Map<ByteArray, List<byte[]>> im, int ofs) {
-    brPos = Arrays.stream(bp).boxed().collect(Collectors.toList());
+  private InfixGroup(List<Integer> bp, Map<ByteArray, List<byte[]>> im, int ofs) {
+    brPos = bp;
 
     infixMap = new TreeMap<>();
     ByteArray key;
@@ -62,7 +62,7 @@ public class InfixGroup {
 
   /**
    * Well-defined, which is implemented with no hurry :).
-   * Actual action method.
+   * Actual constructor method.
    */
   public static InfixGroup groupByInfix(final List<byte[]> keys, final int limit, final int start) {
     List<Integer> positions = new ArrayList<>();
@@ -113,7 +113,7 @@ public class InfixGroup {
       }
       depth++;
     }
-    return new InfixGroup(positions.stream().mapToInt(i -> i).sorted().toArray(), infixKeyMap, start);
+    return new InfixGroup(positions, infixKeyMap, start);
   }
 
   /**
