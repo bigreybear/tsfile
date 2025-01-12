@@ -1,12 +1,12 @@
 package optimize.nodes.cdm;
 
 import optimize.SearchStatus;
-import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.ITSNode;
 import optimize.util.InfixGroup;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
@@ -16,7 +16,11 @@ public class CNode2 extends CNodeBase implements ICNode {
 
   @Override
   public List<byte[]> getKeyBytes() {
-    return null;
+    List<byte[]> r = new ArrayList<>();
+    for (short s : bks) {
+      r.add(ByteEncode.short2BytesNoTrailing(s));
+    }
+    return r;
   }
 
   @Override
@@ -61,7 +65,7 @@ public class CNode2 extends CNodeBase implements ICNode {
   }
 
   @Override
-  public void setContent(InfixGroup group, Function<byte[], IMicroNode> getLChild, PrefixMergeStrategy mergeStrategy, MapType mapType, int height, boolean EFCoded) {
+  public void setContent(InfixGroup group, Function<byte[], IMicroNode> getLChild, PrefixMergeStrategy mergeStrategy, int height) {
 
   }
 

@@ -2,7 +2,6 @@ package optimize.nodes.cdm;
 
 import java.util.function.Function;
 import optimize.SearchStatus;
-import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
 import optimize.util.InfixGroup;
@@ -17,9 +16,7 @@ public interface ICNode extends IMicroNode {
       InfixGroup group,
       Function<byte[], IMicroNode> getLChild,
       PrefixMergeStrategy mergeStrategy,
-      MapType mapType,
-      int height,
-      boolean EFCoded);
+      int height);
 
   ICNode getPtr(int pos);
 
@@ -30,16 +27,6 @@ public interface ICNode extends IMicroNode {
    * @return
    */
   ICNode getCDMChild(final byte[] key, final SearchStatus sts);
-
-  @Deprecated // todo remove it
-  default int getBrKeyIdx(int v) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Deprecated // todo remove it
-  default int getBrKeyIdx(byte[] v) {
-    throw new UnsupportedOperationException();
-  }
 
   /**
    * Ignore the partial key

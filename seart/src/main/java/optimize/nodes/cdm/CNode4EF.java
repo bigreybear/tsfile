@@ -1,20 +1,17 @@
 package optimize.nodes.cdm;
 
-import static optimize.nodes.cdm.CNodeHelper.bytes2Int;
+import static optimize.nodes.cdm.ByteEncode.bytes2Int;
 import static optimize.nodes.cdm.CNodeHelper.extractBytes;
-import static optimize.nodes.cdm.CNodeHelper.findIntervals;
-import static optimize.nodes.cdm.CNodeHelper.int2BytesFixedLen;
-import static optimize.nodes.cdm.CNodeHelper.int2BytesVarLen;
-import static optimize.util.ArrayHelper.removeTrailingZeros;
+import static optimize.util.ArrayHelper.findIntervals;
+import static optimize.nodes.cdm.ByteEncode.int2Bytes;
+import static optimize.nodes.cdm.ByteEncode.int2BytesNoTrailing;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import optimize.SearchStatus;
 import optimize.eliasfano.EliasFano;
-import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.INode;
@@ -42,12 +39,12 @@ public class CNode4EF extends CNodeBase implements ICNode {
         throw new UnsupportedOperationException("Longer than 255 not supported in CDM yet.");
       posBytes[i] = (byte) (pos[i] & 0x000000ff);
     }
-    posInt = CNodeHelper.bytes2Int(posBytes);
+    posInt = ByteEncode.bytes2Int(posBytes);
   }
 
   @Override
   public int[] getBranchingPos() {
-    return ICNode.unsignedByteArr2IntArr(int2BytesVarLen(posInt));
+    return ICNode.unsignedByteArr2IntArr(int2BytesNoTrailing(posInt));
   }
 
   @Override
@@ -55,9 +52,7 @@ public class CNode4EF extends CNodeBase implements ICNode {
       InfixGroup group,
       Function<byte[], IMicroNode> getLChild,
       PrefixMergeStrategy mergeStrategy,
-      MapType mapType,
-      int height,
-      boolean EFCoded) {
+      int height) {
     throw new UnsupportedOperationException();
   }
 
@@ -91,7 +86,7 @@ public class CNode4EF extends CNodeBase implements ICNode {
     ptrs = new ICNode[branchingBytes.size()];
 
     // init interleaved bytes array
-    int[] itvPos = findIntervals(int2BytesVarLen(posInt));
+    int[] itvPos = findIntervals(int2BytesNoTrailing(posInt));
     if (itvPos.length > 0) rmk = new byte[branchingBytes.size()][];
 
     List<Integer> positiveNumbers =
@@ -113,9 +108,12 @@ public class CNode4EF extends CNodeBase implements ICNode {
     nbk = nlen == 0 ? null : EliasFano.compress(arr, 0, nlen);
   }
 
-  @Override
+  private int getBrKeyIdx(byte[] v) {
+    throw new UnsupportedOperationException();
+  }
+
   // get index of the target key
-  public int getBrKeyIdx(int val) {
+  private int getBrKeyIdx(int val) {
     if (val < 0) {
       val &= 0x7fffffff;
       return EliasFano.select(nbk, 0, nlen, nlb, val);
@@ -128,20 +126,11 @@ public class CNode4EF extends CNodeBase implements ICNode {
     ptrs[idx] = (ICNode) ptr;
   }
 
-  public void setInterleavedBytes(int idx, byte[] ilb) {
-    ilb = removeTrailingZeros(ilb);
-    if (ilb.length > 0 && rmk == null)
-      throw new RuntimeException("Initial Interleave Bytes Error.");
-    if (ilb.length == 0) return;
-
-    rmk[idx] = ilb;
-  }
-
   @Override
   public byte[] assembleKeyAt(int pos) {
     // fixme todo align with CNode4
     byte[] res;
-    int[] brPosInt = ICNode.unsignedByteArr2IntArr(int2BytesVarLen(posInt));
+    int[] brPosInt = ICNode.unsignedByteArr2IntArr(int2BytesNoTrailing(posInt));
     int[] itvPosInt = findIntervals(brPosInt);
     byte[] brKey = getBrKeyAt(pos);
 
@@ -162,60 +151,16 @@ public class CNode4EF extends CNodeBase implements ICNode {
     if (pos < nlen) {
       int i = EliasFano.get(nbk, 0, nlen, nlb, pos);
       i |= 0x80000000;
-      return int2BytesFixedLen(i, 4);
+      return int2Bytes(i);
     }
 
     pos -= nlen;
-    return int2BytesFixedLen(EliasFano.get(pbk, 0, plen, plb, pos), 4);
+    return int2Bytes(EliasFano.get(pbk, 0, plen, plb, pos));
   }
 
   @Override
   public IMicroNode getLogicalChild(String name) {
-    byte[] kb = name.getBytes(StandardCharsets.UTF_8), cpk, curBrKeys, checkBrKeys;
-
-    ICNode curNode = this;
-    int idx = 0; /* idx to read the key */
-    int channel = -1; // which ptr to route
-    int[] brPos;
-    while (idx < kb.length) {
-      // check on partial key
-      if ((cpk = curNode.getParKey()) != null) {
-        for (int i = 0; i < cpk.length && idx < kb.length; i++) {
-          if (kb[idx] != cpk[i]) throw new RuntimeException("Key not exists: " + name);
-          idx++;
-        }
-
-        if (idx == kb.length) {
-          if (curNode instanceof CLeaf) return ((CLeaf) curNode).ptr;
-          // search key is exhausted on partial key, the branching key must be 0000
-          channel = curNode.getBrKeyIdx(0);
-          curNode = curNode.getPtr(channel);
-          break;
-        }
-      }
-
-      // locate and retrieve brn and itv bytes and verify
-      brPos = curNode.getBranchingPos();
-      curBrKeys = extractBytes(kb, brPos);
-      channel = curNode.getBrKeyIdx(bytes2Int(curBrKeys));
-      if (channel < 0) throw new RuntimeException("Key not found: " + name);
-      checkBrKeys = curNode.assembleKeyAt(channel);
-      for (int i = 0; i < checkBrKeys.length && idx < kb.length; i++) {
-        if (checkBrKeys[i] != kb[idx]) throw new RuntimeException();
-        idx++;
-      }
-
-      curNode = curNode.getPtr(channel);
-      if (curNode instanceof CNode) {
-        return ((CNode) curNode).getChild(kb, idx);
-      }
-    }
-
-    // todo fixme IMPROVE
-    if (!(curNode instanceof CLeaf)) {
-      curNode = curNode.getPtr(curNode.getBrKeyIdx(0));
-    }
-    return ((CLeaf) curNode).ptr;
+    throw new UnsupportedOperationException();
   }
 
   @Override

@@ -6,20 +6,22 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalInt;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
 
-import optimize.nodes.cdm.CNodeHelper;
+import optimize.nodes.cdm.ByteEncode;
 
-import static optimize.nodes.cdm.CNodeHelper.strings2ByteArrays;
+import static optimize.nodes.cdm.ByteEncode.bytes2Int;
+import static optimize.nodes.cdm.ByteEncode.bytes2Long;
+import static optimize.nodes.cdm.ByteEncode.bytes2Short;
+import static optimize.nodes.cdm.ByteEncode.strings2ByteArrays;
 
 // return type of infix group
 public class InfixGroup {
-  List<Integer> brPos;
-  Map<ByteArray, List<byte[]>> infixMap;
+  final List<Integer> brPos;
+
+  // Note(zx) keys may be padded with trailing 0s. Harmless to perf but easier to revert.
+  final Map<ByteArray, List<byte[]>> infixMap;
 
   // initial states, and partial key is implied by offset and the first in brPos
   final int maxKeyLen, offset;
@@ -31,7 +33,7 @@ public class InfixGroup {
     ByteArray key;
     int mkl = -1;
     for (Map.Entry<ByteArray, List<byte[]>> entry : im.entrySet()) {
-      key = new ByteArray(ArrayHelper.removeTrailingZeros(entry.getKey().getVal()));
+      key = new ByteArray(entry.getKey().getVal());
       for (byte[] ck : entry.getValue()) {
         mkl = Math.max(mkl, ck.length);
       }
@@ -131,6 +133,7 @@ public class InfixGroup {
     for (byte[] key : keys) {
       // keys not long enough will be grouped as '0'
       if (key.length <= depth) {
+        // Note(zx) a byte 0 is padded for shorter keys
         map.computeIfAbsent((byte) 0, k -> new ArrayList<>()).add(key);
         continue;
       }
@@ -145,7 +148,8 @@ public class InfixGroup {
   // return true if next branch found otherwise false
   public boolean findNextBranch() {
     final int oriPosLen = brPos.size();
-    int dep = brPos.get(oriPosLen- 1), thisDepth = dep;
+    int dep = brPos.get(oriPosLen- 1) + 1, thisDepth = dep;
+    if (dep == maxKeyLen) return false; // no more split
 
     Map<ByteArray, List<byte[]>>
         nextRun = new ConcurrentHashMap<>(infixMap),
@@ -189,6 +193,22 @@ public class InfixGroup {
     return oriPosLen != brPos.size();
   }
 
+  public boolean revertSplit() {
+    if (brPos.size() == 1) return false;
+
+    final int nps = brPos.size() - 1;
+    Map<ByteArray, List<byte[]>> temp = new TreeMap<>();
+    for (Map.Entry<ByteArray, List<byte[]>> entry : infixMap.entrySet()) {
+      temp
+          .computeIfAbsent(entry.getKey().getSlice(0, nps), k -> new ArrayList<>())
+          .addAll(entry.getValue());
+    }
+    infixMap.clear();
+    infixMap.putAll(temp);
+    brPos.remove(nps);
+    return true;
+  }
+
   // check result with brcMap.size()
   private static void parallelCheckSplit(final Map<ByteArray, List<byte[]>> oriMap,
                                          final Map<ByteArray, List<byte[]>> brcMap,
@@ -204,26 +224,50 @@ public class InfixGroup {
                       new ByteArray(e.getKey(), resEnt.getKey()), resEnt.getValue());
                 }
               } else {
-                // not branching, just key it as is, for further completion
+                // not branching, just keep it as is, for further completion
+                // since, the byte in #dep could be padded or dropped, depends on other entries
                 nbrMap.put(e.getKey(), e.getValue());
               }
             });
   }
 
   public List<byte[]> getCompleteKeys(byte[] brKey) {
-    return infixMap.get(new ByteArray(ArrayHelper.removeTrailingZeros(brKey)));
+    return infixMap.get(new ByteArray(
+        brPos.size() == brKey.length ?
+        brKey : Arrays.copyOfRange(brKey, 0, brPos.size())));
   }
 
   public int[] getBranchingPos() {
     return brPos.stream().mapToInt(Integer::intValue).toArray();
   }
 
-  public int[] sortedBrKeys() {
+  // Note(zx) all sorting are ascending
+  public short[] sortedShortBranchKeys() {
+    // sorted as signed-short so it conforms to Arrays.binarySearch
+    if (brPos.size() > 2) throw new RuntimeException("More than 2 branching positions.");
+    short[] r = new short[infixMap.size()];
+    int idx = 0;
+    for (ByteArray k : infixMap.keySet()) r[idx++] = bytes2Short(k.getVal());
+    Arrays.sort(r);
+    return r;
+  }
+
+  public int[] sortedIntBranchKeys() {
     if (brPos.size() > 4) throw new RuntimeException("More than 4 branching positions.");
-    return infixMap.keySet().stream()
-        .mapToInt(ba -> CNodeHelper.bytes2Int(ba.getVal()))
-        .sorted()
-        .toArray();
+    int[] r = new int[infixMap.size()];
+    int idx = 0;
+    for (ByteArray k : infixMap.keySet()) r[idx++] = bytes2Int(k.getVal());
+    Arrays.sort(r);
+    return r;
+  }
+
+  public long[] sortedLongBranchKeys() {
+    if (brPos.size() > 8) throw new RuntimeException("More than 8 branching positions.");
+    long[] r = new long[infixMap.size()];
+    int idx = 0;
+    for (ByteArray k : infixMap.keySet()) r[idx++] = bytes2Long(k.getVal());
+    Arrays.sort(r);
+    return r;
   }
 
   public byte[][] sortedBrKeyBytes() {
@@ -286,6 +330,10 @@ public class InfixGroup {
     System.out.println(ig);
     f = ig.findNextBranch();
     System.out.println(f);
+    System.out.println(ig);
+    System.out.println(ig.findNextBranch());
+    System.out.println(ig);
+    System.out.println(ig.revertSplit());
     System.out.println(ig);
   }
 }

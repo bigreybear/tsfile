@@ -1,7 +1,7 @@
 package optimize.nodes.cdm;
 
 import static optimize.nodes.cdm.CNodeHelper.extractBytes;
-import static optimize.nodes.cdm.CNodeHelper.findIntervals;
+import static optimize.util.ArrayHelper.findIntervals;
 import static optimize.nodes.cdm.CNodeHelper.getValidBrPosNum;
 import static optimize.util.ArrayHelper.removeTrailingZeros;
 
@@ -10,7 +10,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 import optimize.SearchStatus;
-import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.NodeInspector;
@@ -19,6 +18,7 @@ import optimize.util.ArrayHelper;
 import optimize.util.ByteArray;
 import optimize.util.InfixGroup;
 
+@Deprecated
 public class CNode extends CNodeBase implements ICNode {
   // for more than 4 positions
   byte[][] bks;
@@ -92,9 +92,7 @@ public class CNode extends CNodeBase implements ICNode {
       InfixGroup group,
       Function<byte[], IMicroNode> getLChild,
       PrefixMergeStrategy mergeStrategy,
-      MapType mapType,
-      int height,
-      boolean EFCoded) {
+      int height) {
     byte[][] input = group.sortedBrKeyBytes();
     bks = new byte[input.length][];
     for (int i = 0; i < input.length; i++) {
@@ -115,7 +113,7 @@ public class CNode extends CNodeBase implements ICNode {
       ck = ckl.get(0);
 
       int[] cmpPos =
-          CNodeHelper.complementaryBytePos(
+          ArrayHelper.findComplementary(
               group.getBranchingPos()[0], ck.length, group.getBranchingPos());
       setInterleavedBytes(i, extractBytes(ck, cmpPos));
       ptrs[i] = (ICNode) getLChild.apply(ck);
@@ -158,8 +156,7 @@ public class CNode extends CNodeBase implements ICNode {
     return pi;
   }
 
-  @Override
-  public int getBrKeyIdx(byte[] ba) {
+  private int getBrKeyIdx(byte[] ba) {
     int left = 0, right = bks.length - 1;
 
     while (left <= right) {
@@ -198,7 +195,7 @@ public class CNode extends CNodeBase implements ICNode {
     preLen = pk == null ? preLen : preLen + pk.length;
 
     int[] posInt = ICNode.unsignedByteArr2IntArr(pos);
-    int[] itvInt = CNodeHelper.complementaryBytePos(preLen, keyLen, posInt);
+    int[] itvInt = ArrayHelper.findComplementary(preLen, keyLen, posInt);
 
     int[] brRltPos = ICNode.shiftIntArr(posInt, -1 * preLen);
     int[] itvRltPos = ICNode.shiftIntArr(itvInt, -1 * preLen);

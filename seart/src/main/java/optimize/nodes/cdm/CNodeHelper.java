@@ -1,20 +1,18 @@
 package optimize.nodes.cdm;
 
-import static optimize.nodes.fdm.FNodeBase.ubyte;
-
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
+
 import loader.PathTxtLoader;
-import optimize.util.InfixGroup;
+
+import static optimize.nodes.cdm.ByteEncode.bytes2Int;
+import static optimize.nodes.cdm.ByteEncode.int2BytesNoTrailing;
+import static optimize.util.ArrayHelper.findIntervals;
 
 public class CNodeHelper {
   public static final int POS_SIZE = 4;
@@ -47,36 +45,6 @@ public class CNodeHelper {
       }
     }
     return res;
-  }
-
-  public static Set<Integer> getBranchingPositions(List<String> keys) {
-    Collections.sort(keys);
-    List<byte[]> byteKeys =
-        keys.stream().map(s -> s.getBytes(StandardCharsets.UTF_8)).collect(Collectors.toList());
-    Set<Integer> positions = new HashSet<>();
-    List<List<byte[]>> cur = new ArrayList<>(), tar = new ArrayList<>(), temp /*only for swap*/;
-    cur.add(byteKeys);
-    int depth = 0;
-    List<List<byte[]>> res;
-    while (positions.size() < POS_SIZE && !cur.isEmpty()) {
-      for (List<byte[]> group : cur) {
-        res = splitAt(group, depth);
-        if (res.size() > 1) {
-          positions.add(depth);
-        }
-
-        // only group with more than 1 string can be considered to split
-        tar.addAll(res.stream().filter(e -> e.size() > 1).collect(Collectors.toList()));
-      }
-
-      cur.clear();
-      temp = cur;
-      cur = tar;
-      tar = temp;
-      depth++;
-    }
-
-    return positions;
   }
 
   // keys must be sorted, meaning same byte at depth must be consecutive!
@@ -150,22 +118,6 @@ public class CNodeHelper {
           }
           return extracted;
         });
-    return res;
-  }
-
-  public static int[] complementaryBytePos(int preLen, int keyLen, int[] brPos) {
-    int brBeforeKey = getValidBrPosNum(keyLen, brPos);
-    int[] res = new int[keyLen - preLen - brBeforeKey];
-    for (int i = 0, bpi = 0; i < res.length; ) {
-      // i+preLen+bpi indicates the position now iterated
-      if (bpi < brBeforeKey && i + preLen + bpi == brPos[bpi]) {
-        bpi++;
-        continue;
-      }
-
-      res[i] = i + preLen + bpi;
-      i++;
-    }
     return res;
   }
 
@@ -247,21 +199,17 @@ public class CNodeHelper {
   // endregion
 
   public static void main(String[] args) {
-    System.out.println(Arrays.toString(complementaryBytePos(3, 10, new int[] {5, 6, 7})));
-  }
-
-  public static void main4(String[] args) {
     byte[] t = new byte[] {1, 2, 88, 4};
     int[] ti = new int[] {1, 3};
     System.out.println(Arrays.toString(findIntervals(ti)));
-    System.out.println(Arrays.toString(int2BytesVarLen(bytes2Int(t))));
+    System.out.println(Arrays.toString(int2BytesNoTrailing(bytes2Int(t))));
 
     t = new byte[] {1, 2};
-    System.out.println(Arrays.toString(int2BytesVarLen(bytes2Int(t))));
+    System.out.println(Arrays.toString(int2BytesNoTrailing(bytes2Int(t))));
     t = new byte[] {8};
-    System.out.println(Arrays.toString(int2BytesVarLen(bytes2Int(t))));
+    System.out.println(Arrays.toString(int2BytesNoTrailing(bytes2Int(t))));
     t = new byte[] {1, 2, 3, 4};
-    System.out.println(Arrays.toString(int2BytesVarLen(bytes2Int(t))));
+    System.out.println(Arrays.toString(int2BytesNoTrailing(bytes2Int(t))));
   }
 
   // for assembler
@@ -321,12 +269,12 @@ public class CNodeHelper {
             "watermelon",
             "xigua");
 
-    byte[][] toSort = strings2ByteArrays(keysList);
+    byte[][] toSort = ByteEncode.strings2ByteArrays(keysList);
 
     List<ValuedPrefixArray> vpa = evaluatePrefixes(keysList);
 
     Arrays.sort(toSort, BYTE_ARRAY_COMPARATOR);
-    String[] sortRes = bytes2Strings(toSort);
+    String[] sortRes = ByteEncode.bytes2Strings(toSort);
     int bsRes =
         Arrays.binarySearch(
             toSort, "apple".getBytes(StandardCharsets.UTF_8), BYTE_ARRAY_COMPARATOR);
@@ -372,34 +320,8 @@ public class CNodeHelper {
 
   // region Utils
 
-  public static int[] findIntervals(byte[] pos) {
-    int[] res = new int[pos.length];
-    for (int i = 0; i < pos.length; i++) {
-      res[i] = 0xff & pos[i];
-    }
-    return findIntervals(res);
-  }
-
-  public static int[] findIntervals(int[] pos) {
-    if (pos == null || pos.length <= 1) return new int[0];
-
-    int[] itvPos = new int[pos[pos.length - 1] - pos[0] - pos.length + 1];
-    for (int idx = 0, k = 0; ; ) {
-      // k records number in itvPos
-      if (idx > pos.length - 2) break; // shall not check last element
-
-      if (pos[idx] + 1 != pos[idx + 1]) {
-        for (int pi = pos[idx] + 1; pi < pos[idx + 1]; pi++) {
-          itvPos[k++] = pi;
-        }
-      }
-      idx++;
-    }
-    return itvPos;
-  }
-
   public static List<ValuedPrefixArray> evaluatePrefixes(List<String> keys) {
-    byte[][] toSort = strings2ByteArrays(keys);
+    byte[][] toSort = ByteEncode.strings2ByteArrays(keys);
 
     // group keys by the first byte
     Map<List<Byte>, List<byte[]>> classfier = findPrefixes(toSort, 1);
@@ -416,85 +338,6 @@ public class CNodeHelper {
             .collect(Collectors.toList());
     return vpaList;
   }
-
-  public static Charset coding = StandardCharsets.UTF_8;
-
-  public static byte[][] strings2ByteArrays(List<String> s) {
-    byte[][] res = new byte[s.size()][];
-    Arrays.parallelSetAll(res, i -> s.get(i).getBytes(coding));
-    return res;
-  }
-
-  public static byte[][] strings2ByteArrays(String[] s) {
-    byte[][] res = new byte[s.length][];
-    Arrays.parallelSetAll(res, i -> s[i].getBytes(coding));
-    return res;
-  }
-
-  private static String[] bytes2Strings(byte[][] b) {
-    String[] r = new String[b.length];
-    Arrays.parallelSetAll(r, i -> new String(b[i], coding));
-    return r;
-  }
-
-  public static int bytes2Int(byte[] b) {
-    // put prior pos on lower bytes
-    int len = b.length, r = 0;
-    if (len > 4)
-      throw new UnsupportedOperationException("5 or more bytes cannot encoded to a int.");
-    for (int i = len - 1; i >= 0; i--) {
-      r <<= 8;
-      r |= ubyte(b[i]);
-    }
-
-    return r;
-  }
-
-  // all bytes are processed as is, for fixed length
-  public static byte[] int2BytesFixedLen(final int i, final int len) {
-    byte[] b = new byte[4];
-    int k = 0;
-    for (; k < len; ) {
-      b[k] = (byte) ((i >> (8 * k)) & 0xff);
-      k++;
-    }
-    return Arrays.copyOfRange(b, 0, len);
-  }
-
-  /** 0s are used as mark, only valid in the lowest byte (foremost byte previously) */
-  public static byte[] int2BytesVarLen(final int i) {
-    byte[] b = new byte[4];
-    int k = 0;
-    while (k < 4) {
-      b[k] = (byte) ((i >> (8 * k)) & 0xff);
-      if (b[k] == 0 && k != 0) break; // 0 after any non-zero are ignored
-      k++;
-    }
-    return Arrays.copyOfRange(b, 0, k);
-  }
-
-  public static byte[] short2BytesVarLen(final short s) {
-    if ((s & 0xff00) == 0) {
-      return new byte[] {(byte) (s & 0xff)};
-    }
-
-    return new byte[] {
-        (byte) (s & 0xff),
-        (byte) ((s >>> 8) & 0xff)
-    };
-  }
-
-  public static byte[] long2BytesVarLen(final long s) {
-    byte[] b = new byte[4];
-    int k = 0;
-    while (k < 8) {
-      b[k] = (byte) ((s >> (8 * k)) & 0xff);
-      if (b[k] == 0 && k != 0) break; // 0 after any non-zero are ignored
-      k++;
-    }
-    return Arrays.copyOfRange(b, 0, k);
-  }
-
 
 
   private static final Comparator<byte[]> BYTE_ARRAY_COMPARATOR =

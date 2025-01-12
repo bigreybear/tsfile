@@ -3,7 +3,6 @@ package optimize.nodes.logic;
 import java.util.List;
 import java.util.function.Function;
 import optimize.SearchStatus;
-import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.ITSNode;
@@ -110,9 +109,7 @@ public class LLeaf extends NodeWithPartialKey implements IMicroNode, IFNode, ICN
       InfixGroup group,
       Function<byte[], IMicroNode> getLChild,
       PrefixMergeStrategy mergeStrategy,
-      MapType mapType,
-      int height,
-      boolean EFCoded) {
+      int height) {
     throw new UnsupportedOperationException();
   }
 

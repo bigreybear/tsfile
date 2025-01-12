@@ -16,7 +16,6 @@ import optimize.nodes.IMicroNode;
 import optimize.nodes.cdm.CLeaf;
 import optimize.nodes.cdm.CNode;
 import optimize.nodes.cdm.CNode4;
-import optimize.nodes.cdm.CNode4EF;
 import optimize.nodes.cdm.ICNode;
 import optimize.util.InfixGroup;
 
@@ -35,9 +34,7 @@ public class CDMPrefixMerge {
       byte[][] keys,
       int preLen,
       PrefixMergeStrategy ms,
-      MapType mt,
-      int height,
-      boolean withEFCode) {
+      int height) {
     if (keys.length == 1) {
       return new CLeaf(keys, preLen, (ICNode) getLChild.apply(keys[0]));
     }
@@ -74,13 +71,12 @@ public class CDMPrefixMerge {
     if (useNode4) {
       List<byte[]> completeKeys;
       evaTrueTime++;
-      ICNode curNode =
-          withEFCode ? new CNode4EF(group.getBranchingPos()) : new CNode4(group.getBranchingPos());
+      ICNode curNode = new CNode4(group.getBranchingPos());
       if (preLen < group.getBranchingPos()[0]) {
         curNode.setParKey(Arrays.copyOfRange(keys[0], preLen, group.getBranchingPos()[0]));
       }
 
-      curNode.setContent(group, getLChild, ms, mt, height, withEFCode);
+      curNode.setContent(group, getLChild, ms, height);
       return curNode;
     } else {
       InfixGroup group1;
@@ -92,7 +88,7 @@ public class CDMPrefixMerge {
         curNode.setParKey(Arrays.copyOfRange(keys[0], preLen, group1.getBranchingPos()[0]));
       }
 
-      curNode.setContent(group1, getLChild, ms, mt, height, withEFCode);
+      curNode.setContent(group1, getLChild, ms, height);
       return curNode;
     }
   }

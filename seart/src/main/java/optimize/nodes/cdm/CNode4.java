@@ -1,22 +1,20 @@
 package optimize.nodes.cdm;
 
 import static optimize.merge.CDMPrefixMerge.recNextMergeOnCDM;
-import static optimize.nodes.cdm.CNodeHelper.bytes2Int;
-import static optimize.nodes.cdm.CNodeHelper.complementaryBytePos;
+import static optimize.nodes.cdm.ByteEncode.bytes2Int;
+import static optimize.util.ArrayHelper.findComplementary;
 import static optimize.nodes.cdm.CNodeHelper.extractBytes;
-import static optimize.nodes.cdm.CNodeHelper.findIntervals;
-import static optimize.nodes.cdm.CNodeHelper.int2BytesFixedLen;
-import static optimize.nodes.cdm.CNodeHelper.int2BytesVarLen;
+import static optimize.util.ArrayHelper.findIntervals;
+import static optimize.nodes.cdm.ByteEncode.int2Bytes;
+import static optimize.nodes.cdm.ByteEncode.int2BytesNoTrailing;
 import static optimize.nodes.cdm.CNodeHelper.setBytesByPosNoCheck;
 import static optimize.util.ArrayHelper.removeTrailingZeros;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import optimize.SearchStatus;
-import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.NodeInspector;
@@ -41,12 +39,17 @@ public class CNode4 extends CNodeBase implements ICNode {
         throw new UnsupportedOperationException("Longer than 255 not supported in CDM yet.");
       posBytes[i] = (byte) (pos[i] & 0x000000ff);
     }
-    posInt = CNodeHelper.bytes2Int(posBytes);
+    posInt = ByteEncode.bytes2Int(posBytes);
   }
 
   @Override
   public int[] getBranchingPos() {
-    return ICNode.unsignedByteArr2IntArr(int2BytesVarLen(posInt));
+    // todo improve perf. for query process
+    return ICNode.unsignedByteArr2IntArr(
+        removeTrailingZeros(
+            int2Bytes(posInt)
+        )
+    );
   }
 
   @Override
@@ -54,25 +57,25 @@ public class CNode4 extends CNodeBase implements ICNode {
       InfixGroup group,
       Function<byte[], IMicroNode> getLChild,
       PrefixMergeStrategy mergeStrategy,
-      MapType mapType,
-      int height,
-      boolean EFCoded) {
+      int height) {
     List<byte[]> completeKeys;
     int[] itvPos;
-    int[] sortedBrKeys = group.sortedBrKeys();
+    int[] sortedBrKeys = group.sortedIntBranchKeys();
 
     setBranchingKeys(sortedBrKeys);
 
-    int validBrKeyLen = group.getBranchingPos().length;
     for (int i = 0; i < sortedBrKeys.length; i++) {
       // do not worry about prefixed key: handled by 0x00 key byte
-      completeKeys = group.getCompleteKeys(int2BytesFixedLen(sortedBrKeys[i], validBrKeyLen));
+      completeKeys = group.getCompleteKeys(int2Bytes(sortedBrKeys[i]));
 
       // if only one key, needless to recur
       if (NO_ORPHAN_CLEAF && completeKeys.size() == 1) {
         int[] cmpPos =
-            complementaryBytePos(
-                group.getBranchingPos()[0], completeKeys.get(0).length, group.getBranchingPos());
+            findComplementary(
+                group.getBranchingPos()[0],
+                completeKeys.get(0).length - 1,
+                group.getBranchingPos()
+            );
 
         setInterleavedBytes(i, extractBytes(completeKeys.get(0), cmpPos));
         ptrs[i] = (ICNode) getLChild.apply(completeKeys.get(0));
@@ -89,9 +92,8 @@ public class CNode4 extends CNodeBase implements ICNode {
                   completeKeys.toArray(new byte[0][0]),
                   group.getBranchingPos()[group.getBranchingPos().length - 1] + 1,
                   mergeStrategy,
-                  mapType,
-                  height,
-                  EFCoded));
+                  height
+              ));
     }
   }
 
@@ -123,7 +125,7 @@ public class CNode4 extends CNodeBase implements ICNode {
   @Override
   public void acceptInspector(NodeInspector noi) {
     noi.incEntry("CNode4_cnt", 1);
-    noi.appendEntry("CNode4_valid_br", int2BytesVarLen(posInt).length);
+    noi.appendEntry("CNode4_valid_br", int2BytesNoTrailing(posInt).length);
     inspectRMK(noi, "CNode4");
   }
 
@@ -137,14 +139,14 @@ public class CNode4 extends CNodeBase implements ICNode {
     ptrs = new ICNode[branchingBytes.size()];
 
     // init interleaved bytes array
-    int[] itvPos = findIntervals(int2BytesVarLen(posInt));
+    int[] itvPos = findIntervals(int2BytesNoTrailing(posInt));
     if (itvPos.length > 0) rmk = new byte[branchingBytes.size()][];
 
     bks = branchingBytes.stream().mapToInt(i -> i).toArray();
   }
 
   // get index of the target key
-  public int getBrKeyIdx(int val) {
+  private int getBrKeyIdx(int val) {
     int idx = Arrays.binarySearch(bks, val);
     if (idx >= 0 && bks[idx] != val) throw new RuntimeException("Key not found.");
     return idx;
@@ -157,10 +159,10 @@ public class CNode4 extends CNodeBase implements ICNode {
   @Override
   public byte[] assembleKeyAt(int pos) {
     byte[] res;
-    byte[] brKey = int2BytesFixedLen(bks[pos], 4);
+    byte[] brKey = int2Bytes(bks[pos]);
     brKey = removeTrailingZeros(brKey);
 
-    int[] brPosInt = ICNode.unsignedByteArr2IntArr(int2BytesVarLen(posInt));
+    int[] brPosInt = ICNode.unsignedByteArr2IntArr(int2BytesNoTrailing(posInt));
     int[] itvPosInt = findIntervals(brPosInt);
 
     int keyLen = brPosInt[brPosInt.length - 1] - brPosInt[0] + 1;
@@ -193,7 +195,7 @@ public class CNode4 extends CNodeBase implements ICNode {
   public byte[][] getBranchingKeys() {
     byte[][] res = new byte[bks.length][];
     for (int i = 0; i < bks.length; i++) {
-      res[i] = int2BytesFixedLen(bks[i], 4);
+      res[i] = int2Bytes(bks[i]);
     }
     return res;
   }
@@ -206,57 +208,7 @@ public class CNode4 extends CNodeBase implements ICNode {
   /** Adapted from public INode getChild(String name) { */
   @Override
   public IMicroNode getLogicalChild(String name) {
-    byte[] kb = name.getBytes(StandardCharsets.UTF_8), cpk, curBrKeys, checkBrKeys;
-
-    ICNode curNode = this;
-    int idx = 0; /* idx to read the key */
-    int channel = -1; // which ptr to route
-    int[] brPos;
-    while (idx < kb.length) {
-      // check on partial key
-      if ((cpk = curNode.getParKey()) != null) {
-        for (int i = 0; i < cpk.length && idx < kb.length; i++) {
-          if (kb[idx] != cpk[i]) throw new RuntimeException("Key not exists: " + name);
-          idx++;
-        }
-
-        if (idx == kb.length) {
-          if (curNode instanceof CLeaf) return ((CLeaf) curNode).ptr;
-          // search key is exhausted on partial key, the branching key must be 0000
-          channel = curNode.getBrKeyIdx(0);
-          curNode = curNode.getPtr(channel);
-          break;
-        }
-      }
-
-      // locate and retrieve brn and itv bytes and verify
-      brPos = curNode.getBranchingPos();
-
-      if (brPos == null) {
-        // suspect to be a leaf
-        break;
-      }
-
-      curBrKeys = extractBytes(kb, brPos);
-      channel = curNode.getBrKeyIdx(bytes2Int(curBrKeys));
-      if (channel < 0) throw new RuntimeException("Key not found: " + name);
-      checkBrKeys = curNode.assembleKeyAt(channel);
-      for (int i = 0; i < checkBrKeys.length && idx < kb.length; i++) {
-        if (checkBrKeys[i] != kb[idx]) throw new RuntimeException();
-        idx++;
-      }
-
-      curNode = curNode.getPtr(channel);
-      if (curNode instanceof CNode) {
-        return ((CNode) curNode).getChild(kb, idx);
-      }
-    }
-
-    // todo fixme IMPROVE
-    if (!(curNode instanceof CLeaf)) {
-      curNode = curNode.getPtr(curNode.getBrKeyIdx(0));
-    }
-    return ((CLeaf) curNode).ptr;
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -266,12 +218,12 @@ public class CNode4 extends CNodeBase implements ICNode {
 
   @Override
   public List<byte[]> getKeyBytes() {
-    return Arrays.stream(bks).mapToObj(CNodeHelper::int2BytesVarLen).collect(Collectors.toList());
+    return Arrays.stream(bks).mapToObj(ByteEncode::int2BytesNoTrailing).collect(Collectors.toList());
   }
 
   @Override
   protected byte[] getBrKeyAt(int channel) {
-    return int2BytesVarLen(bks[channel]);
+    return int2BytesNoTrailing(bks[channel]);
   }
 
 }

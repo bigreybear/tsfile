@@ -1,10 +1,9 @@
 package optimize.merge;
 
-import static optimize.Main.CDM_WITH_EF;
 import static optimize.Main.REPORT_CHANNEL;
 import static optimize.merge.CDMPrefixMerge.recNextMergeOnCDM;
 import static optimize.merge.HashPrefixMerge.recNextMergeOnHashV2VDev;
-import static optimize.nodes.cdm.CNodeHelper.strings2ByteArrays;
+import static optimize.nodes.cdm.ByteEncode.strings2ByteArrays;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -89,7 +88,7 @@ public class MergePrefixVDev {
               ICNode n2 =
                   (ICNode)
                       recNextMergeOnCDM(
-                          getLogicalChildVDev(cur), keyBytes, 0, ms, mt, stk.size(), CDM_WITH_EF);
+                          getLogicalChildVDev(cur), keyBytes, 0, ms, stk.size());
 
               if (n2 != cur) {
                 if (par == null) {
