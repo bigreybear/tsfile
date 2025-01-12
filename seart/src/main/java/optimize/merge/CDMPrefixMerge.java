@@ -29,6 +29,71 @@ public class CDMPrefixMerge {
             "Partial merge: %d, not merge: %d \n", partialToMerge.get(), partialNotMerge.get()));
   }
 
+  // updating for incorporating CNode2/4/8 without CNode
+  public static IMicroNode recNextMergeOnCDMV2(
+      Function<byte[], IMicroNode> getLChild,
+      byte[][] keys,
+      int preLen,
+      PrefixMergeStrategy ms,
+      int height) {
+    if (keys.length == 1) {
+      return new CLeaf(keys, preLen, (ICNode) getLChild.apply(keys[0]));
+    }
+
+    List<byte[]> byteList = Arrays.asList(keys);
+
+    // for standard edition set CDM width = 4
+    // key in group.map is ByteArray, shall align with bytes2Int method
+    InfixGroup group = groupByInfix(byteList, 4, preLen);
+
+    if (group.getInfixMap().size() <= 1) {
+      throw new RuntimeException("Should not have duplicate keys.");
+    }
+
+    if (ms == null) {
+      // todo transform to CNode, serving as full
+      return null;
+    }
+
+    boolean useNode4;
+    if (ms.equals(PrefixMergeStrategy.FULL)) {
+      useNode4 = true;
+    } else if (ms.equals(PrefixMergeStrategy.PARTIAL)) {
+      useNode4 = evaluateForNode4(group, preLen, keys, height);
+
+      if (useNode4) partialToMerge.incrementAndGet();
+      else partialNotMerge.incrementAndGet();
+    } else if (ms.equals(PrefixMergeStrategy.SIMPLE)) {
+      useNode4 = false;
+    } else {
+      throw new RuntimeException("MERGE STRATEGY ERROR");
+    }
+
+    if (useNode4) {
+      List<byte[]> completeKeys;
+      evaTrueTime++;
+      ICNode curNode = new CNode4(group.getBranchingPos());
+      if (preLen < group.getBranchingPos()[0]) {
+        curNode.setParKey(Arrays.copyOfRange(keys[0], preLen, group.getBranchingPos()[0]));
+      }
+
+      curNode.setContent(group, getLChild, ms, height);
+      return curNode;
+    } else {
+      InfixGroup group1;
+      evaFalseTime++;
+      // not use final-mapping CNode
+      group1 = groupByInfix(byteList, 256, preLen);
+      CNode curNode = new CNode(group1.getBranchingPos());
+      if (preLen < group1.getBranchingPos()[0]) {
+        curNode.setParKey(Arrays.copyOfRange(keys[0], preLen, group1.getBranchingPos()[0]));
+      }
+
+      curNode.setContent(group1, getLChild, ms, height);
+      return curNode;
+    }
+  }
+
   public static IMicroNode recNextMergeOnCDM(
       Function<byte[], IMicroNode> getLChild,
       byte[][] keys,

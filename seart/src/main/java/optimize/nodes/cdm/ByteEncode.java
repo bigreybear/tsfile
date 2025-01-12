@@ -2,13 +2,10 @@ package optimize.nodes.cdm;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
-import static optimize.nodes.fdm.FNodeBase.ubyte;
-import static optimize.util.ArrayHelper.findComplementary;
 import static optimize.util.ArrayHelper.removeTrailingZeros;
 
 // all numerical encoded as BIG_ENDIAN

@@ -9,8 +9,6 @@ import java.util.OptionalInt;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 
-import optimize.nodes.cdm.ByteEncode;
-
 import static optimize.nodes.cdm.ByteEncode.bytes2Int;
 import static optimize.nodes.cdm.ByteEncode.bytes2Long;
 import static optimize.nodes.cdm.ByteEncode.bytes2Short;

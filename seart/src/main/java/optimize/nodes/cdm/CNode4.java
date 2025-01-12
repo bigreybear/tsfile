@@ -1,7 +1,9 @@
 package optimize.nodes.cdm;
 
 import static optimize.merge.CDMPrefixMerge.recNextMergeOnCDM;
+import static optimize.merge.CDMPrefixMerge.recNextMergeOnCDMV2;
 import static optimize.nodes.cdm.ByteEncode.bytes2Int;
+import static optimize.nodes.cdm.ByteEncode.short2Bytes;
 import static optimize.util.ArrayHelper.findComplementary;
 import static optimize.nodes.cdm.CNodeHelper.extractBytes;
 import static optimize.util.ArrayHelper.findIntervals;
@@ -22,7 +24,7 @@ import optimize.util.InfixGroup;
 
 public class CNode4 extends CNodeBase implements ICNode {
   // for only 4 positions
-  int posInt; // an int concatenated by 4 bytes: byte p1, p2, p3, p4;
+  final int posInt; // an int concatenated by 4 bytes: byte p1, p2, p3, p4;
   int[] bks; // indeed a byte[][4] bks; // branching keys
 
   // exactly no padding on 64-jvm, jdk-17, Compressed OOPs
@@ -35,9 +37,9 @@ public class CNode4 extends CNodeBase implements ICNode {
     // pos int init.
     byte[] posBytes = new byte[4];
     for (int i = 0; i < pos.length; i++) {
-      if ((pos[i] & 0xffffff00) != 0)
+      if ((pos[i] & SINGLE_BYTE_MASK) != 0)
         throw new UnsupportedOperationException("Longer than 255 not supported in CDM yet.");
-      posBytes[i] = (byte) (pos[i] & 0x000000ff);
+      posBytes[i] = (byte) (pos[i] & 0xff);
     }
     posInt = ByteEncode.bytes2Int(posBytes);
   }
@@ -45,56 +47,15 @@ public class CNode4 extends CNodeBase implements ICNode {
   @Override
   public int[] getBranchingPos() {
     // todo improve perf. for query process
-    return ICNode.unsignedByteArr2IntArr(
-        removeTrailingZeros(
-            int2Bytes(posInt)
-        )
-    );
+    return ICNode.unsignedByteArr2IntArr(int2BytesNoTrailing(posInt));
   }
 
+  // a support method for setContent
   @Override
-  public void setContent(
-      InfixGroup group,
-      Function<byte[], IMicroNode> getLChild,
-      PrefixMergeStrategy mergeStrategy,
-      int height) {
-    List<byte[]> completeKeys;
-    int[] itvPos;
-    int[] sortedBrKeys = group.sortedIntBranchKeys();
-
-    setBranchingKeys(sortedBrKeys);
-
-    for (int i = 0; i < sortedBrKeys.length; i++) {
-      // do not worry about prefixed key: handled by 0x00 key byte
-      completeKeys = group.getCompleteKeys(int2Bytes(sortedBrKeys[i]));
-
-      // if only one key, needless to recur
-      if (NO_ORPHAN_CLEAF && completeKeys.size() == 1) {
-        int[] cmpPos =
-            findComplementary(
-                group.getBranchingPos()[0],
-                completeKeys.get(0).length - 1,
-                group.getBranchingPos()
-            );
-
-        setInterleavedBytes(i, extractBytes(completeKeys.get(0), cmpPos));
-        ptrs[i] = (ICNode) getLChild.apply(completeKeys.get(0));
-        continue;
-      }
-
-      itvPos = findIntervals(group.getBranchingPos());
-      setInterleavedBytes(i, extractBytes(completeKeys.get(0), itvPos));
-      setBranchingPtr(
-          i,
-          (ICNode)
-              recNextMergeOnCDM(
-                  getLChild,
-                  completeKeys.toArray(new byte[0][0]),
-                  group.getBranchingPos()[group.getBranchingPos().length - 1] + 1,
-                  mergeStrategy,
-                  height
-              ));
-    }
+  protected final Function<Integer, List<byte[]>> generateCompleteKeyRetrieval(InfixGroup group) {
+    final int[] sbk = group.sortedIntBranchKeys();
+    setBranchingKeys(sbk);
+    return (integer -> group.getCompleteKeys(int2Bytes(sbk[integer])));
   }
 
   @Override
@@ -152,10 +113,6 @@ public class CNode4 extends CNodeBase implements ICNode {
     return idx;
   }
 
-  private void setBranchingPtr(int idx, ICNode ptr) {
-    ptrs[idx] = ptr;
-  }
-
   @Override
   public byte[] assembleKeyAt(int pos) {
     byte[] res;
@@ -187,28 +144,12 @@ public class CNode4 extends CNodeBase implements ICNode {
   }
 
   @Override
-  public void setChild(byte[] k, IMicroNode n) {
-    ptrs[getBrKeyIdx(bytes2Int(k))] = (ICNode) n;
-  }
-
-  @Override
   public byte[][] getBranchingKeys() {
     byte[][] res = new byte[bks.length][];
     for (int i = 0; i < bks.length; i++) {
       res[i] = int2Bytes(bks[i]);
     }
     return res;
-  }
-
-  @Override
-  public void replace(byte[] key, IMicroNode nNode) {
-    setChild(key, nNode);
-  }
-
-  /** Adapted from public INode getChild(String name) { */
-  @Override
-  public IMicroNode getLogicalChild(String name) {
-    throw new UnsupportedOperationException();
   }
 
   @Override

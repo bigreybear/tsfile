@@ -4,21 +4,18 @@ import java.util.function.Function;
 import optimize.SearchStatus;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
+import optimize.nodes.ITSNode;
 import optimize.util.InfixGroup;
 
 public interface ICNode extends IMicroNode {
 
   int[] getBranchingPos();
 
-  byte[][] getBranchingKeys();
-
   void setContent(
       InfixGroup group,
       Function<byte[], IMicroNode> getLChild,
       PrefixMergeStrategy mergeStrategy,
       int height);
-
-  ICNode getPtr(int pos);
 
   /**
    * Carry the search progress forward.
@@ -27,6 +24,9 @@ public interface ICNode extends IMicroNode {
    * @return
    */
   ICNode getCDMChild(final byte[] key, final SearchStatus sts);
+
+  // currently only used for templates
+  default byte[][] getBranchingKeys() {throw new UnsupportedOperationException();}
 
   /**
    * Ignore the partial key
@@ -37,15 +37,6 @@ public interface ICNode extends IMicroNode {
   default byte[] assembleKeyAt(int pos) {
     return null;
   }
-
-  // @Deprecated methods
-  // void setBranchingPtr(int idx, ICNode ptr);
-  // default void setInterleavedBytes(int idx, byte[] ilb /*Inter-Leaved Bytes*/) {}
-  // exact type is constrained by context logic
-  // void setBranchingKeys(T[] collected);
-  // void setBranchingKeys(List<Integer> collect);
-  // more than 4 positions
-  // void setBranchingKeys(byte[][] bks);
 
   /**
    * @param src may have trailing 0s, so could be longer than pos[-1] or res
@@ -77,5 +68,32 @@ public interface ICNode extends IMicroNode {
       intArr[i] = 0xff & b[i];
     }
     return intArr;
+  }
+
+  @Override
+  default void setChild(byte[] k, IMicroNode n) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  default void replace(byte[] key, IMicroNode node) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  default IMicroNode getChild(byte[] key) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  default ITSNode getLogicalChild(String pathSeg) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  default long getValue() {
+    // low-frequency called so trivial to perf.
+    // most descendants do not need this.
+    throw new UnsupportedOperationException();
   }
 }

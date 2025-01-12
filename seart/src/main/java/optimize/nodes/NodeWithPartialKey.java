@@ -5,6 +5,10 @@ import optimize.exception.PartialKeyCheckException;
 public abstract class NodeWithPartialKey {
   protected byte[] pk;
 
+  public static int ubyte(byte b) {
+    return b & 0xff;
+  }
+
   public byte[] getParKey() {
     return pk;
   }

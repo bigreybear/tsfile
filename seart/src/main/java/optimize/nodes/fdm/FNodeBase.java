@@ -52,10 +52,6 @@ public abstract class FNodeBase extends NodeWithPartialKey implements IFNode {
     return get(key[curLen]);
   }
 
-  public static int ubyte(byte b) {
-    return b & 0xff;
-  }
-
   protected int countValidPointers() {
     IFNode[] p = getPtrs();
     for (int i = 0, c = 0; ;) {

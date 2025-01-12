@@ -257,16 +257,6 @@ public class CNode extends CNodeBase implements ICNode {
   }
 
   @Override
-  public void setChild(byte[] k, IMicroNode n) {
-    ptrs[getBrKeyIdx(k)] = (ICNode) n;
-  }
-
-  @Override
-  public void replace(byte[] key, IMicroNode node) {
-    setChild(key, node);
-  }
-
-  @Override
   public long getValue() {
     throw new UnsupportedOperationException();
   }

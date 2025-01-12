@@ -75,7 +75,17 @@ public class LLeaf extends NodeWithPartialKey implements IMicroNode, IFNode, ICN
   }
 
   @Override
+  public void replace(byte[] key, IMicroNode node) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public void add(byte k, IFNode v) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void setChild(byte[] k, IMicroNode n) {
     throw new UnsupportedOperationException();
   }
 
@@ -114,7 +124,7 @@ public class LLeaf extends NodeWithPartialKey implements IMicroNode, IFNode, ICN
   }
 
   @Override
-  public ICNode getPtr(int pos) {
+  public byte[] assembleKeyAt(int pos) {
     throw new UnsupportedOperationException();
   }
 

@@ -2,6 +2,7 @@ package optimize.merge;
 
 import static optimize.Main.REPORT_CHANNEL;
 import static optimize.merge.CDMPrefixMerge.recNextMergeOnCDM;
+import static optimize.merge.CDMPrefixMerge.recNextMergeOnCDMV2;
 import static optimize.merge.HashPrefixMerge.recNextMergeOnHashV2VDev;
 import static optimize.nodes.cdm.ByteEncode.strings2ByteArrays;
 
@@ -74,6 +75,7 @@ public class MergePrefixVDev {
 
   public static final List<String> dupPaths = new ArrayList<>();
 
+  // entrance to merge the prefix
   public static void mergePrefixes(TSTree tree, MapType mt, PrefixMergeStrategy ms) {
     switch (mt) {
       case CDM:
@@ -87,7 +89,7 @@ public class MergePrefixVDev {
 
               ICNode n2 =
                   (ICNode)
-                      recNextMergeOnCDM(
+                      recNextMergeOnCDMV2( // previously V1
                           getLogicalChildVDev(cur), keyBytes, 0, ms, stk.size());
 
               if (n2 != cur) {

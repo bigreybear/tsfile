@@ -113,11 +113,6 @@ public class CDMRefNodeVDev extends NodeWithPartialKey implements ICNode {
   }
 
   @Override
-  public ICNode getPtr(int pos) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public ICNode getCDMChild(byte[] key, SearchStatus sts) {
     throw new UnsupportedOperationException();
   }
