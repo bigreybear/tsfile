@@ -8,11 +8,14 @@ import static optimize.util.InfixGroup.groupByInfix;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import optimize.MainSupport;
 import optimize.TSTree;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.cdm.CLeaf;
+import optimize.nodes.cdm.CNode1F256;
+import optimize.nodes.cdm.CNode1F48;
 import optimize.nodes.cdm.legacyCNode;
 import optimize.nodes.cdm.CNode4;
 import optimize.nodes.cdm.ICNode;
@@ -63,59 +66,58 @@ public class CDMPrefixMerge {
       int preLen,
       PrefixMergeStrategy ms,
       int height) {
-    if (keys.size() == 1) {
-      return new CLeaf(keys, preLen, (ICNode) getLChild.apply(keys.get(0)));
-    }
 
-    // for standard edition set CDM width = 4
-    // key in group.map is ByteArray, shall align with bytes2Int method
-    InfixGroup group = groupByInfix(keys, 4, preLen);
+    ICNode node;
+    int brcLen, brcNum;
+    int[] brcPos;
+    InfixGroup group = groupByInfix(keys, preLen);
 
-    if (group.getInfixMap().size() <= 1) {
-      throw new RuntimeException("Should not have duplicate keys.");
-    }
+    // just to simplify code
+    Function<ICNode, ICNode> filler = (c -> {
+      c.setContent(group, getLChild, ms, height);
+      return c;
+    });
 
-    if (ms == null) {
-      // todo transform to CNode, serving as full
-      return null;
-    }
+    boolean reversed = false;
+    while (true) {
+      brcPos = group.getBranchingPos();
+      brcLen = brcPos.length;
+      brcNum = group.countBranches();
 
-    boolean useNode4;
-    if (ms.equals(PrefixMergeStrategy.FULL)) {
-      useNode4 = true;
-    } else if (ms.equals(PrefixMergeStrategy.PARTIAL)) {
-      useNode4 = evaluateForNode4(group, preLen, keys, height);
+      if (brcLen == 1) {
+        if (brcNum > 48) {
+          return filler.apply(new CNode1F256());
+        } else if (brcNum > 32) {
+          return filler.apply(new CNode1F48());
+        } else if (brcNum > 8) {
+          // todo tentatively proceed or findNextBranch()
+          if (reversed) {
+            return filler.apply(new CNode1F48());
+          } else {
+            group.findNextBranch();
+            continue;
+          }
+        } else {
+          if (group.findNextBranch()) {
+            continue;
+          } else {
+            // reluctantly use CNode1
+            return filler.apply(new CNode1F48());
+          }
+        }
 
-      if (useNode4) partialToMerge.incrementAndGet();
-      else partialNotMerge.incrementAndGet();
-    } else if (ms.equals(PrefixMergeStrategy.SIMPLE)) {
-      useNode4 = false;
-    } else {
-      throw new RuntimeException("MERGE STRATEGY ERROR");
-    }
+      } else if (brcLen == 2) {
 
-    if (useNode4) {
-      List<byte[]> completeKeys;
-      evaTrueTime++;
-      ICNode curNode = new CNode4(group.getBranchingPos());
-      if (preLen < group.getBranchingPos()[0]) {
-        curNode.setParKey(Arrays.copyOfRange(keys.get(0), preLen, group.getBranchingPos()[0]));
+
+
+      } else if (brcLen <= 4) {
+
+      } else if (brcLen <= 8) {
+
+      } else {
+        group.revertSplit();
+        reversed = true;
       }
-
-      curNode.setContent(group, getLChild, ms, height);
-      return curNode;
-    } else {
-      InfixGroup group1;
-      evaFalseTime++;
-      // not use final-mapping CNode
-      group1 = groupByInfix(keys, 256, preLen);
-      legacyCNode curNode = new legacyCNode(group1.getBranchingPos());
-      if (preLen < group1.getBranchingPos()[0]) {
-        curNode.setParKey(Arrays.copyOfRange(keys.get(0), preLen, group1.getBranchingPos()[0]));
-      }
-
-      curNode.setContent(group1, getLChild, ms, height);
-      return curNode;
     }
   }
 
@@ -126,6 +128,8 @@ public class CDMPrefixMerge {
       PrefixMergeStrategy ms,
       int height) {
     if (keys.size() == 1) {
+      // actually this will never be executed
+      System.out.println("SHALL NOT be executed.");
       return new CLeaf(keys, preLen, (ICNode) getLChild.apply(keys.get(0)));
     }
 

@@ -65,6 +65,7 @@ public class Main {
   public MapType mapType;
 
   public void mainbody(String[] args) {
+    REPORT_CHANNEL.delete(0, REPORT_CHANNEL.length());
     ExpResultLogger resultPrinter = new ExpResultLogger();
     System.out.println(MainSupport.getBuildTimestamp());
     args = args.length == 0 ? defaultArgs() : args;
