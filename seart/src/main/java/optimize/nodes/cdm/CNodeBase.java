@@ -139,6 +139,7 @@ public abstract class CNodeBase extends NodeWithPartialKey implements ICNode {
       Function<byte[], IMicroNode> getLChild,
       PrefixMergeStrategy mergeStrategy,
       int height) {
+    setParKey(group.getCommonPrefix());
     List<byte[]> completeKeys;
     int[] brPos = group.getBranchingPos(), itvPos;
     int sbkSize = group.countBranches();
@@ -162,7 +163,7 @@ public abstract class CNodeBase extends NodeWithPartialKey implements ICNode {
           (ICNode)
               recMergeCDM( // previously not V2
                   getLChild,
-                  completeKeys.toArray(new byte[0][0]),
+                  completeKeys,
                   brPos[brPos.length - 1] + 1,
                   mergeStrategy,
                   height);

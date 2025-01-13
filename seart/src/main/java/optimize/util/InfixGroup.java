@@ -24,22 +24,28 @@ public class InfixGroup {
   // initial states, and partial key is implied by offset and the first in brPos
   final int maxKeyLen, offset;
 
+  final byte[] commonPrefix;
+
   private InfixGroup(List<Integer> bp, Map<ByteArray, List<byte[]>> im, int ofs) {
     brPos = bp;
 
     infixMap = new TreeMap<>();
     ByteArray key;
     int mkl = -1;
+    byte[] anyKey = null;
     for (Map.Entry<ByteArray, List<byte[]>> entry : im.entrySet()) {
       key = new ByteArray(entry.getKey().getVal());
       for (byte[] ck : entry.getValue()) {
         mkl = Math.max(mkl, ck.length);
       }
+      if (anyKey == null) anyKey = entry.getValue().get(0);
       infixMap.put(key, entry.getValue());
     }
 
     maxKeyLen = mkl;
     offset = ofs;
+    commonPrefix = (ofs < brPos.get(0) && anyKey != null)
+        ? Arrays.copyOfRange(anyKey, ofs, brPos.get(0)) : null;
   }
 
   public static InfixGroup groupByInfix(final byte[][] keys, final int limit, final int start) {
@@ -283,6 +289,10 @@ public class InfixGroup {
 
   public int countPositions() {
     return brPos.size();
+  }
+
+  public byte[] getCommonPrefix() {
+    return commonPrefix;
   }
 
   @Override

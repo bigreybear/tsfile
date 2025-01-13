@@ -16,10 +16,10 @@ import optimize.util.InfixGroup;
 public class CLeaf extends NodeWithPartialKey implements ICNode {
   public ICNode ptr;
 
-  public CLeaf(byte[][] pk, int preLen, ICNode ptr) {
-    if (pk.length > 1) throw new UnsupportedOperationException("More than 1 key in CLeaf.");
-    if (pk[0].length < preLen) this.pk = null;
-    else this.pk = Arrays.copyOfRange(pk[0], preLen, pk[0].length);
+  public CLeaf(List<byte[]> pk, int preLen, ICNode ptr) {
+    if (pk.size() > 1) throw new UnsupportedOperationException("More than 1 key in CLeaf.");
+    if (pk.get(0).length < preLen) this.pk = null;
+    else this.pk = Arrays.copyOfRange(pk.get(0), preLen, pk.get(0).length);
     this.ptr = ptr;
   }
 

@@ -26,6 +26,7 @@ public abstract class CNodeOneBase extends NodeWithPartialKey implements ICNode{
                          Function<byte[], IMicroNode> getLChild,
                          PrefixMergeStrategy mergeStrategy,
                          int height) {
+    setParKey(group.getCommonPrefix());
     List<byte[]> completeKeys;
     int[] posArr;
     if ((posArr = group.getBranchingPos()).length > 1)
@@ -56,7 +57,7 @@ public abstract class CNodeOneBase extends NodeWithPartialKey implements ICNode{
           sortedBrKeys[i],
           (ICNode) recMergeCDM(
               getLChild,
-              completeKeys.toArray(new byte[0][0]),
+              completeKeys,
               pos + 1,
               mergeStrategy,
               height

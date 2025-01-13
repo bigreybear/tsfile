@@ -4,15 +4,23 @@ import static optimize.util.ArrayHelper.removeTrailingZeros;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 // all numerical encoded as BIG_ENDIAN
 public class ByteEncode {
   public static Charset coding = StandardCharsets.UTF_8;
 
   // region String Utils
+  public static List<byte[]> strings2ByteList(List<String> s) {
+    return s.parallelStream()
+        .map(str -> str.getBytes(coding))
+        .collect(Collectors.toList());
+  }
+
   public static byte[][] strings2ByteArrays(List<String> s) {
     byte[][] res = new byte[s.size()][];
     Arrays.parallelSetAll(res, i -> s.get(i).getBytes(coding));

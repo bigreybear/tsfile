@@ -20,7 +20,7 @@ import optimize.util.InfixGroup;
 
 public class CDMPrefixMerge {
 
-  public static final boolean ONLY_CNODE4 = false;
+  public static final boolean ONLY_CNODE4 = true;
 
   public static void reportMergeStatus() {
     REPORT_CHANNEL.append(
@@ -33,7 +33,7 @@ public class CDMPrefixMerge {
   // Alternating whether CNode1Fx/2/4/8 or only CNode4
   public static IMicroNode recMergeCDM(
       Function<byte[], IMicroNode> getLChild,
-      byte[][] keys,
+      List<byte[]> keys,
       int preLen,
       PrefixMergeStrategy ms,
       int height) {
@@ -59,19 +59,17 @@ public class CDMPrefixMerge {
 
   private static IMicroNode recNextMergeOnCDMV2(
       Function<byte[], IMicroNode> getLChild,
-      byte[][] keys,
+      List<byte[]> keys,
       int preLen,
       PrefixMergeStrategy ms,
       int height) {
-    if (keys.length == 1) {
-      return new CLeaf(keys, preLen, (ICNode) getLChild.apply(keys[0]));
+    if (keys.size() == 1) {
+      return new CLeaf(keys, preLen, (ICNode) getLChild.apply(keys.get(0)));
     }
-
-    List<byte[]> byteList = Arrays.asList(keys);
 
     // for standard edition set CDM width = 4
     // key in group.map is ByteArray, shall align with bytes2Int method
-    InfixGroup group = groupByInfix(byteList, 4, preLen);
+    InfixGroup group = groupByInfix(keys, 4, preLen);
 
     if (group.getInfixMap().size() <= 1) {
       throw new RuntimeException("Should not have duplicate keys.");
@@ -101,7 +99,7 @@ public class CDMPrefixMerge {
       evaTrueTime++;
       ICNode curNode = new CNode4(group.getBranchingPos());
       if (preLen < group.getBranchingPos()[0]) {
-        curNode.setParKey(Arrays.copyOfRange(keys[0], preLen, group.getBranchingPos()[0]));
+        curNode.setParKey(Arrays.copyOfRange(keys.get(0), preLen, group.getBranchingPos()[0]));
       }
 
       curNode.setContent(group, getLChild, ms, height);
@@ -110,10 +108,10 @@ public class CDMPrefixMerge {
       InfixGroup group1;
       evaFalseTime++;
       // not use final-mapping CNode
-      group1 = groupByInfix(byteList, 256, preLen);
+      group1 = groupByInfix(keys, 256, preLen);
       legacyCNode curNode = new legacyCNode(group1.getBranchingPos());
       if (preLen < group1.getBranchingPos()[0]) {
-        curNode.setParKey(Arrays.copyOfRange(keys[0], preLen, group1.getBranchingPos()[0]));
+        curNode.setParKey(Arrays.copyOfRange(keys.get(0), preLen, group1.getBranchingPos()[0]));
       }
 
       curNode.setContent(group1, getLChild, ms, height);
@@ -123,19 +121,17 @@ public class CDMPrefixMerge {
 
   private static IMicroNode recNextMergeOnCDM(
       Function<byte[], IMicroNode> getLChild,
-      byte[][] keys,
+      List<byte[]> keys,
       int preLen,
       PrefixMergeStrategy ms,
       int height) {
-    if (keys.length == 1) {
-      return new CLeaf(keys, preLen, (ICNode) getLChild.apply(keys[0]));
+    if (keys.size() == 1) {
+      return new CLeaf(keys, preLen, (ICNode) getLChild.apply(keys.get(0)));
     }
-
-    List<byte[]> byteList = Arrays.asList(keys);
 
     // for standard edition set CDM width = 4
     // key in group.map is ByteArray, shall align with bytes2Int method
-    InfixGroup group = groupByInfix(byteList, 4, preLen);
+    InfixGroup group = groupByInfix(keys, 4, preLen);
 
     if (group.getInfixMap().size() <= 1) {
       throw new RuntimeException("Should not have duplicate keys.");
@@ -164,9 +160,9 @@ public class CDMPrefixMerge {
       List<byte[]> completeKeys;
       evaTrueTime++;
       ICNode curNode = new CNode4(group.getBranchingPos());
-      if (preLen < group.getBranchingPos()[0]) {
-        curNode.setParKey(Arrays.copyOfRange(keys[0], preLen, group.getBranchingPos()[0]));
-      }
+//      if (preLen < group.getBranchingPos()[0]) {
+//        curNode.setParKey(Arrays.copyOfRange(keys.get(0), preLen, group.getBranchingPos()[0]));
+//      }
 
       curNode.setContent(group, getLChild, ms, height);
       return curNode;
@@ -174,11 +170,11 @@ public class CDMPrefixMerge {
       InfixGroup group1;
       evaFalseTime++;
       // not use final-mapping CNode
-      group1 = groupByInfix(byteList, 256, preLen);
+      group1 = groupByInfix(keys, 256, preLen);
       legacyCNode curNode = new legacyCNode(group1.getBranchingPos());
-      if (preLen < group1.getBranchingPos()[0]) {
-        curNode.setParKey(Arrays.copyOfRange(keys[0], preLen, group1.getBranchingPos()[0]));
-      }
+//      if (preLen < group1.getBranchingPos()[0]) {
+//        curNode.setParKey(Arrays.copyOfRange(keys.get(0), preLen, group1.getBranchingPos()[0]));
+//      }
 
       curNode.setContent(group1, getLChild, ms, height);
       return curNode;
@@ -187,7 +183,7 @@ public class CDMPrefixMerge {
 
   public static int evaTrueTime = 0, evaFalseTime = 0;
 
-  public static boolean evaluateForNode4(InfixGroup g, int preLen, byte[][] keys, int height) {
+  public static boolean evaluateForNode4(InfixGroup g, int preLen, List<byte[]> keys, int height) {
     float gamma = 0.5f;
     int keyNum = g.getInfixMap().values().stream().mapToInt(List::size).sum();
     int[] posArr = g.getBranchingPos();

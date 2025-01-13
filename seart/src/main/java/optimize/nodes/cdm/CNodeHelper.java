@@ -18,6 +18,7 @@ public class CNodeHelper {
 
   // may extract 0 bytes
   public static byte[] extractBytes(byte[] arr, int[] pos) {
+    if (arr == null || pos == null) return null;
     byte[] res = new byte[pos.length];
     for (int i = 0; i < pos.length; i++) {
       res[i] = arr.length > pos[i] ? arr[pos[i]] : 0;

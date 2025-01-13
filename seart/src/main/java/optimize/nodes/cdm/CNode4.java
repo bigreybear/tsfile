@@ -90,11 +90,11 @@ public class CNode4 extends CNodeBase {
     int sk = 0;
     switch (len) {
       case 4:
-        sk |= (key[brPos[3]] & 0xFF);
+        sk |= brPos[3] < key.length ? (key[brPos[3]] & 0xFF) : 0;
       case 3:
-        sk |= (key[brPos[2]] & 0xFF) << 8;
+        sk |= brPos[2] < key.length ? (key[brPos[2]] & 0xFF) << 8 : 0;
       case 2:
-        sk |= (key[brPos[1]] & 0xFF) << 16;
+        sk |= brPos[1] < key.length ? (key[brPos[1]] & 0xFF) << 16 : 0;
       case 1:
         sk |= (key[brPos[0]] & 0xFF) << 24;
         break;

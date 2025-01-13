@@ -4,6 +4,7 @@ import static optimize.Main.REPORT_CHANNEL;
 import static optimize.merge.CDMPrefixMerge.recMergeCDM;
 import static optimize.merge.HashPrefixMerge.recNextMergeOnHashV2VDev;
 import static optimize.nodes.cdm.ByteEncode.strings2ByteArrays;
+import static optimize.nodes.cdm.ByteEncode.strings2ByteList;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -80,16 +81,16 @@ public class MergePrefixVDev {
       case CDM:
         tree.traversePostOrderRec(
             (par, key, cur, stk) -> {
-              List<String> keyList = null;
-              if ((keyList = cur.getStringKeys()) == null) {
+              List<String> keyList = cur.getStringKeys();
+              if (keyList == null) {
                 return;
               }
-              byte[][] keyBytes = strings2ByteArrays(keyList);
+              List<byte[]> keyByteList = strings2ByteList(keyList);
 
               ICNode n2 =
                   (ICNode)
                       recMergeCDM( // previously V1
-                          getLogicalChildVDev(cur), keyBytes, 0, ms, stk.size());
+                          getLogicalChildVDev(cur), keyByteList, 0, ms, stk.size());
 
               if (n2 != cur) {
                 if (par == null) {

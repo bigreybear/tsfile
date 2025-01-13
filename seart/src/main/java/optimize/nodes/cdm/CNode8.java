@@ -84,7 +84,7 @@ public class CNode8 extends CNodeBase {
       case 2:
         l |= ((long) (brPos[1] < key.length ? key[brPos[1]] : 0) & 0xff) << 48;
       case 1:
-        l |= ((long) (brPos[0] < key.length ? key[brPos[0]] : 0) & 0xff) << 56;
+        l |= (long) (key[brPos[0]] & 0xff) << 56;
         break;
       default:
         throw new RuntimeException("Invalid Branch Position length.");

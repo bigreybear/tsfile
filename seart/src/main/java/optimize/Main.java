@@ -44,8 +44,8 @@ public class Main {
 
     // res += " -ds bw";
     // res += " -ds sw";
-    // res += " -ds xyzc";
-    res += " -ds zy";
+    res += " -ds xyzc";
+    // res += " -ds zy";
 
     res += " -oneTree";
     res += " -latency";

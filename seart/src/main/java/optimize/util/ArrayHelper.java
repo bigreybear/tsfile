@@ -20,8 +20,7 @@ public class ArrayHelper {
 
   // find all positions from start(inclusive) to end(inclusive) except those in exp which is ordered
   public static int[] findComplementary(int start, int end, int[] exp) {
-    if (start > end) throw new RuntimeException();
-    if (start == end) return new int[0];
+    if (start >= end) return null;
 
     // pre-allocate a larger result, preferring time other than space
     int[] r = new int[end - start + 1];
