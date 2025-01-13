@@ -1,5 +1,10 @@
 package optimize.util;
 
+import static optimize.nodes.cdm.ByteEncode.bytes2Int;
+import static optimize.nodes.cdm.ByteEncode.bytes2Long;
+import static optimize.nodes.cdm.ByteEncode.bytes2Short;
+import static optimize.nodes.cdm.ByteEncode.strings2ByteArrays;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -8,11 +13,6 @@ import java.util.Map;
 import java.util.OptionalInt;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static optimize.nodes.cdm.ByteEncode.bytes2Int;
-import static optimize.nodes.cdm.ByteEncode.bytes2Long;
-import static optimize.nodes.cdm.ByteEncode.bytes2Short;
-import static optimize.nodes.cdm.ByteEncode.strings2ByteArrays;
 
 // return type of infix group
 public class InfixGroup {
@@ -35,9 +35,7 @@ public class InfixGroup {
       for (byte[] ck : entry.getValue()) {
         mkl = Math.max(mkl, ck.length);
       }
-      infixMap.put(
-          key,
-          entry.getValue());
+      infixMap.put(key, entry.getValue());
     }
 
     maxKeyLen = mkl;
@@ -54,21 +52,18 @@ public class InfixGroup {
 
   /**
    * Start from the offset and stop when the first branching position is occurred.
+   *
    * @return the
    */
   public static InfixGroup groupByInfix(final List<byte[]> keys, final int off) {
     return groupByInfix(keys, 1, off);
   }
 
-  /**
-   * Well-defined, which is implemented with no hurry :).
-   * Actual constructor method.
-   */
+  /** Well-defined, which is implemented with no hurry :). Actual constructor method. */
   public static InfixGroup groupByInfix(final List<byte[]> keys, final int limit, final int start) {
     List<Integer> positions = new ArrayList<>();
 
-    Map<ByteArray, List<byte[]>>
-        infixKeyMap = new ConcurrentHashMap<>(),
+    Map<ByteArray, List<byte[]>> infixKeyMap = new ConcurrentHashMap<>(),
         brKeys = new ConcurrentHashMap<>(),
         nonBrKeys = new ConcurrentHashMap<>(),
         tempRef; // make sure only 3 map instances are created
@@ -80,12 +75,7 @@ public class InfixGroup {
       // when split, branching keys immediately obtain its brKeys, while non-brs obtain after others
       // finished.
 
-      parallelCheckSplit(
-          infixKeyMap,
-          brKeys,
-          nonBrKeys,
-          depth
-      );
+      parallelCheckSplit(infixKeyMap, brKeys, nonBrKeys, depth);
 
       if (!brKeys.isEmpty()) {
         positions.add(depth);
@@ -96,8 +86,7 @@ public class InfixGroup {
           // all keys in this entry must agree on thisDepth
           byte[] k1 = nbe.getValue().get(0);
           infixKeyMap.put(
-              new ByteArray(nbe.getKey(), k1.length > depth ? k1[depth] : 0),
-              nbe.getValue());
+              new ByteArray(nbe.getKey(), k1.length > depth ? k1[depth] : 0), nbe.getValue());
         }
 
         brKeys = tempRef;
@@ -146,26 +135,21 @@ public class InfixGroup {
   // return true if next branch found otherwise false
   public boolean findNextBranch() {
     final int oriPosLen = brPos.size();
-    int dep = brPos.get(oriPosLen- 1) + 1, thisDepth = dep;
+    int dep = brPos.get(oriPosLen - 1) + 1, thisDepth = dep;
     if (dep == maxKeyLen) return false; // no more split
 
-    Map<ByteArray, List<byte[]>>
-        nextRun = new ConcurrentHashMap<>(infixMap),
+    Map<ByteArray, List<byte[]>> nextRun = new ConcurrentHashMap<>(infixMap),
         brcKeys = new ConcurrentHashMap<>(),
         nonBrcKeys = new ConcurrentHashMap<>(),
         refChange;
     while (dep < maxKeyLen) {
-      parallelCheckSplit(
-          nextRun,
-          brcKeys,
-          nonBrcKeys,
-          dep
-      );
+      parallelCheckSplit(nextRun, brcKeys, nonBrcKeys, dep);
 
       if (!brcKeys.isEmpty()) {
         brPos.add(dep);
         nextRun = brcKeys;
-        // there IS a branch, and those non-branching shall fill the corresponding byte to provide branch key
+        // there IS a branch, and those non-branching shall fill the corresponding byte to provide
+        // branch key
         for (Map.Entry<ByteArray, List<byte[]>> nbe : nonBrcKeys.entrySet()) {
           // k1 and other elements are identical on thisDepth
           byte[] k1 = nbe.getValue().get(0);
@@ -197,8 +181,7 @@ public class InfixGroup {
     final int nps = brPos.size() - 1;
     Map<ByteArray, List<byte[]>> temp = new TreeMap<>();
     for (Map.Entry<ByteArray, List<byte[]>> entry : infixMap.entrySet()) {
-      temp
-          .computeIfAbsent(entry.getKey().getSlice(0, nps), k -> new ArrayList<>())
+      temp.computeIfAbsent(entry.getKey().getSlice(0, nps), k -> new ArrayList<>())
           .addAll(entry.getValue());
     }
     infixMap.clear();
@@ -208,18 +191,18 @@ public class InfixGroup {
   }
 
   // check result with brcMap.size()
-  private static void parallelCheckSplit(final Map<ByteArray, List<byte[]>> oriMap,
-                                         final Map<ByteArray, List<byte[]>> brcMap,
-                                         final Map<ByteArray, List<byte[]>> nbrMap,
-                                         final int dep) {
+  private static void parallelCheckSplit(
+      final Map<ByteArray, List<byte[]>> oriMap,
+      final Map<ByteArray, List<byte[]>> brcMap,
+      final Map<ByteArray, List<byte[]>> nbrMap,
+      final int dep) {
     oriMap.entrySet().parallelStream()
         .forEach(
             e -> {
               Map<Byte, List<byte[]>> res = splitAt(e.getValue(), dep);
               if (res.size() > 1) {
                 for (Map.Entry<Byte, List<byte[]>> resEnt : res.entrySet()) {
-                  brcMap.put(
-                      new ByteArray(e.getKey(), resEnt.getKey()), resEnt.getValue());
+                  brcMap.put(new ByteArray(e.getKey(), resEnt.getKey()), resEnt.getValue());
                 }
               } else {
                 // not branching, just keep it as is, for further completion
@@ -230,9 +213,9 @@ public class InfixGroup {
   }
 
   public List<byte[]> getCompleteKeys(byte[] brKey) {
-    return infixMap.get(new ByteArray(
-        brPos.size() == brKey.length ?
-        brKey : Arrays.copyOfRange(brKey, 0, brPos.size())));
+    return infixMap.get(
+        new ByteArray(
+            brPos.size() == brKey.length ? brKey : Arrays.copyOfRange(brKey, 0, brPos.size())));
   }
 
   public int[] getBranchingPos() {
@@ -316,9 +299,7 @@ public class InfixGroup {
   }
 
   public static void main(String[] args) {
-    List<String> keysList =
-        Arrays.asList(
-            "aaa", "aaa", "aabdd", "aabdc", "aac");
+    List<String> keysList = Arrays.asList("aaa", "aaa", "aabdd", "aabdc", "aac");
 
     InfixGroup ig = groupByInfix(strings2ByteArrays(keysList), 0);
     boolean f;

@@ -82,8 +82,15 @@ public class ExpResultLogger {
       writer.write(
           String.format(
               "%s\t%s\t%s\t%s\t%d\t%d\t%d\t%d\t%d",
-              pms.name(), mds.name(), mapType.name(), oneTree,
-              bpr.min, bpr.q1, bpr.median, bpr.q3, bpr.max));
+              pms.name(),
+              mds.name(),
+              mapType.name(),
+              oneTree,
+              bpr.min,
+              bpr.q1,
+              bpr.median,
+              bpr.q3,
+              bpr.max));
       writer.newLine();
     } catch (IOException e) {
       throw new RuntimeException(e);

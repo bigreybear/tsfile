@@ -87,7 +87,7 @@ public class CLeaf extends NodeWithPartialKey implements ICNode {
   }
 
   @Override
-  public ICNode getCDMChild(byte[] key, SearchStatus sts) {
+  public ICNode proceedQueryCDM(byte[] key, SearchStatus sts) {
     // the parent did not set finished since an orphan leaf has been eliminated
     if (sts.getCurLen() == key.length) {
       sts.setFinished(true);

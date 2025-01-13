@@ -9,7 +9,7 @@ import optimize.util.InfixGroup;
 
 public interface ICNode extends IMicroNode {
 
-  int[] getBranchingPos();
+  int[] getBranchingPos(); // no trailing 0s.
 
   void setContent(
       InfixGroup group,
@@ -23,10 +23,12 @@ public interface ICNode extends IMicroNode {
    * @param sts the context of the search progress
    * @return
    */
-  ICNode getCDMChild(final byte[] key, final SearchStatus sts);
+  ICNode proceedQueryCDM(final byte[] key, final SearchStatus sts);
 
   // currently only used for templates
-  default byte[][] getBranchingKeys() {throw new UnsupportedOperationException();}
+  default byte[][] getBranchingKeys() {
+    throw new UnsupportedOperationException();
+  }
 
   /**
    * Ignore the partial key

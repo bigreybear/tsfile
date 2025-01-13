@@ -27,15 +27,15 @@ public class ArrayHelper {
     int[] r = new int[end - start + 1];
     if (exp == null || exp.length == 0) {
       for (int i = start; i <= end; i++) {
-        r[i-start] = i;
+        r[i - start] = i;
       }
       return r;
     }
 
     int ri = 0, bl = exp.length;
     for (int i = start, bi = 0; i <= end; i++) {
-      while (bi < bl && exp[bi] < i) bi++;  // find the exp inside the interested scope
-      if (bi < bl && i == exp[bi]) continue;  // continue if the current i is excepted
+      while (bi < bl && exp[bi] < i) bi++; // find the exp inside the interested scope
+      if (bi < bl && i == exp[bi]) continue; // continue if the current i is excepted
       r[ri++] = i;
     }
     return ri == 0 ? new int[0] : Arrays.copyOfRange(r, 0, ri);
@@ -68,17 +68,8 @@ public class ArrayHelper {
     System.out.println(
         Arrays.compare(
             // semantically equivalent
-            findComplementary(arr[0], arr[arr.length-1], arr),
-            itv = findIntervals(arr)
-        )
-    );
-    System.out.println(
-        Arrays.compare(
-            mergeIntArr(itv, arr),
-            comp
-        )
-    );
-
+            findComplementary(arr[0], arr[arr.length - 1], arr), itv = findIntervals(arr)));
+    System.out.println(Arrays.compare(mergeIntArr(itv, arr), comp));
   }
 
   // a wrapper
@@ -97,7 +88,7 @@ public class ArrayHelper {
     checkIntArrSorted(pos);
     // must be ordered and deduplicated
     int[] itvPos = new int[pos[pos.length - 1] - (pos[0] - 1) - pos.length];
-    for (int idx = 1, k = 0; idx < pos.length ; ) {
+    for (int idx = 1, k = 0; idx < pos.length; ) {
       // k records number in itvPos
       if (pos[idx - 1] + 1 != pos[idx]) {
         for (int pi = pos[idx - 1] + 1; pi < pos[idx]; pi++) itvPos[k++] = pi;
@@ -109,7 +100,7 @@ public class ArrayHelper {
 
   private static void checkIntArrSorted(final int[] a) {
     for (int i = 1; i < a.length; i++)
-      if (a[i-1] >= a[i]) throw new RuntimeException("Array not sorted.");
+      if (a[i - 1] >= a[i]) throw new RuntimeException("Array not sorted.");
   }
 
   public static int[] mergeIntArr(int[] a, int[] b) {
@@ -121,12 +112,12 @@ public class ArrayHelper {
     int ai = 0, bi = 0;
     while (ai < a.length && bi < b.length) {
       if (a[ai] == b[bi]) throw new RuntimeException("Merging arrays overlapped.");
-      r[ai+bi] = a[ai] < b[bi] ? a[ai++] : b[bi++];
+      r[ai + bi] = a[ai] < b[bi] ? a[ai++] : b[bi++];
     }
     if (ai < a.length) {
-      System.arraycopy(a, ai, r, ai+bi, a.length - ai);
+      System.arraycopy(a, ai, r, ai + bi, a.length - ai);
     } else if (bi < b.length) {
-      System.arraycopy(b, bi, r, ai+bi, b.length - bi);
+      System.arraycopy(b, bi, r, ai + bi, b.length - bi);
     }
     return r;
   }

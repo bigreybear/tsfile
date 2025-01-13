@@ -113,7 +113,7 @@ public class CDMRefNodeVDev extends NodeWithPartialKey implements ICNode {
   }
 
   @Override
-  public ICNode getCDMChild(byte[] key, SearchStatus sts) {
+  public ICNode proceedQueryCDM(byte[] key, SearchStatus sts) {
     throw new UnsupportedOperationException();
   }
 }

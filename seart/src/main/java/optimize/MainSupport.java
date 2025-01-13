@@ -1,18 +1,16 @@
 package optimize;
 
-import loader.PathTxtLoader;
-import optimize.merge.MapType;
-import optimize.merge.PrefixMergeStrategy;
-import org.openjdk.jol.info.GraphLayout;
-import org.openjdk.jol.info.GraphStats;
-import seart.metric.TreeCompare;
-
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
+import loader.PathTxtLoader;
+import optimize.merge.MapType;
+import optimize.merge.PrefixMergeStrategy;
+import org.openjdk.jol.info.GraphLayout;
+import seart.metric.TreeCompare;
 
 public class MainSupport {
   public static String getBuildTimestamp() {

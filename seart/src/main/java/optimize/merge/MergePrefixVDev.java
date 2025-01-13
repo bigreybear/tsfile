@@ -1,7 +1,6 @@
 package optimize.merge;
 
 import static optimize.Main.REPORT_CHANNEL;
-import static optimize.merge.CDMPrefixMerge.recNextMergeOnCDM;
 import static optimize.merge.CDMPrefixMerge.recNextMergeOnCDMV2;
 import static optimize.merge.HashPrefixMerge.recNextMergeOnHashV2VDev;
 import static optimize.nodes.cdm.ByteEncode.strings2ByteArrays;

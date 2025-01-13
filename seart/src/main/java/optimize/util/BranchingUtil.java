@@ -1,6 +1,3 @@
 package optimize.util;
 
-public class BranchingUtil {
-
-
-}
+public class BranchingUtil {}

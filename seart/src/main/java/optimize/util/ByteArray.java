@@ -26,7 +26,7 @@ public class ByteArray implements Comparable<ByteArray> {
   }
 
   public ByteArray getSlice(int s, int e) {
-    return new ByteArray(Arrays.copyOfRange(val, s ,e));
+    return new ByteArray(Arrays.copyOfRange(val, s, e));
   }
 
   @Override

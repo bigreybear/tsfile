@@ -28,10 +28,7 @@ public class NaiveByteArrayAllocator {
     this.freeListHead = new FreeBlock(0, size, null);
   }
 
-  /**
-   * 从分配器中申请 length 大小的空间，返回在 buffer 中的起始 offset。
-   * 如果分配失败，返回 -1。
-   */
+  /** 从分配器中申请 length 大小的空间，返回在 buffer 中的起始 offset。 如果分配失败，返回 -1。 */
   public int allocate(int length) {
     FreeBlock prev = null;
     FreeBlock current = freeListHead;
@@ -66,9 +63,7 @@ public class NaiveByteArrayAllocator {
     return -1;
   }
 
-  /**
-   * 将之前 allocate 的某块空间（从 offset 开始，长度为 length）归还到分配器管理的空闲链表中。
-   */
+  /** 将之前 allocate 的某块空间（从 offset 开始，长度为 length）归还到分配器管理的空闲链表中。 */
   public void free(int offset, int length) {
     // 先根据 offset 将这个空闲块插回链表
     if (freeListHead == null) {
@@ -112,9 +107,7 @@ public class NaiveByteArrayAllocator {
     }
   }
 
-  /**
-   * 向分配得到的地址写入数据。这里只是一个简易示例。
-   */
+  /** 向分配得到的地址写入数据。这里只是一个简易示例。 */
   public void putData(int offset, byte[] data) {
     if (offset < 0 || offset + data.length > buffer.length) {
       throw new IndexOutOfBoundsException("写入超出分配器范围");
@@ -122,9 +115,7 @@ public class NaiveByteArrayAllocator {
     System.arraycopy(data, 0, buffer, offset, data.length);
   }
 
-  /**
-   * 从指定 offset 读取 length 长度的数据
-   */
+  /** 从指定 offset 读取 length 长度的数据 */
   public byte[] getData(int offset, int length) {
     if (offset < 0 || offset + length > buffer.length) {
       throw new IndexOutOfBoundsException("读取超出分配器范围");

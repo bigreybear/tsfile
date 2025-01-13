@@ -1,23 +1,16 @@
 package optimize.nodes.cdm;
 
-import static optimize.merge.CDMPrefixMerge.recNextMergeOnCDM;
-import static optimize.merge.CDMPrefixMerge.recNextMergeOnCDMV2;
 import static optimize.nodes.cdm.ByteEncode.bytes2Int;
-import static optimize.nodes.cdm.ByteEncode.short2Bytes;
-import static optimize.util.ArrayHelper.findComplementary;
-import static optimize.nodes.cdm.CNodeHelper.extractBytes;
-import static optimize.util.ArrayHelper.findIntervals;
 import static optimize.nodes.cdm.ByteEncode.int2Bytes;
 import static optimize.nodes.cdm.ByteEncode.int2BytesNoTrailing;
 import static optimize.nodes.cdm.CNodeHelper.setBytesByPosNoCheck;
+import static optimize.util.ArrayHelper.findIntervals;
 import static optimize.util.ArrayHelper.removeTrailingZeros;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import optimize.SearchStatus;
-import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.NodeInspector;
 import optimize.util.InfixGroup;
@@ -59,31 +52,6 @@ public class CNode4 extends CNodeBase implements ICNode {
   }
 
   @Override
-  public ICNode getCDMChild(byte[] key, SearchStatus sts) {
-    if (sts.getCurLen() == key.length) {
-      int idx = getBrKeyIdx(0);
-      sts.setFinished(true);
-      return idx < 0 ? this : ptrs[idx];
-    }
-
-    int[] bps = getBranchingPos();
-    if (bps.length == 0) throw new RuntimeException();
-    int curLen = sts.getCurLen();
-    curLen = checkPartialKey(key, curLen, bps[0]);
-
-    // finish searching and is PREFIXED
-    if (curLen == key.length) {
-      sts.setFinished(true);
-      return ptrs[getBrKeyIdx(0)];
-    }
-
-    int channel = getBrKeyIdx(bytes2Int(extractBytes(key, bps)));
-    sts.setCurLen(checkKeyBytes(key, channel, bps));
-    // sts.setFinished(sts.getCurLen() == key.length);
-    return ptrs[channel];
-  }
-
-  @Override
   public void acceptInspector(NodeInspector noi) {
     noi.incEntry("CNode4_cnt", 1);
     noi.appendEntry("CNode4_valid_br", int2BytesNoTrailing(posInt).length);
@@ -106,10 +74,42 @@ public class CNode4 extends CNodeBase implements ICNode {
     bks = branchingBytes.stream().mapToInt(i -> i).toArray();
   }
 
+  @Override
+  protected int getEmptyKeyIdx() {
+    int idx = Arrays.binarySearch(bks, 0);
+    if (idx < 0 || bks[idx] != 0) throw new RuntimeException("Empty key not found.");
+    return idx;
+  }
+
+  @Override
+  protected int getBrKeyIdx(byte[] key, int[] brPos) {
+    // brPos has no trailing zeros.
+    int len = brPos.length;
+    if (len > 4)
+      throw new UnsupportedOperationException("5 or more bytes cannot be encoded to an int.");
+    int sk = 0;
+    switch (len) {
+      case 4:
+        sk |= (key[brPos[3]] & 0xFF);
+      case 3:
+        sk |= (key[brPos[2]] & 0xFF) << 8;
+      case 2:
+        sk |= (key[brPos[1]] & 0xFF) << 16;
+      case 1:
+        sk |= (key[brPos[0]] & 0xFF) << 24;
+        break;
+      default:
+        throw new UnsupportedOperationException();
+    }
+    int idx = Arrays.binarySearch(bks, sk);
+    if (idx < 0 || bks[idx] != sk) throw new RuntimeException("Key not found.");
+    return idx;
+  }
+
   // get index of the target key
   private int getBrKeyIdx(int val) {
     int idx = Arrays.binarySearch(bks, val);
-    if (idx >= 0 && bks[idx] != val) throw new RuntimeException("Key not found.");
+    if (idx < 0 || bks[idx] != val) throw new RuntimeException("Key not found.");
     return idx;
   }
 
@@ -159,12 +159,13 @@ public class CNode4 extends CNodeBase implements ICNode {
 
   @Override
   public List<byte[]> getKeyBytes() {
-    return Arrays.stream(bks).mapToObj(ByteEncode::int2BytesNoTrailing).collect(Collectors.toList());
+    return Arrays.stream(bks)
+        .mapToObj(ByteEncode::int2BytesNoTrailing)
+        .collect(Collectors.toList());
   }
 
   @Override
   protected byte[] getBrKeyAt(int channel) {
     return int2BytesNoTrailing(bks[channel]);
   }
-
 }

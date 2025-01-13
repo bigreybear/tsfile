@@ -41,7 +41,7 @@ public class BoxPlotRecord {
 
     if (data.isEmpty()) return 0;
     else if (data.size() == 1) return data.get(0);
-    else if (data.size() == 2) return (int) ((data.get(0) + data.get(1))/2.0);
+    else if (data.size() == 2) return (int) ((data.get(0) + data.get(1)) / 2.0);
 
     if (size % 2 == 0) {
       return (int) ((data.get(size / 2 - 1) + data.get(size / 2)) / 2.0);
@@ -52,7 +52,6 @@ public class BoxPlotRecord {
 
   @Override
   public String toString() {
-    return String.format(
-        "(min, q1, med, q3, max: %d, %d, %d, %d, %d)", min, q1, median, q3, max);
+    return String.format("(min, q1, med, q3, max: %d, %d, %d, %d, %d)", min, q1, median, q3, max);
   }
 }

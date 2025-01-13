@@ -1,8 +1,8 @@
 package optimize.nodes.cdm;
 
 import static optimize.nodes.cdm.CNodeHelper.extractBytes;
-import static optimize.util.ArrayHelper.findIntervals;
 import static optimize.nodes.cdm.CNodeHelper.getValidBrPosNum;
+import static optimize.util.ArrayHelper.findIntervals;
 import static optimize.util.ArrayHelper.removeTrailingZeros;
 
 import java.nio.charset.StandardCharsets;
@@ -121,7 +121,7 @@ public class CNode extends CNodeBase implements ICNode {
   }
 
   @Override
-  public ICNode getCDMChild(final byte[] key, SearchStatus sts) {
+  public ICNode proceedQueryCDM(final byte[] key, SearchStatus sts) {
     if (sts.getCurLen() == key.length) {
       int idx = getBrKeyIdx(EMPTY_BYTE_ARR);
       sts.setFinished(true);
@@ -257,7 +257,17 @@ public class CNode extends CNodeBase implements ICNode {
   }
 
   @Override
-  public long getValue() {
+  protected Function<Integer, List<byte[]>> generateCompleteKeyRetrieval(InfixGroup group) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  protected int getEmptyKeyIdx() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  protected int getBrKeyIdx(byte[] key, int[] brPos) {
     throw new UnsupportedOperationException();
   }
 

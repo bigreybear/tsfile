@@ -1,10 +1,5 @@
 package optimize.nodes;
 
-
-import optimize.ExpResultLogger;
-import optimize.nodes.logic.LLeaf;
-import optimize.traversal.BoxPlotRecord;
-
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -12,13 +7,16 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import optimize.ExpResultLogger;
+import optimize.nodes.logic.LLeaf;
+import optimize.traversal.BoxPlotRecord;
 
 public class NodeInspector {
   int curDepth = 1;
   ArrayList<Integer> depthRecs = new ArrayList<>();
   Map<String, Integer> statMap = new TreeMap<>(); // track Inner statistics
   Map<String, List<Integer>> appendMap = new TreeMap<>();
-  Deque<ITSNode> nodeStk = new ArrayDeque<>();  // support traversal
+  Deque<ITSNode> nodeStk = new ArrayDeque<>(); // support traversal
   ITSNode PAD_MARK = new LLeaf(-1); // mark for deeper level
 
   public int getCurDepth() {
@@ -26,17 +24,19 @@ public class NodeInspector {
   }
 
   public void incEntry(String key, int val) {
-    statMap.compute(key, (k,v)->v == null ? val : v + val);
+    statMap.compute(key, (k, v) -> v == null ? val : v + val);
   }
 
   public void appendEntry(String key, int val) {
-    appendMap.compute(key, (k,v)-> {
-      if (v == null) {
-        v = new ArrayList<>();
-      }
-      v.add(val);
-      return v;
-    });
+    appendMap.compute(
+        key,
+        (k, v) -> {
+          if (v == null) {
+            v = new ArrayList<>();
+          }
+          v.add(val);
+          return v;
+        });
   }
 
   public void inspect(final ITSNode node) {
@@ -80,15 +80,17 @@ public class NodeInspector {
 
     for (Map.Entry<String, List<Integer>> entry : appendMap.entrySet()) {
       int s = entry.getValue().stream().mapToInt(Integer::intValue).sum();
-      builder.append(String.format("%s: -sum=%d -avg=%d -dist=%s\n",
-          entry.getKey(),
-          s,
-          s/entry.getValue().size(),
-          entry.getValue().size() < 5
-              ? String.format("(val: %s)", Arrays.toString(entry.getValue().toArray(new Integer[0])))
-              : BoxPlotRecord.calculateBoxPlot(entry.getValue())));
+      builder.append(
+          String.format(
+              "%s: -sum=%d -avg=%d -dist=%s\n",
+              entry.getKey(),
+              s,
+              s / entry.getValue().size(),
+              entry.getValue().size() < 5
+                  ? String.format(
+                      "(val: %s)", Arrays.toString(entry.getValue().toArray(new Integer[0])))
+                  : BoxPlotRecord.calculateBoxPlot(entry.getValue())));
     }
     return builder.toString();
   }
-
 }

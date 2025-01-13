@@ -54,7 +54,7 @@ public abstract class FNodeBase extends NodeWithPartialKey implements IFNode {
 
   protected int countValidPointers() {
     IFNode[] p = getPtrs();
-    for (int i = 0, c = 0; ;) {
+    for (int i = 0, c = 0; ; ) {
       if (i == p.length) {
         return c;
       }

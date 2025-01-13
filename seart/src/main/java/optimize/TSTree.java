@@ -65,7 +65,7 @@ public class TSTree {
     for (int pid = 1; pid < pathNodes.length; pid++) {
       kb = pathNodes[pid].getBytes(StandardCharsets.UTF_8);
       while (!ss.isFinished()) {
-        cur = cur.getCDMChild(kb, ss);
+        cur = cur.proceedQueryCDM(kb, ss);
       }
       // update kb, set ss.curLen to 0
       ss.setCurLen(0);

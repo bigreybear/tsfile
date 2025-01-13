@@ -1,12 +1,12 @@
 package optimize.nodes.cdm;
 
+import static optimize.util.ArrayHelper.removeTrailingZeros;
+
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
-
-import static optimize.util.ArrayHelper.removeTrailingZeros;
 
 // all numerical encoded as BIG_ENDIAN
 public class ByteEncode {
@@ -41,16 +41,12 @@ public class ByteEncode {
       long l = (long) i1 << 32 | i2;
       short s = (short) (i1 & 0xffff);
 
-      if (i1 != bytes2Int(int2Bytes(i1))
-       || i2 != bytes2Int(int2Bytes(i2)))
+      if (i1 != bytes2Int(int2Bytes(i1)) || i2 != bytes2Int(int2Bytes(i2)))
         System.out.println("WRONG");
 
-      if (s != bytes2Short(short2Bytes(s)))
-        System.out.println("WRONG");
+      if (s != bytes2Short(short2Bytes(s))) System.out.println("WRONG");
 
-      if (l != bytes2Long(long2Bytes(l)))
-        System.out.println("WRONG");
-
+      if (l != bytes2Long(long2Bytes(l))) System.out.println("WRONG");
     }
     System.out.println("HELLO");
   }
@@ -65,7 +61,8 @@ public class ByteEncode {
 
   public static long bytes2Long(byte[] b) {
     int len = b.length;
-    if (len > 8) throw new UnsupportedOperationException("5 or more bytes cannot be encoded to an int.");
+    if (len > 8)
+      throw new UnsupportedOperationException("5 or more bytes cannot be encoded to an int.");
     long result = 0;
     switch (len) {
       case 8:
@@ -93,7 +90,8 @@ public class ByteEncode {
 
   public static int bytes2Int(byte[] b) {
     int len = b.length;
-    if (len > 4) throw new UnsupportedOperationException("5 or more bytes cannot be encoded to an int.");
+    if (len > 4)
+      throw new UnsupportedOperationException("5 or more bytes cannot be encoded to an int.");
     int result = 0;
     switch (len) {
       case 4:
@@ -113,7 +111,8 @@ public class ByteEncode {
 
   public static short bytes2Short(byte[] b) {
     int len = b.length;
-    if (len > 2) throw new UnsupportedOperationException("5 or more bytes cannot be encoded to an int.");
+    if (len > 2)
+      throw new UnsupportedOperationException("5 or more bytes cannot be encoded to an int.");
     short result = 0;
     switch (len) {
       case 2:
@@ -126,7 +125,6 @@ public class ByteEncode {
     }
     return result;
   }
-
 
   public static byte[] long2Bytes(final long i) {
     byte[] b = new byte[8];

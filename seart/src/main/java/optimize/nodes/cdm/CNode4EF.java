@@ -1,10 +1,10 @@
 package optimize.nodes.cdm;
 
 import static optimize.nodes.cdm.ByteEncode.bytes2Int;
-import static optimize.nodes.cdm.CNodeHelper.extractBytes;
-import static optimize.util.ArrayHelper.findIntervals;
 import static optimize.nodes.cdm.ByteEncode.int2Bytes;
 import static optimize.nodes.cdm.ByteEncode.int2BytesNoTrailing;
+import static optimize.nodes.cdm.CNodeHelper.extractBytes;
+import static optimize.util.ArrayHelper.findIntervals;
 
 import java.util.Arrays;
 import java.util.List;
@@ -57,7 +57,7 @@ public class CNode4EF extends CNodeBase implements ICNode {
   }
 
   @Override
-  public ICNode getCDMChild(byte[] key, SearchStatus sts) {
+  public ICNode proceedQueryCDM(byte[] key, SearchStatus sts) {
     int[] bps = getBranchingPos();
     if (bps.length == 0) throw new RuntimeException();
     byte[] pk = getParKey();
@@ -159,6 +159,11 @@ public class CNode4EF extends CNodeBase implements ICNode {
   }
 
   @Override
+  protected Function<Integer, List<byte[]>> generateCompleteKeyRetrieval(InfixGroup group) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public IMicroNode getLogicalChild(String name) {
     throw new UnsupportedOperationException();
   }
@@ -190,6 +195,16 @@ public class CNode4EF extends CNodeBase implements ICNode {
 
   @Override
   public byte[][] getBranchingKeys() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  protected int getEmptyKeyIdx() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  protected int getBrKeyIdx(byte[] key, int[] brPos) {
     throw new UnsupportedOperationException();
   }
 }

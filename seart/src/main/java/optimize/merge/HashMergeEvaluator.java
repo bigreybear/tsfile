@@ -2,7 +2,6 @@ package optimize.merge;
 
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
-import java.util.BitSet;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;

@@ -25,5 +25,7 @@ public interface ITSNode {
     return false;
   }
 
-  default void acceptInspector(NodeInspector noi) {throw new UnsupportedOperationException();}
+  default void acceptInspector(NodeInspector noi) {
+    throw new UnsupportedOperationException();
+  }
 }

@@ -9,7 +9,6 @@ import static optimize.util.InfixGroup.groupByInfix;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
-
 import optimize.MainSupport;
 import optimize.TSTree;
 import optimize.nodes.IMicroNode;

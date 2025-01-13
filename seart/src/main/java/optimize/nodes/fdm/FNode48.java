@@ -1,6 +1,5 @@
 package optimize.nodes.fdm;
 
-
 import java.util.Arrays;
 
 public class FNode48 extends FNodeBase {

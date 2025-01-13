@@ -1,12 +1,15 @@
 package optimize.nodes.cdm;
 
 import static optimize.merge.CDMPrefixMerge.recNextMergeOnCDMV2;
-import static optimize.nodes.cdm.ByteEncode.int2Bytes;
 import static optimize.nodes.cdm.CNodeHelper.extractBytes;
 import static optimize.util.ArrayHelper.findComplementary;
 import static optimize.util.ArrayHelper.findIntervals;
 import static optimize.util.ArrayHelper.removeTrailingZeros;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Function;
+import optimize.SearchStatus;
 import optimize.exception.KeyNotFound;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
@@ -14,12 +17,8 @@ import optimize.nodes.NodeInspector;
 import optimize.nodes.NodeWithPartialKey;
 import optimize.util.InfixGroup;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.function.Function;
-
-public abstract class CNodeBase extends NodeWithPartialKey {
-  public byte[][] rmk;  // Re_Mained_Keys
+public abstract class CNodeBase extends NodeWithPartialKey implements ICNode {
+  public byte[][] rmk; // Re_Mained_Keys
   public ICNode[] ptrs;
   protected static byte[] EMPTY_BYTE_ARR = new byte[0];
   protected static int SINGLE_BYTE_MASK = 0xffffff00;
@@ -32,6 +31,14 @@ public abstract class CNodeBase extends NodeWithPartialKey {
 
   protected abstract byte[] getBrKeyAt(int channel); // no trailing 0s.
 
+  /**
+   * Checks the key bytes against the branching key and complementary key for a given channel.
+   *
+   * @param key the key to be checked
+   * @param channel the channel index to retrieve the branching key
+   * @param bps an array of branching positions
+   * @return the index in the key array after the last checked byte
+   */
   int checkKeyBytes(byte[] key, int channel, int[] bps) {
     byte[] brCheck = getBrKeyAt(channel);
     byte[] compCheck = rmk == null ? null : rmk[channel]; // complementary
@@ -99,28 +106,32 @@ public abstract class CNodeBase extends NodeWithPartialKey {
     return Arrays.asList(ptrs);
   }
 
-  // to solve orphan leaves
-  protected final void solveComplementaryLeaf(
-      InfixGroup group,
-      byte[] compKey,
-      int idx,
-      Function<byte[], IMicroNode> getLChild) {
-    int[] cmpPos =
-        findComplementary(
-            group.getBranchingPos()[0],
-            compKey.length - 1,
-            group.getBranchingPos()
-        );
+  // region Set Content
+  // all methods below shared between CNode2/4/8
+
+  /**
+   * Triggered when only one key belongs to the branching key, meaning the pointer could directly
+   * point to the target leaf (or CLeaf if not oneTree in {@linkplain optimize.Main}).
+   *
+   * <p>Deeply coupled with {@linkplain #checkKeyBytes}, which check/read the bytes set by this
+   * method. A little weird, may be fixed in further days: the channel of idx could hold more
+   * positions than others, and this gap is handled by the aforementioned method.
+   *
+   * @param brPos branching positions
+   * @param compKey the complete key
+   * @param idx position to set the ptr
+   * @param getLChild closure to retrieve the logical child
+   */
+  private void incorporateTrivialLeaf(
+      int[] brPos, byte[] compKey, int idx, Function<byte[], IMicroNode> getLChild) {
+    int[] cmpPos = findComplementary(brPos[0], compKey.length - 1, brPos);
 
     setInterleavedBytes(idx, extractBytes(compKey, cmpPos));
     ptrs[idx] = (ICNode) getLChild.apply(compKey);
   }
 
-  // region Set Content
-  // all methods below shared between CNode2/4/8
-
   // a server function, set branching keys at same time
-  abstract protected Function<Integer, List<byte[]>> generateCompleteKeyRetrieval(InfixGroup group);
+  protected abstract Function<Integer, List<byte[]>> generateCompleteKeyRetrieval(InfixGroup group);
 
   public void setContent(
       InfixGroup group,
@@ -128,7 +139,7 @@ public abstract class CNodeBase extends NodeWithPartialKey {
       PrefixMergeStrategy mergeStrategy,
       int height) {
     List<byte[]> completeKeys;
-    int[] itvPos;
+    int[] brPos = group.getBranchingPos(), itvPos;
     int sbkSize = group.countBranches();
     Function<Integer, List<byte[]>> retrieval = generateCompleteKeyRetrieval(group);
 
@@ -138,20 +149,55 @@ public abstract class CNodeBase extends NodeWithPartialKey {
 
       // if only one key, needless to recur, set all other bytes as rmk
       if (NO_ORPHAN_CLEAF && completeKeys.size() == 1) {
-        solveComplementaryLeaf(group, completeKeys.get(0), i, getLChild);
+        incorporateTrivialLeaf(brPos, completeKeys.get(0), i, getLChild);
         continue;
       }
 
-      itvPos = findIntervals(group.getBranchingPos());
+      itvPos = findIntervals(brPos);
       setInterleavedBytes(i, extractBytes(completeKeys.get(0), itvPos));
-      ptrs[i] = (ICNode) recNextMergeOnCDMV2( // previously not V2
-          getLChild,
-          completeKeys.toArray(new byte[0][0]),
-          group.getBranchingPos()[group.getBranchingPos().length - 1] + 1,
-          mergeStrategy,
-          height
-      );
+      ptrs[i] =
+          (ICNode)
+              recNextMergeOnCDMV2( // previously not V2
+                  getLChild,
+                  completeKeys.toArray(new byte[0][0]),
+                  brPos[brPos.length - 1] + 1,
+                  mergeStrategy,
+                  height);
     }
+  }
+
+  // endregion
+
+  // region Proceed Query CDM
+
+  // supporters for query
+  protected abstract int getEmptyKeyIdx();
+
+  protected abstract int getBrKeyIdx(byte[] key, int[] brPos);
+
+  // body to query
+  public ICNode proceedQueryCDM(byte[] key, SearchStatus sts) {
+    if (sts.getCurLen() == key.length) {
+      int idx = getEmptyKeyIdx();
+      sts.setFinished(true);
+      return idx < 0 ? this : ptrs[idx];
+    }
+
+    int[] bps = getBranchingPos();
+    if (bps.length == 0) throw new RuntimeException();
+    int curLen = sts.getCurLen();
+    curLen = checkPartialKey(key, curLen, bps[0]);
+
+    // finish searching and is PREFIXED
+    if (curLen == key.length) {
+      sts.setFinished(true);
+      return ptrs[getEmptyKeyIdx()];
+    }
+
+    int channel = getBrKeyIdx(key, bps);
+    sts.setCurLen(checkKeyBytes(key, channel, bps));
+    // sts.setFinished(sts.getCurLen() == key.length);
+    return ptrs[channel];
   }
 
   // endregion

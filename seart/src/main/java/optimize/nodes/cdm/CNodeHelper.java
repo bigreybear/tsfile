@@ -1,5 +1,9 @@
 package optimize.nodes.cdm;
 
+import static optimize.nodes.cdm.ByteEncode.bytes2Int;
+import static optimize.nodes.cdm.ByteEncode.int2BytesNoTrailing;
+import static optimize.util.ArrayHelper.findIntervals;
+
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -7,16 +11,12 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
 import loader.PathTxtLoader;
-
-import static optimize.nodes.cdm.ByteEncode.bytes2Int;
-import static optimize.nodes.cdm.ByteEncode.int2BytesNoTrailing;
-import static optimize.util.ArrayHelper.findIntervals;
 
 public class CNodeHelper {
   public static final int POS_SIZE = 4;
 
+  // may extract 0 bytes
   public static byte[] extractBytes(byte[] arr, int[] pos) {
     byte[] res = new byte[pos.length];
     for (int i = 0; i < pos.length; i++) {
@@ -25,9 +25,9 @@ public class CNodeHelper {
     return res;
   }
 
-  public static byte[] extractBytes(byte[] src, byte... p){
+  public static byte[] extractBytes(byte[] src, byte... p) {
     byte[] r = null;
-    for (int i = p.length-1; i >=0; i--) {
+    for (int i = p.length - 1; i >= 0; i--) {
       if (p[i] == 0) r = new byte[i + 1];
     }
 
@@ -338,7 +338,6 @@ public class CNodeHelper {
             .collect(Collectors.toList());
     return vpaList;
   }
-
 
   private static final Comparator<byte[]> BYTE_ARRAY_COMPARATOR =
       (a, b) -> {

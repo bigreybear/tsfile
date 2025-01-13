@@ -1,8 +1,6 @@
 package optimize.nodes.fdm;
 
 import java.util.Arrays;
-
-import optimize.nodes.NodeInspector;
 import optimize.util.ArrayHelper;
 
 public class FNode4 extends FNodeBase {

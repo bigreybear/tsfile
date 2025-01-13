@@ -2,12 +2,10 @@ package optimize;
 
 import org.openjdk.jol.info.ClassLayout;
 
-import java.util.Scanner;
-
 public class TempTest {
 
   int pot;
-  byte a,b,c,d;
+  byte a, b, c, d;
 
   public static void main(String[] args) {
     TempTest tt = new TempTest();

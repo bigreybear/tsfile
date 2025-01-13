@@ -45,7 +45,7 @@ public class LLeaf extends NodeWithPartialKey implements IMicroNode, IFNode, ICN
   }
 
   @Override
-  public ICNode getCDMChild(byte[] key, SearchStatus sts) {
+  public ICNode proceedQueryCDM(byte[] key, SearchStatus sts) {
     if (sts.getCurLen() != key.length) {
       throw new RuntimeException("Key Search Failed for unknown reason.");
     }

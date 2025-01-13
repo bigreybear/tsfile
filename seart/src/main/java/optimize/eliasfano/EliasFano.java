@@ -15,7 +15,6 @@
  */
 package optimize.eliasfano;
 
-import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -291,7 +290,8 @@ public final class EliasFano {
 
   public static void main(String[] args) {
     int[] t = new int[] {0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11};
-    List<Integer> tl = Arrays.stream(t).boxed().sorted(Integer::compareUnsigned).collect(Collectors.toList());
+    List<Integer> tl =
+        Arrays.stream(t).boxed().sorted(Integer::compareUnsigned).collect(Collectors.toList());
     t = tl.stream().mapToInt(i -> i).toArray();
     byte[] cb = compress(t, 0, t.length);
     int l = getL(t[t.length - 1], t.length);

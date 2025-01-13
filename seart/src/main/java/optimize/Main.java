@@ -8,7 +8,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
 import java.util.stream.Collectors;
-
 import optimize.merge.MapType;
 import optimize.merge.MergePrefixVDev;
 import optimize.merge.PrefixMergeStrategy;
@@ -120,12 +119,14 @@ public class Main {
       if (argList.contains("-space")) {
         REPORT_CHANNEL.append(
             String.format(
-                "After template space: %d \n", _space = GraphLayout.parseInstance(tree).totalSize()));
+                "After template space: %d \n",
+                _space = GraphLayout.parseInstance(tree).totalSize()));
       }
     }
 
     if (argList.contains("-space")) {
-      long r = MainSupport.measureSpace(tree, mergeStrategy, mapType, argList.contains("-spaceDetail"));
+      long r =
+          MainSupport.measureSpace(tree, mergeStrategy, mapType, argList.contains("-spaceDetail"));
       resultPrinter.space = r;
       resultPrinter.recordSpace();
     }
