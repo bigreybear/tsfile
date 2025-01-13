@@ -19,12 +19,12 @@ import optimize.util.ByteArray;
 import optimize.util.InfixGroup;
 
 @Deprecated
-public class CNode extends CNodeBase implements ICNode {
+public class legacyCNode extends CNodeBase implements ICNode {
   // for more than 4 positions
   byte[][] bks;
   byte[] pos; // indeed flags for byte p1, p2, p3, p4;
 
-  public CNode(int[] pi) {
+  public legacyCNode(int[] pi) {
     pos = new byte[pi.length];
     for (int i = 0; i < pi.length; i++) {
       if (pi[i] > 255) throw new UnsupportedOperationException("Too big branching pos.");
@@ -39,7 +39,7 @@ public class CNode extends CNodeBase implements ICNode {
     // why to sort: CNode4 is sorted by int and could be different from byte[]
     Arrays.sort(keys, Arrays::compare);
     LLeaf leaf;
-    CNode tr = new CNode(fakePos);
+    legacyCNode tr = new legacyCNode(fakePos);
 
     // todo remove member access to instance method
     tr.bks = keys;

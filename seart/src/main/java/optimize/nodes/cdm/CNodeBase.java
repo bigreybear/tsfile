@@ -1,6 +1,6 @@
 package optimize.nodes.cdm;
 
-import static optimize.merge.CDMPrefixMerge.recNextMergeOnCDMV2;
+import static optimize.merge.CDMPrefixMerge.recMergeCDM;
 import static optimize.nodes.cdm.CNodeHelper.extractBytes;
 import static optimize.util.ArrayHelper.findComplementary;
 import static optimize.util.ArrayHelper.findIntervals;
@@ -18,7 +18,7 @@ import optimize.nodes.NodeWithPartialKey;
 import optimize.util.InfixGroup;
 
 public abstract class CNodeBase extends NodeWithPartialKey implements ICNode {
-  public byte[][] rmk; // Re_Mained_Keys
+  public byte[][] rmk; // Re-Mained Keys
   public ICNode[] ptrs;
   protected static byte[] EMPTY_BYTE_ARR = new byte[0];
   protected static int SINGLE_BYTE_MASK = 0xffffff00;
@@ -102,6 +102,7 @@ public abstract class CNodeBase extends NodeWithPartialKey implements ICNode {
     // ni.appendEntry(nodePrefix + "_rmk_elem_avg_len", ttlLen);
   }
 
+  @Override
   public List<IMicroNode> getChildren() {
     return Arrays.asList(ptrs);
   }
@@ -111,7 +112,7 @@ public abstract class CNodeBase extends NodeWithPartialKey implements ICNode {
 
   /**
    * Triggered when only one key belongs to the branching key, meaning the pointer could directly
-   * point to the target leaf (or CLeaf if not oneTree in {@linkplain optimize.Main}).
+   * point to the logical leaf (or another root if oneTree=false in {@linkplain optimize.Main}).
    *
    * <p>Deeply coupled with {@linkplain #checkKeyBytes}, which check/read the bytes set by this
    * method. A little weird, may be fixed in further days: the channel of idx could hold more
@@ -141,6 +142,8 @@ public abstract class CNodeBase extends NodeWithPartialKey implements ICNode {
     List<byte[]> completeKeys;
     int[] brPos = group.getBranchingPos(), itvPos;
     int sbkSize = group.countBranches();
+    // WHY use func if/: varying instance may use varying typed branching keys.
+    // i.e. short[]/int[]/long[] cannot be generified so be wrapped by func if/.
     Function<Integer, List<byte[]>> retrieval = generateCompleteKeyRetrieval(group);
 
     for (int i = 0; i < sbkSize; i++) {
@@ -157,7 +160,7 @@ public abstract class CNodeBase extends NodeWithPartialKey implements ICNode {
       setInterleavedBytes(i, extractBytes(completeKeys.get(0), itvPos));
       ptrs[i] =
           (ICNode)
-              recNextMergeOnCDMV2( // previously not V2
+              recMergeCDM( // previously not V2
                   getLChild,
                   completeKeys.toArray(new byte[0][0]),
                   brPos[brPos.length - 1] + 1,
@@ -173,6 +176,7 @@ public abstract class CNodeBase extends NodeWithPartialKey implements ICNode {
   // supporters for query
   protected abstract int getEmptyKeyIdx();
 
+  // composite the key and search for its index/offset
   protected abstract int getBrKeyIdx(byte[] key, int[] brPos);
 
   // body to query

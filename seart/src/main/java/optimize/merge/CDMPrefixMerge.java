@@ -13,12 +13,14 @@ import optimize.MainSupport;
 import optimize.TSTree;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.cdm.CLeaf;
-import optimize.nodes.cdm.CNode;
+import optimize.nodes.cdm.legacyCNode;
 import optimize.nodes.cdm.CNode4;
 import optimize.nodes.cdm.ICNode;
 import optimize.util.InfixGroup;
 
 public class CDMPrefixMerge {
+
+  public static final boolean ONLY_CNODE4 = false;
 
   public static void reportMergeStatus() {
     REPORT_CHANNEL.append(
@@ -28,8 +30,34 @@ public class CDMPrefixMerge {
             "Partial merge: %d, not merge: %d \n", partialToMerge.get(), partialNotMerge.get()));
   }
 
-  // updating for incorporating CNode2/4/8 without CNode
-  public static IMicroNode recNextMergeOnCDMV2(
+  // Alternating whether CNode1Fx/2/4/8 or only CNode4
+  public static IMicroNode recMergeCDM(
+      Function<byte[], IMicroNode> getLChild,
+      byte[][] keys,
+      int preLen,
+      PrefixMergeStrategy ms,
+      int height) {
+    if (ONLY_CNODE4) {
+      // legacy impl.
+      return recNextMergeOnCDM(
+          getLChild,
+          keys,
+          preLen,
+          ms,
+          height
+      );
+    } else {
+      return recNextMergeOnCDMV2(
+          getLChild,
+          keys,
+          preLen,
+          ms,
+          height
+      );
+    }
+  }
+
+  private static IMicroNode recNextMergeOnCDMV2(
       Function<byte[], IMicroNode> getLChild,
       byte[][] keys,
       int preLen,
@@ -83,7 +111,7 @@ public class CDMPrefixMerge {
       evaFalseTime++;
       // not use final-mapping CNode
       group1 = groupByInfix(byteList, 256, preLen);
-      CNode curNode = new CNode(group1.getBranchingPos());
+      legacyCNode curNode = new legacyCNode(group1.getBranchingPos());
       if (preLen < group1.getBranchingPos()[0]) {
         curNode.setParKey(Arrays.copyOfRange(keys[0], preLen, group1.getBranchingPos()[0]));
       }
@@ -93,7 +121,7 @@ public class CDMPrefixMerge {
     }
   }
 
-  public static IMicroNode recNextMergeOnCDM(
+  private static IMicroNode recNextMergeOnCDM(
       Function<byte[], IMicroNode> getLChild,
       byte[][] keys,
       int preLen,
@@ -147,7 +175,7 @@ public class CDMPrefixMerge {
       evaFalseTime++;
       // not use final-mapping CNode
       group1 = groupByInfix(byteList, 256, preLen);
-      CNode curNode = new CNode(group1.getBranchingPos());
+      legacyCNode curNode = new legacyCNode(group1.getBranchingPos());
       if (preLen < group1.getBranchingPos()[0]) {
         curNode.setParKey(Arrays.copyOfRange(keys[0], preLen, group1.getBranchingPos()[0]));
       }

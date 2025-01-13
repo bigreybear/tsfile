@@ -1,7 +1,7 @@
 package optimize.merge;
 
 import static optimize.Main.REPORT_CHANNEL;
-import static optimize.merge.CDMPrefixMerge.recNextMergeOnCDMV2;
+import static optimize.merge.CDMPrefixMerge.recMergeCDM;
 import static optimize.merge.HashPrefixMerge.recNextMergeOnHashV2VDev;
 import static optimize.nodes.cdm.ByteEncode.strings2ByteArrays;
 
@@ -88,7 +88,7 @@ public class MergePrefixVDev {
 
               ICNode n2 =
                   (ICNode)
-                      recNextMergeOnCDMV2( // previously V1
+                      recMergeCDM( // previously V1
                           getLogicalChildVDev(cur), keyBytes, 0, ms, stk.size());
 
               if (n2 != cur) {

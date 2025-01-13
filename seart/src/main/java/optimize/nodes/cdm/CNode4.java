@@ -15,7 +15,7 @@ import optimize.nodes.IMicroNode;
 import optimize.nodes.NodeInspector;
 import optimize.util.InfixGroup;
 
-public class CNode4 extends CNodeBase implements ICNode {
+public class CNode4 extends CNodeBase {
   // for only 4 positions
   final int posInt; // an int concatenated by 4 bytes: byte p1, p2, p3, p4;
   int[] bks; // indeed a byte[][4] bks; // branching keys

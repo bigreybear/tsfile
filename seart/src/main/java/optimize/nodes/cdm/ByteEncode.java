@@ -156,7 +156,7 @@ public class ByteEncode {
     return b;
   }
 
-  /** only first zero-byte is valid. */
+  /** zero-byte is valid only when it is the first byte. */
   public static byte[] int2BytesNoTrailing(final int i) {
     return removeTrailingZeros(int2Bytes(i));
   }

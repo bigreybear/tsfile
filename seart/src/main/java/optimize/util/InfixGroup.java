@@ -213,6 +213,13 @@ public class InfixGroup {
   }
 
   public List<byte[]> getCompleteKeys(byte[] brKey) {
+    // Answer for why remove trailing 0s before the call:
+    //  the brKey could be 0-trailing for 2 case:
+    //    1) other branches are longer than the passing one(trailed by padded);
+    //    2) the branching incurred in the last bytes of the key(trailed by decoded).
+    //  Outside the InfixGroup, it cannot be told which is true, and the first case shall keep
+    //  the trailing while only the other one shall remove.
+    // This method is only called when constructing so trivial to query perf.
     return infixMap.get(
         new ByteArray(
             brPos.size() == brKey.length ? brKey : Arrays.copyOfRange(brKey, 0, brPos.size())));
@@ -220,6 +227,15 @@ public class InfixGroup {
 
   public int[] getBranchingPos() {
     return brPos.stream().mapToInt(Integer::intValue).toArray();
+  }
+
+  public byte[] sortedByteBranchKeys() {
+    if (brPos.size() > 1) throw new RuntimeException("More than 1 branching positions.");
+    byte[] r = new byte[infixMap.size()];
+    int idx = 0;
+    for (ByteArray k : infixMap.keySet()) r[idx++] = k.val[0];
+    Arrays.sort(r);
+    return r;
   }
 
   // Note(zx) all sorting are ascending

@@ -10,7 +10,7 @@ import java.util.function.Function;
 import optimize.util.InfixGroup;
 import org.openjdk.jol.info.ClassLayout;
 
-public class CNode2 extends CNodeBase implements ICNode {
+public class CNode2 extends CNodeBase {
   final byte p1, p2;
   short[] bks;
 

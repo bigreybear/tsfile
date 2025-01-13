@@ -73,7 +73,7 @@ public class HashRefNodeVDev implements IMicroNode {
   }
 
   @Override
-  public void setParKey(byte[] _pk) {}
+  public void setParKey(byte[] _pk) {throw new UnsupportedOperationException();}
 
   @Override
   public long getValue() {
