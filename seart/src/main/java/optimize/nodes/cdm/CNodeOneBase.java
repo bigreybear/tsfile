@@ -1,22 +1,32 @@
 package optimize.nodes.cdm;
 
 import optimize.SearchStatus;
+import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
+import optimize.nodes.NodeInspector;
 import optimize.nodes.NodeWithPartialKey;
 import optimize.util.InfixGroup;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static optimize.merge.CDMPrefixMerge.recMergeCDM;
 import static optimize.nodes.cdm.CNodeBase.NO_ORPHAN_CLEAF;
 
 public abstract class CNodeOneBase extends NodeWithPartialKey implements ICNode{
+  ICNode[] ptrs;
 
+  @Override
+  public List<IMicroNode> getChildren() {
+    return Arrays.stream(ptrs).filter(Objects::nonNull).collect(Collectors.toList());
+  }
 
-  abstract protected void setPointer(byte b, ICNode c);
+  abstract protected void compactInit(byte[] sbk);
+  abstract protected void setPointer(byte[] sbk, int idx, ICNode c);
 
   // fixme Note(zx) a design diverge: where to set the remaining key after last branch?
   //  By CNode2/4/8 it is appended to the rmk. but CNode1X has no rmk.
@@ -24,16 +34,18 @@ public abstract class CNodeOneBase extends NodeWithPartialKey implements ICNode{
   @Override
   public void setContent(InfixGroup group,
                          Function<byte[], IMicroNode> getLChild,
+                         MapType mapType,
                          PrefixMergeStrategy mergeStrategy,
                          int height) {
+    int[] posArr = group.getBranchingPos();
+    if (posArr.length > 1)
+      throw new UnsupportedOperationException("Invalid branch pos for CNode1");
+    byte[] sortedBrKeys = group.sortedByteBranchKeys();
+    compactInit(sortedBrKeys);
     setParKey(group.getCommonPrefix());
     List<byte[]> completeKeys;
-    int[] posArr;
-    if ((posArr = group.getBranchingPos()).length > 1)
-      throw new UnsupportedOperationException("Invalid branch pos for CNode1");
     int sbkSize = group.countBranches();
     int pos = posArr[0];
-    byte[] sortedBrKeys = group.sortedByteBranchKeys();
     byte[] firstCompKey;
     for (int i = 0; i < sbkSize; i++) {
       completeKeys = group.getCompleteKeys(new byte[] {sortedBrKeys[i]});
@@ -46,22 +58,23 @@ public abstract class CNodeOneBase extends NodeWithPartialKey implements ICNode{
       if (completeKeys.size() == 1) {
         firstCompKey = completeKeys.get(0);
         IMicroNode c = getLChild.apply(firstCompKey);
-        if (pos + 1 != firstCompKey.length)
+        if (pos + 1 < firstCompKey.length)
           c.setParKey(Arrays.copyOfRange(firstCompKey, pos + 1, firstCompKey.length));
-        setPointer(sortedBrKeys[i], (ICNode) c);
+        setPointer(sortedBrKeys, i, (ICNode) c);
         continue;
       }
 
       // otherwise merge on going
       setPointer(
-          sortedBrKeys[i],
+          sortedBrKeys,
+          i,
           (ICNode) recMergeCDM(
               getLChild,
               completeKeys,
               pos + 1,
+              mapType,
               mergeStrategy,
-              height
-          )
+              height)
       );
     }
   }
@@ -76,7 +89,7 @@ public abstract class CNodeOneBase extends NodeWithPartialKey implements ICNode{
       return ptr == null ? this : ptr;
     }
 
-    int curLen = checkPartialKey(key, sts.getCurLen(), sts.getCurLen());
+    int curLen = checkPartialKey(key, sts.getCurLen());
     if (curLen == key.length) {
       sts.setFinished(true);
       return getPointer((byte)0);
@@ -84,5 +97,17 @@ public abstract class CNodeOneBase extends NodeWithPartialKey implements ICNode{
 
     sts.setCurLen(curLen + 1);
     return getPointer(key[curLen]);
+  }
+
+  abstract protected String codeName();
+
+  @Override
+  public void acceptInspector(NodeInspector noi) {
+    noi.appendEntry(codeName() + "_ptr", ptrs.length);
+  }
+
+  @Override
+  public int[] getBranchingPos() {
+    throw new UnsupportedOperationException();
   }
 }

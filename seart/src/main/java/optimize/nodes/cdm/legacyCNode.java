@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 import optimize.SearchStatus;
+import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.NodeInspector;
@@ -91,7 +92,7 @@ public class legacyCNode extends CNodeBase implements ICNode {
   public void setContent(
       InfixGroup group,
       Function<byte[], IMicroNode> getLChild,
-      PrefixMergeStrategy mergeStrategy,
+      MapType mapType, PrefixMergeStrategy mergeStrategy,
       int height) {
     byte[][] input = group.sortedBrKeyBytes();
     bks = new byte[input.length][];
@@ -145,6 +146,11 @@ public class legacyCNode extends CNodeBase implements ICNode {
     sts.setCurLen(checkKeyBytes(key, channel, bps));
     // sts.setFinished(sts.getCurLen() == key.length);
     return ptrs[channel];
+  }
+
+  @Override
+  protected String codeName() {
+    return null;
   }
 
   @Override
@@ -239,7 +245,6 @@ public class legacyCNode extends CNodeBase implements ICNode {
   @Override
   public void acceptInspector(NodeInspector noi) {
     noi.incEntry("CNode_cnt", 1);
-    inspectRMK(noi, "CNode");
   }
 
   public List<String> getKeys() {

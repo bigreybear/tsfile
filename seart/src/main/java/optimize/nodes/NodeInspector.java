@@ -60,7 +60,7 @@ public class NodeInspector {
       cur.acceptInspector(this);
       nodeStk.addLast(PAD_MARK);
       curDepth++;
-      nodeStk.addAll(cur.getLogicalChildren());
+      nodeStk.addAll(cur.getPhysicalChildren());
     }
   }
 

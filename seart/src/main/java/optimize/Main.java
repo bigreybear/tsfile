@@ -16,11 +16,6 @@ import org.openjdk.jol.info.GraphLayout;
 
 public class Main {
 
-  // configurations
-  public static final boolean CDM_WITH_EF = false;
-
-  public static final StringBuilder REPORT_CHANNEL = new StringBuilder();
-
   public static final Field tableField;
 
   static {
@@ -36,6 +31,7 @@ public class Main {
     // res += " -mt hash";
     // res += " -mt fdm";
     res += " -mt cdm";
+    // res += " -mt ncdm";
 
     res += " -merge";
     res += " -ms full";
@@ -49,7 +45,7 @@ public class Main {
 
     res += " -oneTree";
     res += " -latency";
-    // res += " -space";
+    res += " -space";
     res += " -spaceDetail";
     // res += " -depth";
     // res += " -template";
@@ -60,13 +56,19 @@ public class Main {
     return res.split(" ");
   }
 
+  // global args
+  public static final boolean CDM_WITH_EF = false;
+  public static final StringBuilder REPORT_CHANNEL = new StringBuilder();
+  public static String dataAlias = "NoN";
+
+  // local args
   public MyDataSet dataSet;
   public PrefixMergeStrategy mergeStrategy;
   public MapType mapType;
 
   public void mainbody(String[] args) {
-    REPORT_CHANNEL.delete(0, REPORT_CHANNEL.length());
-    ExpResultLogger resultPrinter = new ExpResultLogger();
+    resetStaticArgs();
+    ExpResultLogger resultPrinter = new ExpResultLogger(dataAlias);
     System.out.println(MainSupport.getBuildTimestamp());
     args = args.length == 0 ? defaultArgs() : args;
     List<String> argList = Arrays.stream(args).distinct().collect(Collectors.toList());
@@ -172,6 +174,10 @@ public class Main {
     REPORT_CHANNEL.append("FINISH:" + String.join(" ", argList) + " with EF code: " + CDM_WITH_EF);
     REPORT_CHANNEL.append("\n");
     System.out.println(REPORT_CHANNEL);
+  }
+
+  private void resetStaticArgs() {
+    REPORT_CHANNEL.delete(0, REPORT_CHANNEL.length());
   }
 
   public static void main(String[] args) {

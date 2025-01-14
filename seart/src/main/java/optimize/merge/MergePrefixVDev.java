@@ -78,6 +78,7 @@ public class MergePrefixVDev {
   // entrance to merge the prefix
   public static void mergePrefixes(TSTree tree, MapType mt, PrefixMergeStrategy ms) {
     switch (mt) {
+      case NCDM:
       case CDM:
         tree.traversePostOrderRec(
             (par, key, cur, stk) -> {
@@ -90,7 +91,7 @@ public class MergePrefixVDev {
               ICNode n2 =
                   (ICNode)
                       recMergeCDM( // previously V1
-                          getLogicalChildVDev(cur), keyByteList, 0, ms, stk.size());
+                          getLogicalChildVDev(cur), keyByteList, 0, mt, ms, stk.size());
 
               if (n2 != cur) {
                 if (par == null) {

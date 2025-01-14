@@ -83,6 +83,7 @@ public class MainSupport {
         }
         nano = System.nanoTime() - nano;
         break;
+      case NCDM:
       case CDM:
         nano = System.nanoTime();
         for (int i = 0; i < qPaths.size(); i++) {

@@ -12,6 +12,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import optimize.SearchStatus;
 import optimize.eliasfano.EliasFano;
+import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.INode;
@@ -51,7 +52,7 @@ public class LegacyCNode4EF extends CNodeBase implements ICNode {
   public void setContent(
       InfixGroup group,
       Function<byte[], IMicroNode> getLChild,
-      PrefixMergeStrategy mergeStrategy,
+      MapType mapType, PrefixMergeStrategy mergeStrategy,
       int height) {
     throw new UnsupportedOperationException();
   }
@@ -76,6 +77,11 @@ public class LegacyCNode4EF extends CNodeBase implements ICNode {
     sts.setCurLen(checkKeyBytes(key, channel, bps));
     sts.setFinished(sts.getCurLen() == key.length);
     return ptrs[channel];
+  }
+
+  @Override
+  protected String codeName() {
+    return null;
   }
 
   public void setBranchingKeys(Integer[] branchingBytes) {

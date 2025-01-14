@@ -9,6 +9,10 @@ public abstract class NodeWithPartialKey {
     return b & 0xff;
   }
 
+  public static int ubyte(int i) {
+    return i & 0xff;
+  }
+
   public byte[] getParKey() {
     return pk;
   }
@@ -35,5 +39,13 @@ public abstract class NodeWithPartialKey {
       return curLen + pk.length;
     }
     return curLen;
+  }
+
+  protected int checkPartialKey(byte[] key, int ofs) {
+    if (pk == null) return ofs;
+    for (int i = 0; i < pk.length; i++) {
+      if (i + ofs >= key.length || key[i+ofs] != pk[i]) throw new PartialKeyCheckException();
+    }
+    return ofs + pk.length;
   }
 }

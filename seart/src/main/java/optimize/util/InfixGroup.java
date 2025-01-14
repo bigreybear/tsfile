@@ -141,7 +141,7 @@ public class InfixGroup {
   // return true if next branch found otherwise false
   public boolean findNextBranch() {
     final int oriPosLen = brPos.size();
-    int dep = brPos.get(oriPosLen - 1) + 1, thisDepth = dep;
+    int dep = brPos.get(oriPosLen - 1) + 1;
     if (dep == maxKeyLen) return false; // no more split
 
     Map<ByteArray, List<byte[]>> nextRun = new ConcurrentHashMap<>(infixMap),
@@ -160,7 +160,7 @@ public class InfixGroup {
           // k1 and other elements are identical on thisDepth
           byte[] k1 = nbe.getValue().get(0);
           nextRun.put(
-              new ByteArray(nbe.getKey(), k1.length > thisDepth ? k1[thisDepth] : 0),
+              new ByteArray(nbe.getKey(), k1.length > dep ? k1[dep] : 0),
               nbe.getValue());
         }
         break;

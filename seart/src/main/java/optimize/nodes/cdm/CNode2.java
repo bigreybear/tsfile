@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
+
+import optimize.nodes.NodeInspector;
 import optimize.util.InfixGroup;
 import org.openjdk.jol.info.ClassLayout;
 
@@ -58,7 +60,7 @@ public class CNode2 extends CNodeBase {
   protected int getBrKeyIdx(byte[] key, int[] brPos) {
     short s = 0;
     s |= (short) (key[brPos[0]] << 8);
-    if (brPos.length > 1) s |= (short) (key[brPos[1]] & 0xff);
+    if (brPos.length > 1 && brPos[1] < key.length) s |= (short) (key[brPos[1]] & 0xff);
 
     int idx = Arrays.binarySearch(bks, s);
     if (idx < 0 || bks[idx] != s) throw new RuntimeException("Key not found.");
@@ -84,5 +86,16 @@ public class CNode2 extends CNodeBase {
   public static void main(String[] args) {
     CNode2 c2 = new CNode2(new int[] {1, 2});
     System.out.println(ClassLayout.parseInstance(c2).toPrintable());
+  }
+
+  @Override
+  protected String codeName() {
+    return "CNode2";
+  }
+
+  @Override
+  public void acceptInspector(NodeInspector noi) {
+    super.acceptInspector(noi);
+    noi.incEntry("CNode2_cnt", 1);
   }
 }

@@ -3,6 +3,7 @@ package optimize.nodes.logic;
 import java.util.List;
 import java.util.function.Function;
 import optimize.SearchStatus;
+import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.ITSNode;
@@ -46,7 +47,7 @@ public class LLeaf extends NodeWithPartialKey implements IMicroNode, IFNode, ICN
 
   @Override
   public ICNode proceedQueryCDM(byte[] key, SearchStatus sts) {
-    if (sts.getCurLen() != key.length) {
+    if ((pk == null && sts.getCurLen() != key.length) || key.length != checkPartialKey(key, sts.getCurLen())) {
       throw new RuntimeException("Key Search Failed for unknown reason.");
     }
     sts.setFinished(true);
@@ -118,7 +119,7 @@ public class LLeaf extends NodeWithPartialKey implements IMicroNode, IFNode, ICN
   public void setContent(
       InfixGroup group,
       Function<byte[], IMicroNode> getLChild,
-      PrefixMergeStrategy mergeStrategy,
+      MapType mapType, PrefixMergeStrategy mergeStrategy,
       int height) {
     throw new UnsupportedOperationException();
   }

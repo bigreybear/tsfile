@@ -33,7 +33,7 @@ public class LNodeV3 implements ITSNode {
   }
 
   @Override
-  public List<ITSNode> getLogicalChildren() {
+  public List<ITSNode> getPhysicalChildren() {
     return new ArrayList<>(children.values());
   }
 

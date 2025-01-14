@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 import optimize.SearchStatus;
+import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.ITSNode;
@@ -81,7 +82,7 @@ public class CLeaf extends NodeWithPartialKey implements ICNode {
   public void setContent(
       InfixGroup group,
       Function<byte[], IMicroNode> getLChild,
-      PrefixMergeStrategy mergeStrategy,
+      MapType mapType, PrefixMergeStrategy mergeStrategy,
       int height) {
     throw new UnsupportedOperationException();
   }

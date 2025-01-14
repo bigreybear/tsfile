@@ -1,5 +1,6 @@
 package optimize.nodes.cdm;
 
+import optimize.nodes.NodeInspector;
 import optimize.util.InfixGroup;
 
 import java.util.ArrayList;
@@ -7,6 +8,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 
+import static optimize.nodes.cdm.ByteEncode.int2BytesNoTrailing;
 import static optimize.nodes.cdm.ByteEncode.long2Bytes;
 import static optimize.nodes.cdm.ByteEncode.long2BytesNoTrailing;
 
@@ -108,4 +110,17 @@ public class CNode8 extends CNodeBase {
   protected byte[] getBrKeyAt(int channel) {
     return long2BytesNoTrailing(bks[channel]);
   }
+
+  @Override
+  protected String codeName() {
+    return "CNode8";
+  }
+
+  @Override
+  public void acceptInspector(NodeInspector noi) {
+    super.acceptInspector(noi);
+    noi.incEntry("CNode8_cnt", 1);
+  }
+
+
 }

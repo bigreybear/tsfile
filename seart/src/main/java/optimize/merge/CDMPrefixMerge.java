@@ -6,24 +6,25 @@ import static optimize.merge.MergePrefixVDev.partialNotMerge;
 import static optimize.merge.MergePrefixVDev.partialToMerge;
 import static optimize.util.InfixGroup.groupByInfix;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.function.Consumer;
 import java.util.function.Function;
+
+import optimize.Main;
 import optimize.MainSupport;
 import optimize.TSTree;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.cdm.CLeaf;
 import optimize.nodes.cdm.CNode1F256;
 import optimize.nodes.cdm.CNode1F48;
+import optimize.nodes.cdm.CNode1FBS;
+import optimize.nodes.cdm.CNode2;
+import optimize.nodes.cdm.CNode8;
 import optimize.nodes.cdm.legacyCNode;
 import optimize.nodes.cdm.CNode4;
 import optimize.nodes.cdm.ICNode;
 import optimize.util.InfixGroup;
 
 public class CDMPrefixMerge {
-
-  public static final boolean ONLY_CNODE4 = true;
 
   public static void reportMergeStatus() {
     REPORT_CHANNEL.append(
@@ -38,25 +39,30 @@ public class CDMPrefixMerge {
       Function<byte[], IMicroNode> getLChild,
       List<byte[]> keys,
       int preLen,
+      MapType mapType,
       PrefixMergeStrategy ms,
       int height) {
-    if (ONLY_CNODE4) {
+    if (mapType == MapType.CDM) {
       // legacy impl.
       return recNextMergeOnCDM(
           getLChild,
           keys,
           preLen,
+          mapType,
           ms,
           height
       );
-    } else {
+    } else if (mapType == MapType.NCDM){
       return recNextMergeOnCDMV2(
           getLChild,
           keys,
           preLen,
+          mapType,
           ms,
           height
       );
+    } else {
+      throw new UnsupportedOperationException();
     }
   }
 
@@ -64,6 +70,7 @@ public class CDMPrefixMerge {
       Function<byte[], IMicroNode> getLChild,
       List<byte[]> keys,
       int preLen,
+      MapType mapType,
       PrefixMergeStrategy ms,
       int height) {
 
@@ -74,49 +81,62 @@ public class CDMPrefixMerge {
 
     // just to simplify code
     Function<ICNode, ICNode> filler = (c -> {
-      c.setContent(group, getLChild, ms, height);
+      c.setContent(group, getLChild, mapType, ms, height);
       return c;
     });
 
-    boolean reversed = false;
+    boolean tentative = true;
     while (true) {
       brcPos = group.getBranchingPos();
       brcLen = brcPos.length;
       brcNum = group.countBranches();
 
+      // for decision on brcNum:
+      //   too much: revert until CNode1FX
+      //   middle: build node
+      //   too fewer: find next until CNode8
       if (brcLen == 1) {
+
         if (brcNum > 48) {
           return filler.apply(new CNode1F256());
         } else if (brcNum > 32) {
           return filler.apply(new CNode1F48());
-        } else if (brcNum > 8) {
-          // todo tentatively proceed or findNextBranch()
-          if (reversed) {
-            return filler.apply(new CNode1F48());
-          } else {
-            group.findNextBranch();
-            continue;
-          }
         } else {
-          if (group.findNextBranch()) {
-            continue;
-          } else {
-            // reluctantly use CNode1
-            return filler.apply(new CNode1F48());
-          }
+          if (!(tentative && group.findNextBranch())) return filler.apply(new CNode1FBS());
         }
 
       } else if (brcLen == 2) {
 
-
+        if (brcNum > 128) {
+          tentative = !group.revertSplit();
+        } else if (brcNum > 8) {
+          return filler.apply(new CNode2(brcPos));
+        } else {
+          if (!(tentative && group.findNextBranch())) return filler.apply(new CNode2(brcPos));
+        }
 
       } else if (brcLen <= 4) {
 
+        if (brcNum > 256) {
+          tentative = !group.revertSplit();
+        } else if (brcNum > 16) {
+          return filler.apply(new CNode4(brcPos));
+        } else {
+          if (!(tentative && group.findNextBranch())) return filler.apply(new CNode4(brcPos));
+        }
+
       } else if (brcLen <= 8) {
 
+        if (brcNum > 512) {
+          tentative = !group.revertSplit();
+        } else if (brcNum > 32 || brcLen == 8 || !group.findNextBranch()){
+          return filler.apply(new CNode8(brcPos));
+        }
+
       } else {
+        System.out.println("SHALL NOT REACH HERE");
         group.revertSplit();
-        reversed = true;
+        tentative = false;
       }
     }
   }
@@ -125,6 +145,7 @@ public class CDMPrefixMerge {
       Function<byte[], IMicroNode> getLChild,
       List<byte[]> keys,
       int preLen,
+      MapType mp,
       PrefixMergeStrategy ms,
       int height) {
     if (keys.size() == 1) {
@@ -168,7 +189,7 @@ public class CDMPrefixMerge {
 //        curNode.setParKey(Arrays.copyOfRange(keys.get(0), preLen, group.getBranchingPos()[0]));
 //      }
 
-      curNode.setContent(group, getLChild, ms, height);
+      curNode.setContent(group, getLChild, mp, ms, height);
       return curNode;
     } else {
       InfixGroup group1;
@@ -180,7 +201,7 @@ public class CDMPrefixMerge {
 //        curNode.setParKey(Arrays.copyOfRange(keys.get(0), preLen, group1.getBranchingPos()[0]));
 //      }
 
-      curNode.setContent(group1, getLChild, ms, height);
+      curNode.setContent(group1, getLChild, mp, ms, height);
       return curNode;
     }
   }

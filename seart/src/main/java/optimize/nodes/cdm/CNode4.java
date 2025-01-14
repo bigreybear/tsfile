@@ -52,10 +52,14 @@ public class CNode4 extends CNodeBase {
   }
 
   @Override
+  protected String codeName() {
+    return "CNode4";
+  }
+
+  @Override
   public void acceptInspector(NodeInspector noi) {
+    super.acceptInspector(noi);
     noi.incEntry("CNode4_cnt", 1);
-    noi.appendEntry("CNode4_valid_br", int2BytesNoTrailing(posInt).length);
-    inspectRMK(noi, "CNode4");
   }
 
   private void setBranchingKeys(int[] collected) {

@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.function.Function;
 import optimize.SearchStatus;
 import optimize.exception.KeyNotFound;
+import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.NodeInspector;
@@ -79,29 +80,6 @@ public abstract class CNodeBase extends NodeWithPartialKey implements ICNode {
     return r;
   }
 
-  protected void inspectRMK(NodeInspector ni, String nodePrefix) {
-    ni.appendEntry("CNode/4_ptr", ptrs.length);
-
-    if (rmk == null) {
-      ni.incEntry(nodePrefix + "_rmk_null", 1);
-      return;
-    }
-    if (rmk.length == 0) {
-      ni.incEntry(nodePrefix + "_rmk_empty", 1);
-      return;
-    }
-
-    int nulNum = 0, ttlLen = 0;
-    for (byte[] bytes : rmk) {
-      if (bytes == null) nulNum++;
-      else ttlLen += bytes.length;
-    }
-    // ni.incEntry(nodePrefix + "_rmk_null_elem", nulNum);
-
-    // ni.appendEntry(nodePrefix + "_rmk_arr_len", rmk.length);
-    // ni.appendEntry(nodePrefix + "_rmk_elem_avg_len", ttlLen);
-  }
-
   @Override
   public List<IMicroNode> getChildren() {
     return Arrays.asList(ptrs);
@@ -137,6 +115,7 @@ public abstract class CNodeBase extends NodeWithPartialKey implements ICNode {
   public void setContent(
       InfixGroup group,
       Function<byte[], IMicroNode> getLChild,
+      MapType mapType,
       PrefixMergeStrategy mergeStrategy,
       int height) {
     setParKey(group.getCommonPrefix());
@@ -165,8 +144,8 @@ public abstract class CNodeBase extends NodeWithPartialKey implements ICNode {
                   getLChild,
                   completeKeys,
                   brPos[brPos.length - 1] + 1,
-                  mergeStrategy,
-                  height);
+                  mapType,
+                  mergeStrategy, height);
     }
   }
 
@@ -206,4 +185,18 @@ public abstract class CNodeBase extends NodeWithPartialKey implements ICNode {
   }
 
   // endregion
+
+  // support for inspect
+  abstract protected String codeName();
+
+  @Override
+  public void acceptInspector(NodeInspector noi) {
+    noi.appendEntry(codeName() + "_ptr", ptrs.length);
+    int ttl = 0;
+    for (int i = 0; rmk != null && i < rmk.length; i++) {
+      ttl += rmk[i] == null ? 0 : rmk[i].length;
+    }
+    noi.appendEntry(codeName() + "_rmk_len", ttl);
+    noi.appendEntry(codeName() + "valid_br_pos_len", getBranchingPos().length);
+  }
 }

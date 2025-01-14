@@ -2,6 +2,7 @@ package optimize.nodes.cdm;
 
 import java.util.function.Function;
 import optimize.SearchStatus;
+import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.ITSNode;
@@ -14,6 +15,7 @@ public interface ICNode extends IMicroNode {
   void setContent(
       InfixGroup group,
       Function<byte[], IMicroNode> getLChild,
+      MapType mapType,
       PrefixMergeStrategy mergeStrategy,
       int height);
 

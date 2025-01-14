@@ -7,7 +7,7 @@ public interface ITSNode {
 
   ITSNode getLogicalChild(String pathSeg);
 
-  List<ITSNode> getLogicalChildren();
+  List<ITSNode> getPhysicalChildren();
 
   List<String> getStringKeys();
 

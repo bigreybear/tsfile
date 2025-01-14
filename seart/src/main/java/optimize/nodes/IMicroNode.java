@@ -26,7 +26,7 @@ public interface IMicroNode extends ITSNode {
   }
 
   @Override
-  default List<ITSNode> getLogicalChildren() {
+  default List<ITSNode> getPhysicalChildren() {
     return new ArrayList<>(getChildren());
   }
 
