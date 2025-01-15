@@ -29,8 +29,8 @@ public class Main {
   public static String[] defaultArgs() {
     // AliasedArgs aa = AliasedArgs.ART;
     // AliasedArgs aa = AliasedArgs.MTree;
-    // AliasedArgs aa = AliasedArgs.OLD_CDM;
-    AliasedArgs aa = AliasedArgs.NEW_CDM;
+    AliasedArgs aa = AliasedArgs.OLD_CDM;
+    // AliasedArgs aa = AliasedArgs.NEW_CDM;
     // AliasedArgs aa = AliasedArgs.BLANK;
 
     String res = aa.getBasicArg();
@@ -49,17 +49,17 @@ public class Main {
       res += " -oneTree";
     }
 
-    // res += " -ds bw";
+    res += " -ds bw";
     // res += " -ds sw";
-    res += " -ds xyzc";
+    // res += " -ds xyzc";
     // res += " -ds zy";
 
     res += " -latency";
-    // res += " -space -spaceDetail";
+    res += " -space -spaceDetail";
     // res += " -depth";
     res += " -inspect";
 
-    res += " -profile";
+    // res += " -profile";
     // res += " -template";
 
     return res.split(" ");
@@ -68,6 +68,7 @@ public class Main {
   // global args
   public static final boolean CDM_WITH_EF = false;
   public static final StringBuilder REPORT_CHANNEL = new StringBuilder();
+  public static final boolean OBSERVE_METRIC = true; // impact performance significantly
   public static String dataAlias = "NoN";
 
   // local args

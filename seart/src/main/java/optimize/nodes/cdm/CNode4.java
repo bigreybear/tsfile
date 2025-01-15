@@ -17,7 +17,7 @@ import optimize.util.InfixGroup;
 
 public class CNode4 extends CNodeBase {
   // for only 4 positions
-  final int posInt; // an int concatenated by 4 bytes: byte p1, p2, p3, p4;
+  final byte p1, p2, p3, p4;
   int[] bks; // indeed a byte[][4] bks; // branching keys
 
   // exactly no padding on 64-jvm, jdk-17, Compressed OOPs
@@ -28,19 +28,23 @@ public class CNode4 extends CNodeBase {
       throw new UnsupportedOperationException("No more than 4 bytes branching key yet.");
 
     // pos int init.
-    byte[] posBytes = new byte[4];
-    for (int i = 0; i < pos.length; i++) {
-      if ((pos[i] & SINGLE_BYTE_MASK) != 0)
-        throw new UnsupportedOperationException("Longer than 255 not supported in CDM yet.");
-      posBytes[i] = (byte) (pos[i] & 0xff);
+    for (int p : pos) {
+      if ((p & SINGLE_BYTE_MASK) != 0) throw new RuntimeException("Invalid Branch Pos.");
     }
-    posInt = ByteEncode.bytes2Int(posBytes);
+
+    p1 = (byte) (pos[0] & 0xff);
+    p2 = pos.length > 1 ? (byte) (pos[1] & 0xff) : 0;
+    p3 = (pos.length > 2 && p2 != 0) ? (byte) (pos[2] & 0xff) : 0;
+    p4 = (pos.length > 3 && p3 != 0) ? (byte) (pos[3] & 0xff) : 0;
   }
 
   @Override
   public int[] getBranchingPos() {
-    // todo improve perf. for query process
-    return ICNode.unsignedByteArr2IntArr(int2BytesNoTrailing(posInt));
+    if (p1 == 0) throw new RuntimeException("Invalid branch pos for CNode8");
+    if (p2 == 0) return new int[] { p1 & 0xff };
+    if (p3 == 0) return new int[] { p1 & 0xff, p2 & 0xff };
+    if (p4 == 0) return new int[] { p1 & 0xff, p2 & 0xff, p3 & 0xff };
+    return new int[] { p1 & 0xff, p2 & 0xff, p3 & 0xff, p4 & 0xff};
   }
 
   // a support method for setContent
@@ -72,7 +76,7 @@ public class CNode4 extends CNodeBase {
     ptrs = new ICNode[branchingBytes.size()];
 
     // init interleaved bytes array
-    int[] itvPos = findIntervals(int2BytesNoTrailing(posInt));
+    int[] itvPos = findIntervals(p1, p2, p3, p4);
     if (itvPos.length > 0) rmk = new byte[branchingBytes.size()][];
 
     bks = branchingBytes.stream().mapToInt(i -> i).toArray();
@@ -123,7 +127,7 @@ public class CNode4 extends CNodeBase {
     byte[] brKey = int2Bytes(bks[pos]);
     brKey = removeTrailingZeros(brKey);
 
-    int[] brPosInt = ICNode.unsignedByteArr2IntArr(int2BytesNoTrailing(posInt));
+    int[] brPosInt = byteArr2IntArr(removeTrailingZeros(p1,p2,p3,p4));
     int[] itvPosInt = findIntervals(brPosInt);
 
     int keyLen = brPosInt[brPosInt.length - 1] - brPosInt[0] + 1;

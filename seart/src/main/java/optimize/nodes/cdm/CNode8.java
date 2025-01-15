@@ -39,14 +39,14 @@ public class CNode8 extends CNodeBase {
   @Override
   public int[] getBranchingPos() {
     if (p1 == 0) throw new RuntimeException("Invalid branch pos for CNode8");
-    if (p2 == 0) return new int[] {p1};
-    if (p3 == 0) return new int[] {p1, p2};
-    if (p4 == 0) return new int[] {p1, p2, p3};
-    if (p5 == 0) return new int[] {p1, p2, p3, p4};
-    if (p6 == 0) return new int[] {p1, p2, p3, p4, p5};
-    if (p7 == 0) return new int[] {p1, p2, p3, p4, p5, p6};
-    if (p8 == 0) return new int[] {p1, p2, p3, p4, p5, p6, p7};
-    return new int[] {p1, p2, p3, p4, p5, p6, p7, p8};
+    if (p2 == 0) return new int[] { p1 & 0xff };
+    if (p3 == 0) return new int[] { p1 & 0xff, p2 & 0xff };
+    if (p4 == 0) return new int[] { p1 & 0xff, p2 & 0xff, p3 & 0xff };
+    if (p5 == 0) return new int[] { p1 & 0xff, p2 & 0xff, p3 & 0xff, p4 & 0xff };
+    if (p6 == 0) return new int[] { p1 & 0xff, p2 & 0xff, p3 & 0xff, p4 & 0xff, p5 & 0xff };
+    if (p7 == 0) return new int[] { p1 & 0xff, p2 & 0xff, p3 & 0xff, p4 & 0xff, p5 & 0xff, p6 & 0xff };
+    if (p8 == 0) return new int[] { p1 & 0xff, p2 & 0xff, p3 & 0xff, p4 & 0xff, p5 & 0xff, p6 & 0xff, p7 & 0xff };
+    return new int[] { p1 & 0xff, p2 & 0xff, p3 & 0xff, p4 & 0xff, p5 & 0xff, p6 & 0xff, p7 & 0xff, p8 & 0xff };
   }
 
   // a support method for setContent

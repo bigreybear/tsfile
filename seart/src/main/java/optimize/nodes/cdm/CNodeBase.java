@@ -41,28 +41,25 @@ public abstract class CNodeBase extends NodeWithPartialKey implements ICNode {
    * @return the index in the key array after the last checked byte
    */
   int checkKeyBytes(byte[] key, int channel, int[] bps) {
-    byte[] brCheck = getBrKeyAt(channel);
+    // branching keys are already checked before
     byte[] compCheck = rmk == null ? null : rmk[channel]; // complementary
+    if (compCheck == null) return Math.min(bps[bps.length-1] + 1, key.length);
 
-    // i for brCheck, j for key, r for compCheck
-    int i = 0, j = bps[0], r = 0;
-    while (i < brCheck.length) {
-      if (brCheck[i++] != key[j++]) throw new KeyNotFound(key);
-
-      if (compCheck == null) continue;
-
-      if (i < brCheck.length) {
-        while (j != bps[i]) {
-          if (key[j++] != compCheck[r++]) throw new KeyNotFound(key);
-        }
-      } else {
-        // the last branching byte has been checked
-        while (r < compCheck.length) {
-          if (key[j++] != compCheck[r++]) throw new KeyNotFound(key);
-        }
+    int bi = 1, ki = bps[0] + 1, ri = 0;
+    while (ri != compCheck.length) {
+      while (bi < bps.length && bps[bi] == ki + ri) {
+        bi++;
+        ki++;
       }
+      if (compCheck[ri] != key[ri + ki]) throw new RuntimeException("RMK check failed.");
+      ri++;
     }
-    return j;
+    // if branching keys not exhausted, just set the next to the last branch pos
+    return bi < bps.length ? Math.min(bps[bps.length-1] + 1, key.length) : ri+ki;
+  }
+
+  public static void main(String[] args) {
+
   }
 
   void setInterleavedBytes(int idx, byte[] ilb) {

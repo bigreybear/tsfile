@@ -34,8 +34,8 @@ public class CNode2 extends CNodeBase {
   @Override
   public int[] getBranchingPos() {
     if (p1 == 0) throw new RuntimeException("Invalid branch pos for CNode2");
-    if (p2 == 0) return new int[] {p1};
-    return new int[] {p1, p2};
+    if (p2 == 0) return new int[] {p1 & 0xff};
+    return new int[] {p1 & 0xff, p2 & 0xff};
   }
 
   // a support method for setContent

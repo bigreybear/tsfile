@@ -6,10 +6,10 @@ import java.util.stream.IntStream;
 
 public class ArrayHelper {
 
-  public static byte[] removeTrailingZeros(byte[] src) {
+  public static byte[] removeTrailingZeros(byte... src) {
     int i = 1;
     while (i < src.length && src[i] != 0) i++;
-    return Arrays.copyOfRange(src, 0, i);
+    return i == src.length ? src : Arrays.copyOfRange(src, 0, i);
   }
 
   public static byte[] removeTrailing(byte[] src, byte b) {
@@ -72,7 +72,7 @@ public class ArrayHelper {
   }
 
   // a wrapper
-  public static int[] findIntervals(byte[] pos) {
+  public static int[] findIntervals(byte... pos) {
     int[] res = new int[pos.length];
     for (int i = 0; i < pos.length; i++) {
       res[i] = 0xff & pos[i];
