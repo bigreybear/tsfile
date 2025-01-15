@@ -71,6 +71,6 @@ public class CNode1F48 extends CNodeOneBase {
   @Override
   public void acceptInspector(NodeInspector noi) {
     super.acceptInspector(noi);
-    noi.appendEntry("CNode1F48_key_num", keyNum);
+    noi.appendEntry("key_num_" + codeName(), keyNum);
   }
 }

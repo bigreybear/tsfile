@@ -44,6 +44,6 @@ public class CNode1F256 extends CNodeOneBase {
   @Override
   public void acceptInspector(NodeInspector noi) {
     super.acceptInspector(noi);
-    noi.appendEntry("CNode1F256_key_num", getKeyBytes().size());
+    noi.appendEntry("key_num_" + codeName(), getKeyBytes().size());
   }
 }

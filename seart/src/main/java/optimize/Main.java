@@ -27,31 +27,40 @@ public class Main {
   }
 
   public static String[] defaultArgs() {
-    String res = "";
-    // res += " -mt hash";
-    // res += " -mt fdm";
-    res += " -mt cdm";
-    // res += " -mt ncdm";
+    // AliasedArgs aa = AliasedArgs.ART;
+    // AliasedArgs aa = AliasedArgs.MTree;
+    // AliasedArgs aa = AliasedArgs.OLD_CDM;
+    AliasedArgs aa = AliasedArgs.NEW_CDM;
+    // AliasedArgs aa = AliasedArgs.BLANK;
 
-    res += " -merge";
-    res += " -ms full";
-    // res += " -ms partial";
-    // res += " -ms simple";
+    String res = aa.getBasicArg();
+
+    if (aa == AliasedArgs.BLANK) {
+      // set mapType, mergeStrategy, oneTree or not
+      // res += " -mt hash";
+      // res += " -mt fdm";
+      // res += " -mt cdm";
+      res += " -mt ncdm";
+
+      res += " -merge";
+      res += " -ms full";
+      // res += " -ms partial";
+      // res += " -ms simple";
+      res += " -oneTree";
+    }
 
     // res += " -ds bw";
     // res += " -ds sw";
     res += " -ds xyzc";
     // res += " -ds zy";
 
-    res += " -oneTree";
     res += " -latency";
-    res += " -space";
-    res += " -spaceDetail";
+    // res += " -space -spaceDetail";
     // res += " -depth";
-    // res += " -template";
     res += " -inspect";
 
-    // res += " -profile";
+    res += " -profile";
+    // res += " -template";
 
     return res.split(" ");
   }

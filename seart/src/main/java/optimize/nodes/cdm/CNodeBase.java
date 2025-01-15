@@ -191,12 +191,13 @@ public abstract class CNodeBase extends NodeWithPartialKey implements ICNode {
 
   @Override
   public void acceptInspector(NodeInspector noi) {
-    noi.appendEntry(codeName() + "_ptr", ptrs.length);
+    noi.appendEntry("ptr_num_" + codeName(), ptrs.length);
     int ttl = 0;
     for (int i = 0; rmk != null && i < rmk.length; i++) {
       ttl += rmk[i] == null ? 0 : rmk[i].length;
     }
-    noi.appendEntry(codeName() + "_rmk_len", ttl);
-    noi.appendEntry(codeName() + "valid_br_pos_len", getBranchingPos().length);
+    if (rmk != null) noi.appendEntry("rmk_num_" + codeName(), rmk.length);
+    noi.appendEntry("rmk_ttl_len_" + codeName(), ttl);
+    noi.appendEntry("valid_br_pos_len_" + codeName(), getBranchingPos().length);
   }
 }

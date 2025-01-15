@@ -41,10 +41,4 @@ public class CNode1FBS extends CNodeOneBase {
   protected String codeName() {
     return "CNode1FBS";
   }
-
-  @Override
-  public void acceptInspector(NodeInspector noi) {
-    super.acceptInspector(noi);
-    noi.appendEntry("CNode1FBS_ptr", ptrs.length);
-  }
 }

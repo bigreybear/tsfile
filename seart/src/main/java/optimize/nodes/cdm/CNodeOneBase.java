@@ -103,7 +103,7 @@ public abstract class CNodeOneBase extends NodeWithPartialKey implements ICNode{
 
   @Override
   public void acceptInspector(NodeInspector noi) {
-    noi.appendEntry(codeName() + "_ptr", ptrs.length);
+    noi.appendEntry("ptr_num_" + codeName(), ptrs.length);
   }
 
   @Override

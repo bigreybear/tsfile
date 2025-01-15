@@ -109,7 +109,7 @@ public class CDMPrefixMerge {
 
         if (brcNum > 128) {
           tentative = !group.revertSplit();
-        } else if (brcNum > 8) {
+        } else if (brcNum > 32) {
           return filler.apply(new CNode2(brcPos));
         } else {
           if (!(tentative && group.findNextBranch())) return filler.apply(new CNode2(brcPos));
@@ -117,7 +117,7 @@ public class CDMPrefixMerge {
 
       } else if (brcLen <= 4) {
 
-        if (brcNum > 256) {
+        if (brcNum > 512) {
           tentative = !group.revertSplit();
         } else if (brcNum > 16) {
           return filler.apply(new CNode4(brcPos));
