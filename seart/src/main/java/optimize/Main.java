@@ -3,15 +3,19 @@ package optimize;
 import static optimize.merge.SuffixMergeVDev.collectSuffixes;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Scanner;
+import java.util.Set;
 import java.util.stream.Collectors;
 import optimize.merge.MapType;
 import optimize.merge.MergePrefixVDev;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.NodeInspector;
+import optimize.util.LoggedPrintStream;
 import org.openjdk.jol.info.GraphLayout;
 
 public class Main {
@@ -27,40 +31,26 @@ public class Main {
   }
 
   public static String[] defaultArgs() {
-    // AliasedArgs aa = AliasedArgs.ART;
-    // AliasedArgs aa = AliasedArgs.MTree;
-    AliasedArgs aa = AliasedArgs.OLD_CDM;
-    // AliasedArgs aa = AliasedArgs.NEW_CDM;
-    // AliasedArgs aa = AliasedArgs.BLANK;
 
-    String res = aa.getBasicArg();
+    String res = "";
 
-    if (aa == AliasedArgs.BLANK) {
-      // set mapType, mergeStrategy, oneTree or not
-      // res += " -mt hash";
-      // res += " -mt fdm";
-      // res += " -mt cdm";
-      res += " -mt ncdm";
-
-      res += " -merge";
-      res += " -ms full";
-      // res += " -ms partial";
-      // res += " -ms simple";
-      res += " -oneTree";
-    }
+    // res += "-alias MTREE";
+    // res += "-alias ART";
+    // res += "-alias OLD_CDM";
+    res += "-alias NEW_CDM";
 
     res += " -ds bw";
     // res += " -ds sw";
     // res += " -ds xyzc";
     // res += " -ds zy";
 
+    // res += " -space";
     res += " -latency";
-    res += " -space -spaceDetail";
-    // res += " -depth";
     res += " -inspect";
 
     // res += " -profile";
     // res += " -template";
+    res += " -logPrint";
 
     return res.split(" ");
   }
@@ -72,9 +62,12 @@ public class Main {
   public static String dataAlias = "NoN";
 
   // local args
-  public MyDataSet dataSet;
-  public PrefixMergeStrategy mergeStrategy;
-  public MapType mapType;
+  MyDataSet dataSet;
+  boolean flatTree;
+  PrefixMergeStrategy mergeStrategy;
+  MapType mapType;
+  boolean mergeSuffix, inspect, profile;
+  boolean estSpace, estLatency, logPrint;
 
   public void mainbody(String[] args) {
     resetStaticArgs();
@@ -85,67 +78,51 @@ public class Main {
     if (argList.size() != args.length) throw new RuntimeException("duplicated args.");
     int argIdx = 0;
 
-    if ((argIdx = argList.indexOf("-ms")) != -1) {
-      mergeStrategy = PrefixMergeStrategy.valueOf(argList.get(argIdx + 1).toUpperCase());
-      resultPrinter.pms = mergeStrategy;
+
+    setByArgs(args);
+    if (logPrint) System.setOut(new LoggedPrintStream(System.out, "print_logs.txt"));
+    resultPrinter.mds = dataSet;
+    resultPrinter.pms = mergeStrategy;
+    resultPrinter.mapType = mapType;
+    resultPrinter.oneTree = flatTree;
+    resultPrinter.alias = dataAlias;
+
+    if (mapType.equals(MapType.HASH)) {
+      tableField.setAccessible(true);
     }
 
-    if ((argIdx = argList.indexOf("-ds")) != -1) {
-      dataSet = MyDataSet.valueOf(argList.get(argIdx + 1).toUpperCase());
-      resultPrinter.mds = dataSet;
-    }
-
-    if ((argIdx = argList.indexOf("-mt")) != -1) {
-      mapType = MapType.valueOf(argList.get(argIdx + 1).toUpperCase());
-      resultPrinter.mapType = mapType;
-      if (mapType.equals(MapType.FDM)) {
-        mergeStrategy = PrefixMergeStrategy.FULL;
-        resultPrinter.pms = mergeStrategy;
-      }
-
-      if (mapType.equals(MapType.HASH)) {
-        tableField.setAccessible(true);
-      }
-    }
-
-    TSTree tree = MainSupport.buildLogicalTree(dataSet, argList.contains("-oneTree"));
-    resultPrinter.oneTree = argList.contains("-oneTree");
-
-    if (argList.contains("-merge")) {
+    TSTree tree = MainSupport.buildLogicalTree(dataSet, flatTree);
+    if (mergeStrategy != PrefixMergeStrategy.NO_MERGE) {
       MergePrefixVDev.mergePrefixes(tree, mapType, mergeStrategy);
-    } else {
-      mergeStrategy = PrefixMergeStrategy.NO_MERGE;
-      resultPrinter.pms = mergeStrategy;
     }
 
-    long _space = -1L;
-    if (argList.contains("-template")) {
-      if (argList.contains("-space")) {
+    // space estimation is coupled with suffix-merging
+    if (estSpace) {
+      long _space = -1L;
+      if (mergeSuffix) {
         collectSuffixes(tree, mapType, false);
         REPORT_CHANNEL.append(
             String.format(
                 "Before template space: %d \n", GraphLayout.parseInstance(tree).totalSize()));
-      }
-
-      collectSuffixes(tree, mapType, true);
-
-      if (argList.contains("-space")) {
+        collectSuffixes(tree, mapType, true);
         REPORT_CHANNEL.append(
             String.format(
                 "After template space: %d \n",
                 _space = GraphLayout.parseInstance(tree).totalSize()));
+      } else {
+        _space =
+            MainSupport.measureSpace(tree, mergeStrategy, mapType, inspect);
+      }
+      resultPrinter.space = _space;
+      resultPrinter.recordSpace();
+    } else {
+      if (mergeSuffix) {
+        collectSuffixes(tree, mapType, true);
       }
     }
 
-    if (argList.contains("-space")) {
-      long r =
-          MainSupport.measureSpace(tree, mergeStrategy, mapType, argList.contains("-spaceDetail"));
-      resultPrinter.space = r;
-      resultPrinter.recordSpace();
-    }
-
     int loop = 1;
-    if (argList.contains("-profile")) {
+    if (profile) {
       Scanner scanner = new Scanner(System.in);
       System.out.println("Estimate latency for how many times:");
       String input = scanner.nextLine();
@@ -162,28 +139,24 @@ public class Main {
       }
     }
 
-    if (argList.contains("-latency")) {
+    if (estLatency) {
       for (int i = 0; i < loop; i++) {
         resultPrinter.latency = MainSupport.estimateLatency(tree, dataSet, mergeStrategy, mapType);
         resultPrinter.recordLatency();
       }
     }
 
-    if (argList.contains("-inspect") || argList.contains("-depth")) {
+    if (inspect) {
       NodeInspector ni = new NodeInspector();
       ni.inspect(tree.root);
-      if (argList.contains("-inspect")) {
-        System.out.println(ni);
-      }
-
-      if (argList.contains("-depth")) {
-        ni.dumpDepthResults(resultPrinter);
-      }
+      System.out.println(ni);
+      ni.dumpDepthResults(resultPrinter);
     }
 
     REPORT_CHANNEL.append("FINISH:" + String.join(" ", argList) + " with EF code: " + CDM_WITH_EF);
     REPORT_CHANNEL.append("\n");
     System.out.println(REPORT_CHANNEL);
+    System.out.flush();
   }
 
   private void resetStaticArgs() {
@@ -193,5 +166,79 @@ public class Main {
   public static void main(String[] args) {
     Main m = new Main();
     m.mainbody(args);
+  }
+
+
+  private void setByArgs(String[] _args) {
+    List<String> args = new ArrayList<>();
+    Set<String> hashedArgs = new HashSet<>();
+
+    for (String s : _args) {
+      if (!hashedArgs.contains(s)) {
+        args.add(s);
+        hashedArgs.add(s);
+      } else {
+        throw new RuntimeException("args duplicated:" + Arrays.toString(_args));
+      }
+    }
+
+    int idx = -1;
+    if ((idx = args.indexOf("-alias")) >= 0) {
+      switch (args.get(idx + 1).toUpperCase()) {
+        case "MTREE":
+          dataAlias = "MTree";
+          mapType = MapType.HASH;
+          mergeStrategy = PrefixMergeStrategy.NO_MERGE;
+          flatTree = false;
+          break;
+        case "ART":
+          dataAlias = "ART";
+          mapType = MapType.FDM;
+          mergeStrategy = PrefixMergeStrategy.FULL;
+          flatTree = true;
+          break;
+        case "OLD_CDM":
+          dataAlias = "OLD_CDM";
+          mapType = MapType.CDM;
+          mergeStrategy = PrefixMergeStrategy.FULL;
+          flatTree = true;
+          break;
+        case "NEW_CDM":
+          dataAlias = "NEW_CDM";
+          mapType = MapType.NCDM;
+          mergeStrategy = PrefixMergeStrategy.FULL;
+          flatTree = true;
+          break;
+        default:
+          throw new UnsupportedOperationException();
+      }
+    } else {
+      if ((idx = args.indexOf("-mt")) >= 0) {
+        mapType = MapType.valueOf(args.get(idx + 1).toUpperCase());
+      }
+
+      if ((idx = args.indexOf("-ms")) >= 0) {
+        mergeStrategy = PrefixMergeStrategy.valueOf(args.get(idx + 1).toUpperCase());
+      } else {
+        mergeStrategy = PrefixMergeStrategy.NO_MERGE;
+      }
+
+      flatTree = hashedArgs.contains("-oneTree");
+
+      if (mapType == MapType.FDM ^ mergeStrategy == PrefixMergeStrategy.FULL) {
+        throw new UnsupportedOperationException("FDM can only FULL MERGE now.");
+      }
+    }
+
+    if ((idx = args.indexOf("-ds")) != -1) {
+      dataSet = MyDataSet.valueOf(args.get(idx + 1).toUpperCase());
+    }
+
+    estSpace = hashedArgs.contains("-space");
+    estLatency = hashedArgs.contains("-latency");
+    profile = hashedArgs.contains("-profile");
+    inspect = hashedArgs.contains("-inspect");
+    mergeSuffix = hashedArgs.contains("-template");
+    logPrint = hashedArgs.contains("-logPrint");
   }
 }

@@ -4,8 +4,7 @@ public enum AliasedArgs {
   MTree,
   ART,
   OLD_CDM,
-  NEW_CDM,
-  BLANK;
+  NEW_CDM;
 
   public String getBasicArg() {
     switch (this) {
@@ -17,8 +16,6 @@ public enum AliasedArgs {
         return " -mt ncdm -merge -ms full -oneTree";
       case OLD_CDM:
         return " -mt cdm -merge -ms full -oneTree";
-      case BLANK:
-        return "";
       default:
         throw new UnsupportedOperationException();
     }

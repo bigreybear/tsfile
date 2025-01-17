@@ -71,9 +71,11 @@ public class NodeInspector {
   @Override
   public String toString() {
     StringBuilder builder = new StringBuilder();
-    builder.append("Depth:");
-    builder.append(BoxPlotRecord.calculateBoxPlot(depthRecs));
-    builder.append("\n");
+    if (depthRecs.size() > 5) {
+      builder.append("Depth:");
+      builder.append(BoxPlotRecord.calculateBoxPlot(depthRecs));
+      builder.append("\n");
+    }
     for (Map.Entry<String, Integer> entry : statMap.entrySet()) {
       builder.append(String.format("%s: %d\n", entry.getKey(), entry.getValue()));
     }

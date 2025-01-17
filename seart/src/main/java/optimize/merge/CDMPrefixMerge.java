@@ -12,7 +12,9 @@ import java.util.function.Function;
 import optimize.Main;
 import optimize.MainSupport;
 import optimize.TSTree;
+import optimize.annotation.DebugOnly;
 import optimize.nodes.IMicroNode;
+import optimize.nodes.NodeInspector;
 import optimize.nodes.cdm.CLeaf;
 import optimize.nodes.cdm.CNode1F256;
 import optimize.nodes.cdm.CNode1F48;
@@ -26,12 +28,11 @@ import optimize.util.InfixGroup;
 
 public class CDMPrefixMerge {
 
+  @DebugOnly("to inspect merge in procedure")
+  public static NodeInspector procInspect = new NodeInspector();
+
   public static void reportMergeStatus() {
-    REPORT_CHANNEL.append(
-        String.format("CDM node 4 num: %d, CDM-final num: %d \n", evaTrueTime, evaFalseTime));
-    REPORT_CHANNEL.append(
-        String.format(
-            "Partial merge: %d, not merge: %d \n", partialToMerge.get(), partialNotMerge.get()));
+    REPORT_CHANNEL.append(procInspect.toString());
   }
 
   // Alternating whether CNode1Fx/2/4/8 or only CNode4
@@ -102,7 +103,9 @@ public class CDMPrefixMerge {
         } else if (brcNum > 32) {
           return filler.apply(new CNode1F48());
         } else {
-          if (!(tentative && group.findNextBranch())) return filler.apply(new CNode1FBS());
+          if (!(tentative && group.findNextBranch())) {
+            return filler.apply(new CNode1FBS());
+          }
         }
 
       } else if (brcLen == 2) {

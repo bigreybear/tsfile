@@ -184,6 +184,8 @@ public class InfixGroup {
   public boolean revertSplit() {
     if (brPos.size() == 1) return false;
 
+    System.out.println("Valid revert.");
+
     final int nps = brPos.size() - 1;
     Map<ByteArray, List<byte[]>> temp = new TreeMap<>();
     for (Map.Entry<ByteArray, List<byte[]>> entry : infixMap.entrySet()) {
