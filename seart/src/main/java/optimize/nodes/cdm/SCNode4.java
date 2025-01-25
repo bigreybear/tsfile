@@ -15,7 +15,7 @@ import optimize.nodes.IMicroNode;
 import optimize.nodes.NodeInspector;
 import optimize.util.InfixGroup;
 
-public class CNode4 extends CNodeBase {
+public class SCNode4 extends SortedCNodeBase {
   // for only 4 positions
   final byte p1, p2, p3, p4;
   int[] bks; // indeed a byte[][4] bks; // branching keys
@@ -23,7 +23,7 @@ public class CNode4 extends CNodeBase {
   // exactly no padding on 64-jvm, jdk-17, Compressed OOPs
 
   // raw keys might with prefix
-  public CNode4(int[] pos) {
+  public SCNode4(int[] pos) {
     if (pos.length > 4)
       throw new UnsupportedOperationException("No more than 4 bytes branching key yet.");
 

@@ -1,5 +1,7 @@
 package optimize.util;
 
+import optimize.annotation.DebugOnly;
+
 import static optimize.nodes.cdm.ByteEncode.bytes2Int;
 import static optimize.nodes.cdm.ByteEncode.bytes2Long;
 import static optimize.nodes.cdm.ByteEncode.bytes2Short;
@@ -181,10 +183,9 @@ public class InfixGroup {
     return oriPosLen != brPos.size();
   }
 
+  @DebugOnly
   public boolean revertSplit() {
     if (brPos.size() == 1) return false;
-
-    System.out.println("Valid revert.");
 
     final int nps = brPos.size() - 1;
     Map<ByteArray, List<byte[]>> temp = new TreeMap<>();

@@ -1,5 +1,14 @@
 package optimize.nodes.cdm;
 
+import static optimize.merge.CDMPrefixMerge.recMergeCDM;
+import static optimize.nodes.cdm.CNodeHelper.extractBytes;
+import static optimize.util.ArrayHelper.findComplementary;
+import static optimize.util.ArrayHelper.findIntervals;
+import static optimize.util.ArrayHelper.removeTrailingZeros;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Function;
 import optimize.SearchStatus;
 import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
@@ -8,27 +17,12 @@ import optimize.nodes.NodeInspector;
 import optimize.nodes.NodeWithPartialKey;
 import optimize.util.InfixGroup;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.function.Function;
+public non-sealed abstract class SortedCNodeBase extends CNodeBase implements ICNode {
 
-import static optimize.merge.CDMPrefixMerge.recMergeCDM;
-import static optimize.nodes.cdm.CNodeHelper.extractBytes;
-import static optimize.util.ArrayHelper.findComplementary;
-import static optimize.util.ArrayHelper.findIntervals;
-import static optimize.util.ArrayHelper.removeTrailingZeros;
-
-public sealed abstract class CNodeBase extends NodeWithPartialKey implements ICNode permits HashedCNodeBase, SortedCNodeBase {
-  public byte[][] rmk; // Re-Mained Keys
-  public ICNode[] ptrs;
-  protected static byte[] EMPTY_BYTE_ARR = new byte[0];
-  protected static int SINGLE_BYTE_MASK = 0xffffff00;
-
-  // Note(zx): there are two approaches to init the rmk array:
-  //  1. init only if there are interleaved bytes, and orphan leaf would incur
-  //  2. init even no interleaved bytes, thus orphans are eliminated
-  // an orphan leaf is a CLeaf with no partial key, i.e., a trivial leaf, only representing the dot.
-  protected static final boolean NO_ORPHAN_CLEAF = true;
+  @Override
+  protected final int transformIndex(int idx) {
+    return idx;
+  }
 
   protected abstract byte[] getBrKeyAt(int channel); // no trailing 0s.
 
@@ -81,9 +75,6 @@ public sealed abstract class CNodeBase extends NodeWithPartialKey implements ICN
   public List<IMicroNode> getChildren() {
     return Arrays.asList(ptrs);
   }
-
-  // Note(zx) differ between SortedCNode and HashedCNode
-  protected abstract int transformIndex(int idx);
 
   // region Set Content
   // all methods below shared between CNode2/4/8

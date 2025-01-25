@@ -8,15 +8,14 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 
-import static optimize.nodes.cdm.ByteEncode.int2BytesNoTrailing;
 import static optimize.nodes.cdm.ByteEncode.long2Bytes;
 import static optimize.nodes.cdm.ByteEncode.long2BytesNoTrailing;
 
-public class CNode8 extends CNodeBase {
+public class SCNode8 extends SortedCNodeBase {
   final byte p1, p2, p3, p4, p5, p6, p7, p8;
   long[] bks;
 
-  public CNode8(int[] pos) {
+  public SCNode8(int[] pos) {
     if (pos.length > 8)
       throw new UnsupportedOperationException("No more than 8 bytes branching key in CNode8.");
     int len = pos.length;

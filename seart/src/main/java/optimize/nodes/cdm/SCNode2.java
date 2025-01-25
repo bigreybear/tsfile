@@ -12,11 +12,11 @@ import optimize.nodes.NodeInspector;
 import optimize.util.InfixGroup;
 import org.openjdk.jol.info.ClassLayout;
 
-public class CNode2 extends CNodeBase {
+public class SCNode2 extends SortedCNodeBase {
   final byte p1, p2;
   short[] bks;
 
-  public CNode2(int[] pos) {
+  public SCNode2(int[] pos) {
     if (pos.length > 2)
       throw new UnsupportedOperationException("No more than 2 bytes branching key in CNode2.");
 
@@ -84,7 +84,7 @@ public class CNode2 extends CNodeBase {
   // endregion
 
   public static void main(String[] args) {
-    CNode2 c2 = new CNode2(new int[] {1, 2});
+    SCNode2 c2 = new SCNode2(new int[] {1, 2});
     System.out.println(ClassLayout.parseInstance(c2).toPrintable());
   }
 

@@ -20,7 +20,7 @@ import optimize.util.InfixGroup;
 
 @Deprecated
 // enhanced with Elias-Fano coding
-public class LegacyCNode4EF extends CNodeBase implements ICNode {
+public class LegacyCNode4EF extends SortedCNodeBase implements ICNode {
   // for only 4 positions
   int posInt; // an int concatenated by 4 unsigned bytes: byte p1, p2, p3, p4;
   byte[] pbk, nbk; // positive/negative compressed array; by negative, it uses bitwise opposite

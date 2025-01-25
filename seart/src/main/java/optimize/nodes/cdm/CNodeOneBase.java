@@ -15,7 +15,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static optimize.merge.CDMPrefixMerge.recMergeCDM;
-import static optimize.nodes.cdm.CNodeBase.NO_ORPHAN_CLEAF;
+import static optimize.nodes.cdm.SortedCNodeBase.NO_ORPHAN_CLEAF;
 
 public abstract class CNodeOneBase extends NodeWithPartialKey implements ICNode{
   ICNode[] ptrs;

@@ -9,7 +9,6 @@ import static optimize.util.InfixGroup.groupByInfix;
 import java.util.List;
 import java.util.function.Function;
 
-import optimize.Main;
 import optimize.MainSupport;
 import optimize.TSTree;
 import optimize.annotation.DebugOnly;
@@ -19,10 +18,10 @@ import optimize.nodes.cdm.CLeaf;
 import optimize.nodes.cdm.CNode1F256;
 import optimize.nodes.cdm.CNode1F48;
 import optimize.nodes.cdm.CNode1FBS;
-import optimize.nodes.cdm.CNode2;
-import optimize.nodes.cdm.CNode8;
+import optimize.nodes.cdm.SCNode2;
+import optimize.nodes.cdm.SCNode8;
 import optimize.nodes.cdm.legacyCNode;
-import optimize.nodes.cdm.CNode4;
+import optimize.nodes.cdm.SCNode4;
 import optimize.nodes.cdm.ICNode;
 import optimize.util.InfixGroup;
 
@@ -113,9 +112,9 @@ public class CDMPrefixMerge {
         if (brcNum > 128) {
           tentative = !group.revertSplit();
         } else if (brcNum > 32) {
-          return filler.apply(new CNode2(brcPos));
+          return filler.apply(new SCNode2(brcPos));
         } else {
-          if (!(tentative && group.findNextBranch())) return filler.apply(new CNode2(brcPos));
+          if (!(tentative && group.findNextBranch())) return filler.apply(new SCNode2(brcPos));
         }
 
       } else if (brcLen <= 4) {
@@ -123,9 +122,9 @@ public class CDMPrefixMerge {
         if (brcNum > 512) {
           tentative = !group.revertSplit();
         } else if (brcNum > 16) {
-          return filler.apply(new CNode4(brcPos));
+          return filler.apply(new SCNode4(brcPos));
         } else {
-          if (!(tentative && group.findNextBranch())) return filler.apply(new CNode4(brcPos));
+          if (!(tentative && group.findNextBranch())) return filler.apply(new SCNode4(brcPos));
         }
 
       } else if (brcLen <= 8) {
@@ -133,7 +132,7 @@ public class CDMPrefixMerge {
         if (brcNum > 512) {
           tentative = !group.revertSplit();
         } else if (brcNum > 32 || brcLen == 8 || !group.findNextBranch()){
-          return filler.apply(new CNode8(brcPos));
+          return filler.apply(new SCNode8(brcPos));
         }
 
       } else {
@@ -187,7 +186,7 @@ public class CDMPrefixMerge {
     if (useNode4) {
       List<byte[]> completeKeys;
       evaTrueTime++;
-      ICNode curNode = new CNode4(group.getBranchingPos());
+      ICNode curNode = new SCNode4(group.getBranchingPos());
 //      if (preLen < group.getBranchingPos()[0]) {
 //        curNode.setParKey(Arrays.copyOfRange(keys.get(0), preLen, group.getBranchingPos()[0]));
 //      }

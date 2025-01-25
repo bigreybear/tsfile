@@ -20,7 +20,7 @@ import optimize.util.ByteArray;
 import optimize.util.InfixGroup;
 
 @Deprecated
-public class legacyCNode extends CNodeBase implements ICNode {
+public class legacyCNode extends SortedCNodeBase implements ICNode {
   // for more than 4 positions
   byte[][] bks;
   byte[] pos; // indeed flags for byte p1, p2, p3, p4;
