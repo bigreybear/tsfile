@@ -1,7 +1,7 @@
-package optimize.nodes.cdm;
+package optimize.nodes.cdm.one;
 
-import optimize.nodes.IMicroNode;
 import optimize.nodes.NodeInspector;
+import optimize.nodes.cdm.ICNode;
 
 
 import java.util.ArrayList;

@@ -1,7 +1,7 @@
 package optimize.merge;
 
 import static optimize.Main.REPORT_CHANNEL;
-import static optimize.nodes.cdm.legacyCNode.buildCDMTemplate;
+import static optimize.nodes.cdm.frame.LegacyCNode.buildCDMTemplate;
 import static optimize.nodes.ref.FDMRefNodeVDev.buildFDMTemplate;
 import static optimize.nodes.ref.HashRefNodeVDev.buildHashTemplate;
 
@@ -13,7 +13,7 @@ import optimize.TSTree;
 import optimize.nodes.ILeaf;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.cdm.CLeaf;
-import optimize.nodes.cdm.legacyCNode;
+import optimize.nodes.cdm.frame.LegacyCNode;
 import optimize.nodes.cdm.ICNode;
 import optimize.nodes.fdm.FLeaf;
 import optimize.nodes.fdm.IFNode;
@@ -112,7 +112,7 @@ public class SuffixMergeVDev {
                   mark.template = buildCDMTemplate(cur);
 
                   CDMRefNodeVDev crn = new CDMRefNodeVDev();
-                  crn.embedTemplate((ICNode) mark.firstOcc, (legacyCNode) mark.template);
+                  crn.embedTemplate((ICNode) mark.firstOcc, (LegacyCNode) mark.template);
                   if (replace) {
                     mark.fmrParent.replace(mark.fmrParentKey, crn);
                   }
@@ -121,7 +121,7 @@ public class SuffixMergeVDev {
                   throw new RuntimeException("should not be single tree");
                 } else {
                   CDMRefNodeVDev frn = new CDMRefNodeVDev();
-                  frn.embedTemplate(cur, (legacyCNode) mark.template);
+                  frn.embedTemplate(cur, (LegacyCNode) mark.template);
                   mark.count.incrementAndGet();
 
                   if (replace) {

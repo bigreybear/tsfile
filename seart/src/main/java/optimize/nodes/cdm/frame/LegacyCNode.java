@@ -1,4 +1,4 @@
-package optimize.nodes.cdm;
+package optimize.nodes.cdm.frame;
 
 import static optimize.nodes.cdm.CNodeHelper.extractBytes;
 import static optimize.nodes.cdm.CNodeHelper.getValidBrPosNum;
@@ -14,18 +14,20 @@ import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.NodeInspector;
+import optimize.nodes.cdm.CNodeHelper;
+import optimize.nodes.cdm.ICNode;
 import optimize.nodes.logic.LLeaf;
 import optimize.util.ArrayHelper;
 import optimize.util.ByteArray;
 import optimize.util.InfixGroup;
 
 @Deprecated
-public class legacyCNode extends SortedCNodeBase implements ICNode {
+public non-sealed class LegacyCNode extends CNodeBase implements ICNode {
   // for more than 4 positions
   byte[][] bks;
   byte[] pos; // indeed flags for byte p1, p2, p3, p4;
 
-  public legacyCNode(int[] pi) {
+  public LegacyCNode(int[] pi) {
     pos = new byte[pi.length];
     for (int i = 0; i < pi.length; i++) {
       if (pi[i] > 255) throw new UnsupportedOperationException("Too big branching pos.");
@@ -40,7 +42,7 @@ public class legacyCNode extends SortedCNodeBase implements ICNode {
     // why to sort: CNode4 is sorted by int and could be different from byte[]
     Arrays.sort(keys, Arrays::compare);
     LLeaf leaf;
-    legacyCNode tr = new legacyCNode(fakePos);
+    LegacyCNode tr = new LegacyCNode(fakePos);
 
     // todo remove member access to instance method
     tr.bks = keys;
@@ -242,11 +244,6 @@ public class legacyCNode extends SortedCNodeBase implements ICNode {
     return ptrs[idx];
   }
 
-  @Override
-  public void acceptInspector(NodeInspector noi) {
-    noi.incEntry("CNode_cnt", 1);
-  }
-
   public List<String> getKeys() {
     throw new UnsupportedOperationException();
   }
@@ -262,11 +259,6 @@ public class legacyCNode extends SortedCNodeBase implements ICNode {
   }
 
   @Override
-  protected Function<Integer, List<byte[]>> generateCompleteKeyRetrieval(InfixGroup group) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   protected int getEmptyKeyIdx() {
     throw new UnsupportedOperationException();
   }
@@ -277,4 +269,10 @@ public class legacyCNode extends SortedCNodeBase implements ICNode {
   }
 
   public static void main(String[] args) {}
+
+  @Override
+  protected Object[] setBrKeysAndGenSupFunctions(InfixGroup group) {
+    throw new UnsupportedOperationException();
+  }
+
 }

@@ -15,6 +15,7 @@ import optimize.merge.MapType;
 import optimize.merge.MergePrefixVDev;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.NodeInspector;
+import optimize.util.InternalInspector;
 import optimize.util.LoggedPrintStream;
 import org.openjdk.jol.info.GraphLayout;
 
@@ -157,6 +158,7 @@ public class Main {
     REPORT_CHANNEL.append("\n");
     System.out.println(REPORT_CHANNEL);
     System.out.flush();
+    InternalInspector.printResult();
   }
 
   private void resetStaticArgs() {

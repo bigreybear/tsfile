@@ -11,16 +11,16 @@ import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.ITSNode;
 import optimize.nodes.NodeWithPartialKey;
-import optimize.nodes.cdm.legacyCNode;
+import optimize.nodes.cdm.frame.LegacyCNode;
 import optimize.nodes.cdm.ICNode;
 import optimize.util.InfixGroup;
 
 public class CDMRefNodeVDev extends NodeWithPartialKey implements ICNode {
   public int[] pos;
-  public legacyCNode template;
+  public LegacyCNode template;
   public long[] values;
 
-  public void embedTemplate(ICNode ori, legacyCNode t) {
+  public void embedTemplate(ICNode ori, LegacyCNode t) {
     pk = ori.getParKey();
     byte[][] keys = ori.getBranchingKeys();
     values = new long[keys.length];

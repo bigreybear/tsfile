@@ -1,6 +1,7 @@
 package optimize;
 
 import org.openjdk.jol.info.ClassLayout;
+import org.openjdk.jol.info.GraphLayout;
 import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
@@ -65,5 +66,14 @@ public class UnsafePlayer {
     // checkInt();
     // checkShort();
     // checkLong();
+
+
+    short[] sa = new short[11];
+    int[] ia = new int[11];
+    long[] la = new long[11];
+
+    System.out.println(ClassLayout.parseInstance(sa).toPrintable());
+    System.out.println(ClassLayout.parseInstance(ia).toPrintable());
+    System.out.println(ClassLayout.parseInstance(la).toPrintable());
   }
 }

@@ -1,4 +1,4 @@
-package optimize.nodes.cdm;
+package optimize.nodes.cdm.frame;
 
 import static optimize.nodes.cdm.ByteEncode.bytes2Int;
 import static optimize.nodes.cdm.ByteEncode.int2Bytes;
@@ -16,11 +16,13 @@ import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.INode;
+import optimize.nodes.cdm.ByteEncode;
+import optimize.nodes.cdm.ICNode;
 import optimize.util.InfixGroup;
 
 @Deprecated
 // enhanced with Elias-Fano coding
-public class LegacyCNode4EF extends SortedCNodeBase implements ICNode {
+public class LegacyCNode4EF extends CNode4 implements ICNode {
   // for only 4 positions
   int posInt; // an int concatenated by 4 unsigned bytes: byte p1, p2, p3, p4;
   byte[] pbk, nbk; // positive/negative compressed array; by negative, it uses bitwise opposite
@@ -30,6 +32,7 @@ public class LegacyCNode4EF extends SortedCNodeBase implements ICNode {
 
   // raw keys might with prefix
   public LegacyCNode4EF(int[] pos) {
+    super(pos);
     if (pos.length > 4)
       throw new UnsupportedOperationException("No more than 4 bytes branching key yet.");
 
@@ -132,25 +135,25 @@ public class LegacyCNode4EF extends SortedCNodeBase implements ICNode {
     ptrs[idx] = (ICNode) ptr;
   }
 
-  @Override
-  public byte[] assembleKeyAt(int pos) {
-    // fixme todo align with CNode4
-    byte[] res;
-    int[] brPosInt = ICNode.unsignedByteArr2IntArr(int2BytesNoTrailing(posInt));
-    int[] itvPosInt = findIntervals(brPosInt);
-    byte[] brKey = getBrKeyAt(pos);
-
-    int keyLen = brPosInt[brPosInt.length - 1] - brPosInt[0] + 1;
-
-    int[] brRltPos = ICNode.shiftIntArr(brPosInt, -1 * brPosInt[0]);
-    int[] itvRltPos = ICNode.shiftIntArr(itvPosInt, -1 * brPosInt[0]);
-
-    byte[] asmkey = new byte[keyLen];
-    ICNode.setBytesByPos(asmkey, brKey, brRltPos);
-    if (rmk != null) ICNode.setBytesByPos(asmkey, rmk[pos], itvRltPos);
-
-    return asmkey;
-  }
+  // @Override
+  // public byte[] assembleKeyAt(int pos) {
+  //   // fixme todo align with CNode4
+  //   byte[] res;
+  //   int[] brPosInt = ICNode.unsignedByteArr2IntArr(int2BytesNoTrailing(posInt));
+  //   int[] itvPosInt = findIntervals(brPosInt);
+  //   byte[] brKey = getBrKeyAt(pos);
+  //
+  //   int keyLen = brPosInt[brPosInt.length - 1] - brPosInt[0] + 1;
+  //
+  //   int[] brRltPos = ICNode.shiftIntArr(brPosInt, -1 * brPosInt[0]);
+  //   int[] itvRltPos = ICNode.shiftIntArr(itvPosInt, -1 * brPosInt[0]);
+  //
+  //   byte[] asmkey = new byte[keyLen];
+  //   ICNode.setBytesByPos(asmkey, brKey, brRltPos);
+  //   if (rmk != null) ICNode.setBytesByPos(asmkey, rmk[pos], itvRltPos);
+  //
+  //   return asmkey;
+  // }
 
   @Override
   protected byte[] getBrKeyAt(int pos) {
@@ -165,7 +168,7 @@ public class LegacyCNode4EF extends SortedCNodeBase implements ICNode {
   }
 
   @Override
-  protected Function<Integer, List<byte[]>> generateCompleteKeyRetrieval(InfixGroup group) {
+  protected Object[] setBrKeysAndGenSupFunctions(InfixGroup group) {
     throw new UnsupportedOperationException();
   }
 
@@ -211,6 +214,11 @@ public class LegacyCNode4EF extends SortedCNodeBase implements ICNode {
 
   @Override
   protected int getBrKeyIdx(byte[] key, int[] brPos) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  protected int getKeyPos(int k) {
     throw new UnsupportedOperationException();
   }
 }

@@ -222,13 +222,13 @@ public class InfixGroup {
   }
 
   public List<byte[]> getCompleteKeys(byte[] brKey) {
-    // Answer for why remove trailing 0s before the call:
-    //  the brKey could be 0-trailing for 2 case:
-    //    1) other branches are longer than the passing one(trailed by padded);
-    //    2) the branching incurred in the last bytes of the key(trailed by decoded).
+    // Why NOT remove trailing 0s in this method:
+    //  the trailing 0s occur in following 2 case:
+    //    1) other branches are longer than the passing one (padded trailing);
+    //    2) the branch incurred in the last bytes of the key(trailed by decoded).
     //  Outside the InfixGroup, it cannot be told which is true, and the first case shall keep
     //  the trailing while only the other one shall remove.
-    // This method is only called when constructing so trivial to query perf.
+    // This method is only called while constructing nodes so is trivial to query perf.
     return infixMap.get(
         new ByteArray(
             brPos.size() == brKey.length ? brKey : Arrays.copyOfRange(brKey, 0, brPos.size())));

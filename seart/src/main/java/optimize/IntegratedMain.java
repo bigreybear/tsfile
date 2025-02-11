@@ -10,7 +10,7 @@ public class IntegratedMain {
 
     param = "-alias " + aliasedArgs.name() + " -ds " + ds.name() + " -latency" + logFlag;
     for (int i = 0; i < 5; i++) {
-      // main.mainbody(param.split(" "));
+      main.mainbody(param.split(" "));
     }
   }
 
@@ -21,7 +21,7 @@ public class IntegratedMain {
         // AliasedArgs.MTree,
         // AliasedArgs.ART,
         AliasedArgs.OLD_CDM,
-        // AliasedArgs.NEW_CDM
+        AliasedArgs.NEW_CDM
     };
     MyDataSet[] dataSets = new MyDataSet[] {
         MyDataSet.BW,

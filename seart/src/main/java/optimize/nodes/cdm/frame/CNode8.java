@@ -1,21 +1,20 @@
-package optimize.nodes.cdm;
+package optimize.nodes.cdm.frame;
 
-import optimize.nodes.NodeInspector;
+import optimize.nodes.cdm.ICNode;
 import optimize.util.InfixGroup;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 
+import static optimize.nodes.cdm.ByteEncode.int2Bytes;
 import static optimize.nodes.cdm.ByteEncode.long2Bytes;
-import static optimize.nodes.cdm.ByteEncode.long2BytesNoTrailing;
 
-public class SCNode8 extends SortedCNodeBase {
-  final byte p1, p2, p3, p4, p5, p6, p7, p8;
-  long[] bks;
+public abstract non-sealed class CNode8 extends CNodeBase {
+  protected final byte p1, p2, p3, p4, p5, p6, p7, p8;
+  protected long[] bks;
 
-  public SCNode8(int[] pos) {
+  public CNode8(int[] pos) {
     if (pos.length > 8)
       throw new UnsupportedOperationException("No more than 8 bytes branching key in CNode8.");
     int len = pos.length;
@@ -48,20 +47,10 @@ public class SCNode8 extends SortedCNodeBase {
     return new int[] { p1 & 0xff, p2 & 0xff, p3 & 0xff, p4 & 0xff, p5 & 0xff, p6 & 0xff, p7 & 0xff, p8 & 0xff };
   }
 
-  // a support method for setContent
-  @Override
-  protected final Function<Integer, List<byte[]>> generateCompleteKeyRetrieval(InfixGroup group) {
-    final long[] sbk = group.sortedLongBranchKeys();
-    bks = new long[sbk.length];
-    ptrs = new ICNode[sbk.length];
-    System.arraycopy(sbk, 0, bks, 0, bks.length);
-    return (integer -> group.getCompleteKeys(long2Bytes(sbk[integer])));
-  }
-
   // supporters for proceedQuery
   @Override
   protected int getEmptyKeyIdx() {
-    int idx = Arrays.binarySearch(bks, 0);
+    int idx = getKeyPos(0);
     if (idx < 0 || bks[idx] != 0) throw new RuntimeException("Empty key not found.");
     return idx;
   }
@@ -91,35 +80,10 @@ public class SCNode8 extends SortedCNodeBase {
         throw new RuntimeException("Invalid Branch Position length.");
     }
 
-    int idx = Arrays.binarySearch(bks, l);
+    int idx = getKeyPos(l);
     if (idx < 0 || bks[idx] != l) throw new RuntimeException("Key not found.");
     return idx;
   }
 
-  @Override
-  public List<byte[]> getKeyBytes() {
-    List<byte[]> r = new ArrayList<>();
-    for (long s : bks) {
-      r.add(long2BytesNoTrailing(s));
-    }
-    return r;
-  }
-
-  @Override
-  protected byte[] getBrKeyAt(int channel) {
-    return long2BytesNoTrailing(bks[channel]);
-  }
-
-  @Override
-  protected String codeName() {
-    return "CNode8";
-  }
-
-  @Override
-  public void acceptInspector(NodeInspector noi) {
-    super.acceptInspector(noi);
-    noi.incEntry("CNode8_cnt", 1);
-  }
-
-
+  protected abstract int getKeyPos(long k);
 }

@@ -1,4 +1,4 @@
-package optimize.nodes.cdm;
+package optimize.nodes.cdm.one;
 
 import optimize.SearchStatus;
 import optimize.merge.MapType;
@@ -6,6 +6,7 @@ import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.NodeInspector;
 import optimize.nodes.NodeWithPartialKey;
+import optimize.nodes.cdm.ICNode;
 import optimize.util.InfixGroup;
 
 import java.util.Arrays;
@@ -15,9 +16,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static optimize.merge.CDMPrefixMerge.recMergeCDM;
-import static optimize.nodes.cdm.SortedCNodeBase.NO_ORPHAN_CLEAF;
+import static optimize.nodes.cdm.frame.CNodeBase.NO_ORPHAN_CLEAF;
 
-public abstract class CNodeOneBase extends NodeWithPartialKey implements ICNode{
+public abstract class CNodeOneBase extends NodeWithPartialKey implements ICNode {
   ICNode[] ptrs;
 
   @Override

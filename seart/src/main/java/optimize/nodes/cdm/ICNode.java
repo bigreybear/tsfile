@@ -39,7 +39,7 @@ public interface ICNode extends IMicroNode {
    * @return
    */
   default byte[] assembleKeyAt(int pos) {
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   /**

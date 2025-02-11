@@ -1,13 +1,16 @@
-package optimize.nodes.cdm;
+package optimize.nodes.cdm.frame;
 
 import optimize.SearchStatus;
+import optimize.annotation.DebugOnly;
 import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.NodeInspector;
 import optimize.nodes.NodeWithPartialKey;
+import optimize.nodes.cdm.ICNode;
 import optimize.util.InfixGroup;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
@@ -18,7 +21,8 @@ import static optimize.util.ArrayHelper.findComplementary;
 import static optimize.util.ArrayHelper.findIntervals;
 import static optimize.util.ArrayHelper.removeTrailingZeros;
 
-public sealed abstract class CNodeBase extends NodeWithPartialKey implements ICNode permits HashedCNodeBase, SortedCNodeBase {
+public sealed abstract class CNodeBase extends NodeWithPartialKey implements ICNode
+    permits CNode2, CNode4, CNode8, LegacyCNode {
   public byte[][] rmk; // Re-Mained Keys
   public ICNode[] ptrs;
   protected static byte[] EMPTY_BYTE_ARR = new byte[0];
@@ -28,8 +32,14 @@ public sealed abstract class CNodeBase extends NodeWithPartialKey implements ICN
   //  1. init only if there are interleaved bytes, and orphan leaf would incur
   //  2. init even no interleaved bytes, thus orphans are eliminated
   // an orphan leaf is a CLeaf with no partial key, i.e., a trivial leaf, only representing the dot.
-  protected static final boolean NO_ORPHAN_CLEAF = true;
+  public static final boolean NO_ORPHAN_CLEAF = true;
 
+  // control inspection blocks that hurt performances.
+  @DebugOnly
+  protected static final boolean INTERNAL_PROFILE = false;
+
+
+  // Note(zx) significantly inefficient for HASH nodes.
   protected abstract byte[] getBrKeyAt(int channel); // no trailing 0s.
 
   /**
@@ -79,11 +89,11 @@ public sealed abstract class CNodeBase extends NodeWithPartialKey implements ICN
 
   @Override
   public List<IMicroNode> getChildren() {
-    return Arrays.asList(ptrs);
+    List<IMicroNode> res = new ArrayList<>(ptrs.length);
+    int i = 0;
+    while (i < ptrs.length && ptrs[i] != null) res.add(ptrs[i++]);
+    return res;
   }
-
-  // Note(zx) differ between SortedCNode and HashedCNode
-  protected abstract int transformIndex(int idx);
 
   // region Set Content
   // all methods below shared between CNode2/4/8
@@ -109,9 +119,21 @@ public sealed abstract class CNodeBase extends NodeWithPartialKey implements ICN
     ptrs[idx] = (ICNode) getLChild.apply(compKey);
   }
 
-  // a supporter function to hide the primitive type discrepancy
-  protected abstract Function<Integer, List<byte[]>> generateCompleteKeyRetrieval(InfixGroup group);
+  /**
+   * A supporter function to hide the primitive type discrepancy. <br>
+   * @return a function applicable to retrieve the i-th complete key in byte array form.
+   */
+  // protected abstract Function<Integer, List<byte[]>> setBrKeysAndGenCompleteKeyRetrieval(InfixGroup group);
 
+  // supporter for hash nodes
+  // protected Function<Integer, Integer> genIndexTransformer(InfixGroup group) {
+  //   // by default, it just returns the original index.
+  //   return i -> i;
+  // }
+
+  protected abstract Object[] setBrKeysAndGenSupFunctions(InfixGroup group);
+
+  @SuppressWarnings("unchecked")
   public void setContent(
       InfixGroup group,
       Function<byte[], IMicroNode> getLChild,
@@ -124,21 +146,24 @@ public sealed abstract class CNodeBase extends NodeWithPartialKey implements ICN
     int sbkSize = group.countBranches();
     // WHY use func if/: varying instance may use varying typed branching keys.
     // i.e. short[]/int[]/long[] cannot be generified so be wrapped by func if/.
-    Function<Integer, List<byte[]>> retrieval = generateCompleteKeyRetrieval(group);
+    Object[] supporterFunc = setBrKeysAndGenSupFunctions(group);
+    Function<Integer, List<byte[]>> retrieval = (Function<Integer, List<byte[]>>) supporterFunc[0];
+    Function<Integer, Integer> indexTransformer = (Function<Integer, Integer>) supporterFunc[1];
 
-    for (int i = 0; i < sbkSize; i++) {
+    for (int i = 0, tarIdx; i < sbkSize; i++) {
       // do not worry about prefixed key: handled by 0x00 key byte
       completeKeys = retrieval.apply(i);
+      tarIdx = indexTransformer.apply(i);
 
       // if only one key, needless to recur, set all other bytes as rmk
       if (NO_ORPHAN_CLEAF && completeKeys.size() == 1) {
-        incorporateTrivialLeaf(brPos, completeKeys.get(0), i, getLChild);
+        incorporateTrivialLeaf(brPos, completeKeys.get(0), tarIdx, getLChild);
         continue;
       }
 
       itvPos = findIntervals(brPos);
-      setInterleavedBytes(i, extractBytes(completeKeys.get(0), itvPos));
-      ptrs[i] =
+      setInterleavedBytes(tarIdx, extractBytes(completeKeys.get(0), itvPos));
+      ptrs[tarIdx] =
           (ICNode)
               recMergeCDM( // previously not V2
                   getLChild,
@@ -156,10 +181,10 @@ public sealed abstract class CNodeBase extends NodeWithPartialKey implements ICN
   // supporters for query
   protected abstract int getEmptyKeyIdx();
 
-  // composite the key and search for its index/offset. Note(zx) performance sensitive
+  // composite the key and search for its index/offset. Note(zx) performance SENSITIVE
   protected abstract int getBrKeyIdx(byte[] key, int[] brPos);
 
-  // body to query
+  // body to query todo improve with brPos construction
   public ICNode proceedQueryCDM(byte[] key, SearchStatus sts) {
     if (sts.getCurLen() == key.length) {
       int idx = getEmptyKeyIdx();
@@ -200,4 +225,7 @@ public sealed abstract class CNodeBase extends NodeWithPartialKey implements ICN
     noi.appendEntry("rmk_ttl_len_" + codeName(), ttl);
     noi.appendEntry("valid_br_pos_len_" + codeName(), getBranchingPos().length);
   }
+
+  // for Hash Helper
+
 }

@@ -15,13 +15,16 @@ import optimize.annotation.DebugOnly;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.NodeInspector;
 import optimize.nodes.cdm.CLeaf;
-import optimize.nodes.cdm.CNode1F256;
-import optimize.nodes.cdm.CNode1F48;
-import optimize.nodes.cdm.CNode1FBS;
-import optimize.nodes.cdm.SCNode2;
-import optimize.nodes.cdm.SCNode8;
-import optimize.nodes.cdm.legacyCNode;
-import optimize.nodes.cdm.SCNode4;
+import optimize.nodes.cdm.hashed.HCNode2;
+import optimize.nodes.cdm.hashed.HCNode4;
+import optimize.nodes.cdm.hashed.HCNode8;
+import optimize.nodes.cdm.one.CNode1F256;
+import optimize.nodes.cdm.one.CNode1F48;
+import optimize.nodes.cdm.one.CNode1FBS;
+import optimize.nodes.cdm.sorted.SCNode2;
+import optimize.nodes.cdm.sorted.SCNode8;
+import optimize.nodes.cdm.frame.LegacyCNode;
+import optimize.nodes.cdm.sorted.SCNode4;
 import optimize.nodes.cdm.ICNode;
 import optimize.util.InfixGroup;
 
@@ -35,6 +38,7 @@ public class CDMPrefixMerge {
   }
 
   // Alternating whether CNode1Fx/2/4/8 or only CNode4
+  // Note(zx) the construction strategy implementation
   public static IMicroNode recMergeCDM(
       Function<byte[], IMicroNode> getLChild,
       List<byte[]> keys,
@@ -74,7 +78,6 @@ public class CDMPrefixMerge {
       PrefixMergeStrategy ms,
       int height) {
 
-    ICNode node;
     int brcLen, brcNum;
     int[] brcPos;
     InfixGroup group = groupByInfix(keys, preLen);
@@ -85,7 +88,7 @@ public class CDMPrefixMerge {
       return c;
     });
 
-    boolean tentative = true;
+    boolean reverted = false;
     while (true) {
       brcPos = group.getBranchingPos();
       brcLen = brcPos.length;
@@ -102,43 +105,45 @@ public class CDMPrefixMerge {
         } else if (brcNum > 32) {
           return filler.apply(new CNode1F48());
         } else {
-          if (!(tentative && group.findNextBranch())) {
+          if (reverted || !group.findNextBranch()) {
             return filler.apply(new CNode1FBS());
           }
         }
 
       } else if (brcLen == 2) {
 
-        if (brcNum > 128) {
-          tentative = !group.revertSplit();
+        if (brcNum > 256) {
+          reverted = group.revertSplit();
         } else if (brcNum > 32) {
-          return filler.apply(new SCNode2(brcPos));
+          return filler.apply(new HCNode2(brcPos));
         } else {
-          if (!(tentative && group.findNextBranch())) return filler.apply(new SCNode2(brcPos));
+          if (reverted || !group.findNextBranch()) return filler.apply(new SCNode2(brcPos));
         }
 
       } else if (brcLen <= 4) {
 
         if (brcNum > 512) {
-          tentative = !group.revertSplit();
-        } else if (brcNum > 16) {
-          return filler.apply(new SCNode4(brcPos));
+          reverted = group.revertSplit();
+        } else if (brcNum > 32) {
+          return filler.apply(new HCNode4(brcPos));
         } else {
-          if (!(tentative && group.findNextBranch())) return filler.apply(new SCNode4(brcPos));
+          if (reverted || !group.findNextBranch()) return filler.apply(new SCNode4(brcPos));
         }
 
       } else if (brcLen <= 8) {
 
         if (brcNum > 512) {
-          tentative = !group.revertSplit();
-        } else if (brcNum > 32 || brcLen == 8 || !group.findNextBranch()){
+          reverted = group.revertSplit();
+        } else if (brcNum > 32) {
+          return filler.apply(new HCNode8(brcPos));
+        }else if (brcLen == 8 || !group.findNextBranch()){
           return filler.apply(new SCNode8(brcPos));
         }
 
       } else {
         System.out.println("SHALL NOT REACH HERE");
         group.revertSplit();
-        tentative = false;
+        reverted = false;
       }
     }
   }
@@ -198,7 +203,7 @@ public class CDMPrefixMerge {
       evaFalseTime++;
       // not use final-mapping CNode
       group1 = groupByInfix(keys, 256, preLen);
-      legacyCNode curNode = new legacyCNode(group1.getBranchingPos());
+      LegacyCNode curNode = new LegacyCNode(group1.getBranchingPos());
 //      if (preLen < group1.getBranchingPos()[0]) {
 //        curNode.setParKey(Arrays.copyOfRange(keys.get(0), preLen, group1.getBranchingPos()[0]));
 //      }
