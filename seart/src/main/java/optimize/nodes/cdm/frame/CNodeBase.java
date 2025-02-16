@@ -36,7 +36,7 @@ public sealed abstract class CNodeBase extends NodeWithPartialKey implements ICN
 
   // control inspection blocks that hurt performances.
   @DebugOnly
-  protected static final boolean INTERNAL_PROFILE = false;
+  public static final boolean INTERNAL_PROFILE = false;
 
 
   // Note(zx) significantly inefficient for HASH nodes.

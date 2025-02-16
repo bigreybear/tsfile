@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+// for those metrics significantly affects performance,
+// they shall be measured in extra runs with this.
 public class InternalInspector {
   static Map<String, Integer> statMap = new TreeMap<>(); // track Inner statistics
   static Map<String, List<Integer>> appendMap = new TreeMap<>();
@@ -28,7 +30,7 @@ public class InternalInspector {
         });
   }
 
-  public static void printResult() {
+  public static void printResultOnConsole() {
     StringBuilder builder = new StringBuilder();
     for (Map.Entry<String, Integer> entry : statMap.entrySet()) {
       builder.append(String.format("%s: %d\n", entry.getKey(), entry.getValue()));

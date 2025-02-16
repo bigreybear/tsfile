@@ -41,7 +41,7 @@ public class FDMPrefixMerge {
     // find the key exactly IS the common prefix
     IFNode prefixedPtr = null;
     List<byte[]> a =
-        Arrays.stream(keys).filter(e -> e.length == len + preLen).collect(Collectors.toList());
+        Arrays.stream(keys).filter(e -> e.length == len + preLen).toList();
     if (!a.isEmpty()) {
       prefixedPtr = (IFNode) oriNode.getLogicalChild(new String(a.get(0), StandardCharsets.UTF_8));
     }

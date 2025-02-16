@@ -3,8 +3,11 @@ package optimize.nodes.cdm.hashed;
 public class HashHelper {
 
   public static int hash1(short s) {
-    int hash = s * 0x4F3B;
-    return (hash ^ (hash >> 8)) & 0xFFFF;
+    int x = s & 0xFFFF;
+    x = ((x >>> 8) ^ x) * 0x45d9f3b;
+    x = ((x >>> 8) ^ x) * 0x45d9f3b;
+    x = (x >>> 8) ^ x;
+    return x & 0xFFFF;
   }
 
   public static int hash1(int i) {

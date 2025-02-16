@@ -80,6 +80,7 @@ public class MergePrefixVDev {
     switch (mt) {
       case NCDM:
       case CDM:
+        // as each path is a single string, the following method will not recur.
         tree.traversePostOrderRec(
             (par, key, cur, stk) -> {
               List<String> keyList = cur.getStringKeys();

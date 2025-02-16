@@ -40,7 +40,7 @@ public class NodeInspector {
   }
 
   public void inspect(final ITSNode node) {
-
+    // pre-order traverse
     ITSNode cur = node;
     nodeStk.addLast(cur);
     while (!nodeStk.isEmpty()) {

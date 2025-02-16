@@ -1,10 +1,10 @@
 package optimize.nodes.logic;
 
-import java.util.List;
-import java.util.function.Function;
 import optimize.SearchStatus;
 import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
+import optimize.merge.skeleton.IBNode;
+import optimize.merge.skeleton.PartitionInfo;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.ITSNode;
 import optimize.nodes.NodeInspector;
@@ -13,11 +13,20 @@ import optimize.nodes.cdm.ICNode;
 import optimize.nodes.fdm.IFNode;
 import optimize.util.InfixGroup;
 
-public class LLeaf extends NodeWithPartialKey implements IMicroNode, IFNode, ICNode {
+import java.util.List;
+import java.util.function.Function;
+
+public class LLeafAnnotated extends NodeWithPartialKey implements IMicroNode, IFNode, ICNode, IBNode {
+  PartitionInfo info = new PartitionInfo(this);
   long value;
 
-  public LLeaf(long val) {
+  public LLeafAnnotated(long val) {
     value = val;
+  }
+
+  @Override
+  public PartitionInfo getInfoObj() {
+    return info;
   }
 
   @Override

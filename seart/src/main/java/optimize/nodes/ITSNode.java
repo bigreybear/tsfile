@@ -1,5 +1,8 @@
 package optimize.nodes;
 
+import optimize.annotation.DebugOnly;
+import optimize.merge.skeleton.PartitionInfo;
+
 import java.util.List;
 
 // to evaluate various implementations
@@ -28,4 +31,7 @@ public interface ITSNode {
   default void acceptInspector(NodeInspector noi) {
     throw new UnsupportedOperationException();
   }
+
+  @DebugOnly
+  default PartitionInfo getInfoObj() {throw new UnsupportedOperationException();}
 }

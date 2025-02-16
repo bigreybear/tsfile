@@ -1,22 +1,40 @@
 package optimize.nodes.fdm;
 
 import optimize.SearchStatus;
+import optimize.annotation.DebugOnly;
 import optimize.exception.KeyNotFound;
 import optimize.nodes.NodeInspector;
+import optimize.nodes.logic.LLeaf;
+import optimize.nodes.logic.LLeafAnnotated;
 
 public class FLeaf extends FNodeBase {
   public IFNode value;
 
   private FLeaf() {}
 
+  @DebugOnly
+  public static IFNode constructAnnotatedLLeaf(IFNode ptr, byte[] parKey, byte[] full) {
+    // serve only two-phase merge
+    LLeaf ol = (LLeaf) ptr;
+    LLeafAnnotated lLeafAnnotated = new LLeafAnnotated(ol.getValue());
+    lLeafAnnotated.getInfoObj().fullKey = full;
+    if (parKey != null && parKey.length != 0) lLeafAnnotated.setParKey(parKey);
+    return lLeafAnnotated;
+  }
+
   public static IFNode constructFLeaf(IFNode ptr, byte[] parKey) {
     // to eliminate trivial leaf
     if (parKey == null || parKey.length == 0) return ptr;
     else {
-      FLeaf leaf = new FLeaf();
-      leaf.setParKey(parKey);
-      leaf.value = ptr;
-      return leaf;
+      // FLeaf leaf = new FLeaf();
+      // leaf.setParKey(parKey);
+      // leaf.value = ptr;
+      // return leaf;
+
+      // Note(zx) omit trivial FLeaf, makes mutli-ART impossible
+      if (ptr.getParKey() != null && ptr.getParKey().length != 0) throw new RuntimeException();
+      ptr.setParKey(parKey);
+      return ptr;
     }
   }
 

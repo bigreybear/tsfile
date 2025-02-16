@@ -15,6 +15,7 @@ import optimize.merge.MapType;
 import optimize.merge.MergePrefixVDev;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.NodeInspector;
+import optimize.nodes.cdm.frame.CNodeBase;
 import optimize.util.InternalInspector;
 import optimize.util.LoggedPrintStream;
 import org.openjdk.jol.info.GraphLayout;
@@ -60,9 +61,9 @@ public class Main {
   public static final boolean CDM_WITH_EF = false;
   public static final StringBuilder REPORT_CHANNEL = new StringBuilder();
   public static final boolean OBSERVE_METRIC = true; // impact performance significantly
-  public static String dataAlias = "NoN";
 
   // local args
+  String dataAlias = "NoN";
   MyDataSet dataSet;
   boolean flatTree;
   PrefixMergeStrategy mergeStrategy;
@@ -81,7 +82,7 @@ public class Main {
 
 
     setByArgs(args);
-    if (logPrint) System.setOut(new LoggedPrintStream(System.out, "print_logs.txt"));
+    if (logPrint) System.setOut(new LoggedPrintStream(System.out, "console_logs.txt"));
     resultPrinter.mds = dataSet;
     resultPrinter.pms = mergeStrategy;
     resultPrinter.mapType = mapType;
@@ -157,8 +158,8 @@ public class Main {
     REPORT_CHANNEL.append("FINISH:" + String.join(" ", argList) + " with EF code: " + CDM_WITH_EF);
     REPORT_CHANNEL.append("\n");
     System.out.println(REPORT_CHANNEL);
+    InternalInspector.printResultOnConsole();
     System.out.flush();
-    InternalInspector.printResult();
   }
 
   private void resetStaticArgs() {

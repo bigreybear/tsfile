@@ -15,6 +15,7 @@ import optimize.annotation.DebugOnly;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.NodeInspector;
 import optimize.nodes.cdm.CLeaf;
+import optimize.nodes.cdm.frame.CNodeBase;
 import optimize.nodes.cdm.hashed.HCNode2;
 import optimize.nodes.cdm.hashed.HCNode4;
 import optimize.nodes.cdm.hashed.HCNode8;
@@ -27,6 +28,7 @@ import optimize.nodes.cdm.frame.LegacyCNode;
 import optimize.nodes.cdm.sorted.SCNode4;
 import optimize.nodes.cdm.ICNode;
 import optimize.util.InfixGroup;
+import optimize.util.InternalInspector;
 
 public class CDMPrefixMerge {
 
@@ -112,7 +114,7 @@ public class CDMPrefixMerge {
 
       } else if (brcLen == 2) {
 
-        if (brcNum > 256) {
+        if (brcNum > 1024) {
           reverted = group.revertSplit();
         } else if (brcNum > 32) {
           return filler.apply(new HCNode2(brcPos));
@@ -132,7 +134,7 @@ public class CDMPrefixMerge {
 
       } else if (brcLen <= 8) {
 
-        if (brcNum > 512) {
+        if (brcNum > 1024) {
           reverted = group.revertSplit();
         } else if (brcNum > 32) {
           return filler.apply(new HCNode8(brcPos));

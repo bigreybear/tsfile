@@ -21,7 +21,7 @@ public abstract class FNodeBase extends NodeWithPartialKey implements IFNode {
   }
 
   // following methods are only for parallel key-ptr arrays
-  protected int getPtrIdxByByte(final byte[] keys, byte k) {
+  protected final int getPtrIdxByByte(final byte[] keys, byte k) {
     IFNode[] ptrs = getPtrs();
     int c = IFNode.binarySearchUnsignedByteArray(keys, 0, keys.length, k);
     return c >= 0 && ptrs[c] == null ? -c - 1 : c;

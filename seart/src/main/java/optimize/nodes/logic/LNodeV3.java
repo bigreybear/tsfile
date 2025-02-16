@@ -13,7 +13,6 @@ import optimize.nodes.NodeInspector;
  */
 public class LNodeV3 implements ITSNode {
 
-  // todo shall be private
   private Map<String, ITSNode> children;
 
   public LNodeV3() {}

@@ -21,6 +21,8 @@ public class ByteArray implements Comparable<ByteArray> {
     val = ba;
   }
 
+  public ByteArray(byte a) {val = new byte[] {a};}
+
   public byte[] getVal() {
     return val;
   }
