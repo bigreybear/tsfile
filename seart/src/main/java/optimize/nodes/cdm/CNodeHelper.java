@@ -12,9 +12,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import loader.PathTxtLoader;
+import optimize.nodes.cdm.hashed.HCNode2;
+import optimize.nodes.cdm.hashed.HCNode4;
+import optimize.nodes.cdm.hashed.HCNode8;
+import optimize.nodes.cdm.one.CNode1F256;
+import optimize.nodes.cdm.one.CNode1F48;
+import optimize.nodes.cdm.one.CNode1FBS;
+import optimize.nodes.cdm.sorted.SCNode2;
+import optimize.nodes.cdm.sorted.SCNode4;
+import optimize.nodes.cdm.sorted.SCNode8;
 
 public class CNodeHelper {
   public static final int POS_SIZE = 4;
+
+  // public static final byte[]
 
   // may extract 0 bytes
   public static byte[] extractBytes(byte[] arr, int[] pos) {
@@ -351,6 +362,41 @@ public class CNodeHelper {
         }
         return Integer.compare(a.length, b.length);
       };
+
+  public static ICNode chooseCNodes(int[] pos, int fo) {
+    int span = pos.length;
+    switch (span) {
+      case 8:
+      case 7:
+      case 6:
+      case 5:
+        if (fo > 32) return new HCNode8(pos);
+        else return new SCNode8(pos);
+      case 4:
+      case 3:
+        if (fo > 32) return new HCNode4(pos);
+        else return new SCNode4(pos);
+      case 2:
+        if (fo > 32) return new HCNode2(pos);
+        else return new SCNode2(pos);
+      case 1:
+        if (fo > 48) {
+          CNode1F256 node = new CNode1F256();
+          node.pos = pos[0];
+          return node;
+        } else if (fo > 32) {
+          CNode1F48 node = new CNode1F48();
+          node.pos = pos[0];
+          return node;
+        } else {
+          CNode1FBS node = new CNode1FBS();
+          node.pos = pos[0];
+          return node;
+        }
+      default:
+        throw new UnsupportedOperationException();
+    }
+  }
 
   // endregion
 

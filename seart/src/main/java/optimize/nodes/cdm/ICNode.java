@@ -4,11 +4,15 @@ import java.util.function.Function;
 import optimize.SearchStatus;
 import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
+import optimize.merge.skeleton.MiniTreeRep;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.ITSNode;
 import optimize.util.InfixGroup;
 
 public interface ICNode extends IMicroNode {
+
+  // for tree consists of MiniTreeReps
+  void fillContent(MiniTreeRep rep);
 
   int[] getBranchingPos(); // no trailing 0s.
 

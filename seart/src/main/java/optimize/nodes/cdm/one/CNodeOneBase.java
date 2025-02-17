@@ -3,6 +3,7 @@ package optimize.nodes.cdm.one;
 import optimize.SearchStatus;
 import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
+import optimize.merge.skeleton.MiniTreeRep;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.NodeInspector;
 import optimize.nodes.NodeWithPartialKey;
@@ -19,6 +20,7 @@ import static optimize.merge.CDMPrefixMerge.recMergeCDM;
 import static optimize.nodes.cdm.frame.CNodeBase.NO_ORPHAN_CLEAF;
 
 public abstract class CNodeOneBase extends NodeWithPartialKey implements ICNode {
+  public int pos = -1;  // added for transformation from MiniTreeRep
   ICNode[] ptrs;
 
   @Override
@@ -111,4 +113,15 @@ public abstract class CNodeOneBase extends NodeWithPartialKey implements ICNode 
   public int[] getBranchingPos() {
     throw new UnsupportedOperationException();
   }
+
+
+  // region For MiniTreeRep
+
+  @Override
+  public void fillContent(MiniTreeRep rep) {
+
+  }
+
+
+  // endregion
 }

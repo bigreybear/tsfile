@@ -1,6 +1,7 @@
 package optimize.merge.skeleton;
 
 import optimize.nodes.ITSNode;
+import optimize.nodes.cdm.ICNode;
 import optimize.nodes.logic.LLeaf;
 import optimize.nodes.logic.LLeafAnnotated;
 import optimize.util.ByteArray;
@@ -13,12 +14,104 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import static optimize.nodes.cdm.CNodeHelper.chooseCNodes;
+
 public class MiniTreeRep {
   int hl = 0;
-  byte[] parKey; // equals par key of mini-root
+  public byte[] parKey; // equals par key of mini-root
   Set<Integer> pos = new TreeSet<>();
   // the full mini-key does NOT include the par key of mini-root
-  Map<ByteArray, Object> fullKeyMap = new TreeMap<>();
+  public TreeMap<ByteArray, Object> fullKeyMap = new TreeMap<>();
+
+  public final void markHyperLevel() {
+    for (Object chd : fullKeyMap.values()) {
+      if (chd instanceof LLeaf) {
+        hl = Math.max(hl, 1);
+        continue;
+      }
+
+      ((MiniTreeRep)chd).markHyperLevel();
+    }
+
+    for (Object chd : fullKeyMap.values()) {
+      if (chd instanceof MiniTreeRep) {
+        hl = Math.max(hl, ((MiniTreeRep)chd).hl + 1);
+      }
+    }
+  }
+
+  /**
+   * Top-down merge. <br>
+   * only fix case where parent can be easily (without pickup) merged into its children.
+   */
+  public void mergeDownward() {
+    MiniTreeRep chdRep;
+    boolean tryToMerge = pos.size() <= 2 && fullKeyMap.size() < 8;
+    if (tryToMerge) {
+      // check, merge and update children
+      Set<Integer> union = new TreeSet<>(pos);
+      for (Object chd : fullKeyMap.values()) {
+        if (chd instanceof MiniTreeRep) {
+          chdRep = (MiniTreeRep) chd;
+          union.addAll(chdRep.pos);
+        }
+      }
+
+      TreeMap<ByteArray, Object> fkm = new TreeMap<>();
+      if (union.size() < 8) {
+        for (Map.Entry<ByteArray, Object> entry: fullKeyMap.entrySet()) {
+          Object chd = entry.getValue();
+
+          if (chd instanceof LLeaf) {
+            fkm.put(entry.getKey(), entry.getValue());
+            continue;
+          }
+
+          if (chd instanceof MiniTreeRep) {
+            chdRep = (MiniTreeRep) chd;
+            byte[] cpk = chdRep.parKey;
+            for (Map.Entry<ByteArray, Object> iet : chdRep.fullKeyMap.entrySet()) {
+              ByteArray nfk = concateByteArray(entry.getKey(), cpk, iet.getKey());
+              fkm.put(nfk, iet.getValue());
+            }
+          }
+        }
+      }
+
+      pos = union;
+      fullKeyMap = fkm;
+    }
+
+    // traverse children
+    for (Object chd : fullKeyMap.values()) {
+      if (chd instanceof MiniTreeRep) {
+        ((MiniTreeRep) chd).mergeDownward();
+      }
+    }
+  }
+
+  private ByteArray concateByteArray(ByteArray k1, byte[] pk, ByteArray k2) {
+    int len = k1.getVal().length + k2.getVal().length + (pk == null ? 0 : pk.length), pos = 0;
+    byte[] res = new byte[len];
+    System.arraycopy(k1.getVal(), 0, res, pos, k1.getVal().length);
+    pos += k1.getVal().length;
+    if (pk != null) {
+      System.arraycopy(pk, 0, res, pos, pk.length);
+      pos += pk.length;
+    }
+    System.arraycopy(k2.getVal(), 0, res, pos, k2.getVal().length);
+    return new ByteArray(res);
+  }
+
+  public ICNode transformToCNodes() {
+    int[] posArr = pos.stream().mapToInt(Integer::intValue).toArray();
+    int fo = fullKeyMap.size();
+    ICNode node = chooseCNodes(posArr, fo);
+    node.fillContent(this);
+    return node;
+  }
+
+  // region Static Methods
 
   public static final Deque<MiniTreeRep> processQueue = new ArrayDeque<>();
   public static MiniTreeRep transform(ITSNode root) {
@@ -141,6 +234,8 @@ public class MiniTreeRep {
 
     return true;
   }
+
+  // endregion
 
   public static ByteArray makeFullKey(Deque<byte[]> stk, byte k) {
     int pos = 0, len = stk.stream().mapToInt(i->i.length).sum() + 1;

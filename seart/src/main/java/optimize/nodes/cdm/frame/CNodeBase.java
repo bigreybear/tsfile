@@ -4,6 +4,7 @@ import optimize.SearchStatus;
 import optimize.annotation.DebugOnly;
 import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
+import optimize.merge.skeleton.MiniTreeRep;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.NodeInspector;
 import optimize.nodes.NodeWithPartialKey;
@@ -227,5 +228,15 @@ public sealed abstract class CNodeBase extends NodeWithPartialKey implements ICN
   }
 
   // for Hash Helper
+
+
+  // region For MiniTreeRep
+
+  @Override
+  public void fillContent(MiniTreeRep rep) {
+
+  }
+
+  // endregion
 
 }
