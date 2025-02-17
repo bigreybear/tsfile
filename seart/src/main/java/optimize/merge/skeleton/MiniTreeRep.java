@@ -107,7 +107,7 @@ public class MiniTreeRep {
     int[] posArr = pos.stream().mapToInt(Integer::intValue).toArray();
     int fo = fullKeyMap.size();
     ICNode node = chooseCNodes(posArr, fo);
-    node.fillContent(this);
+    node.fillContent(this, posArr);
     return node;
   }
 

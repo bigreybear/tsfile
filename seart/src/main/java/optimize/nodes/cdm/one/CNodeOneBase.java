@@ -118,7 +118,7 @@ public abstract class CNodeOneBase extends NodeWithPartialKey implements ICNode 
   // region For MiniTreeRep
 
   @Override
-  public void fillContent(MiniTreeRep rep) {
+  public void fillContent(MiniTreeRep rep, int[] posArr) {
 
   }
 

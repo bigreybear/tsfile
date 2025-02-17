@@ -9,11 +9,13 @@ import optimize.nodes.IMicroNode;
 import optimize.nodes.NodeInspector;
 import optimize.nodes.NodeWithPartialKey;
 import optimize.nodes.cdm.ICNode;
+import optimize.util.ByteArray;
 import optimize.util.InfixGroup;
+import org.apache.commons.lang3.tuple.Triple;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 import static optimize.merge.CDMPrefixMerge.recMergeCDM;
@@ -232,9 +234,24 @@ public sealed abstract class CNodeBase extends NodeWithPartialKey implements ICN
 
   // region For MiniTreeRep
 
+  // todo 0217
   @Override
-  public void fillContent(MiniTreeRep rep) {
+  public void fillContent(MiniTreeRep rep, int[] posArr) {
+    setParKey(rep.parKey);
 
+    int posIdx = 0, flkIdx = 0, brkIdx = 0, rmkIdx = 0;
+    final int ofs = posArr[0];
+
+    for (Map.Entry<ByteArray, Object> entry : rep.fullKeyMap.entrySet()) {
+      ICNode ptr;
+      if (entry.getValue() instanceof MiniTreeRep) {
+        ptr = ((MiniTreeRep)entry.getValue()).transformToCNodes();
+      } else {
+        ptr = (ICNode) entry.getValue();
+      }
+
+
+    }
   }
 
   // endregion
