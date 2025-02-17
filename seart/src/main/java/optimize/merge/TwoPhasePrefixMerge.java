@@ -47,6 +47,7 @@ public class TwoPhasePrefixMerge {
     // todo 0216
     // phase-m: transform to mini-hash map
     MiniTreeRep rep = MiniTreeRep.transform(tree.root);
+    if (!MiniTreeRep.checkCorrectness(rep, null)) throw new RuntimeException();
     System.out.println("HERE");
     // second phase: bottom-up merge mini-trees while keep the merged of height less than 8
     // third phase: transform each mini tree to one or more CNodes

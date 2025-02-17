@@ -5,6 +5,7 @@ import optimize.nodes.logic.LLeaf;
 import optimize.nodes.logic.LLeafAnnotated;
 import optimize.util.ByteArray;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Map;
@@ -98,7 +99,10 @@ public class MiniTreeRep {
     boolean hasMiniTreeChild = false;
     for (Map.Entry<ByteArray, Object> entry : fullKeyMap.entrySet()) {
       if (entry.getValue() instanceof LLeafAnnotated) {
-        rep.fullKeyMap.put(entry.getKey(), new LLeaf(((LLeafAnnotated)entry.getValue()).getValue()));
+        LLeafAnnotated oLeaf = (LLeafAnnotated) entry.getValue();
+        LLeaf nLeaf = new LLeaf(oLeaf.getValue());
+        nLeaf.setParKey(oLeaf.getParKey());
+        rep.fullKeyMap.put(entry.getKey(), nLeaf);
         continue;
       }
       hasMiniTreeChild = true;
@@ -108,8 +112,33 @@ public class MiniTreeRep {
     return rep;
   }
 
-  public boolean checkCorrectness() {
-    //todo
+  public static boolean checkCorrectness(MiniTreeRep cur, Deque<byte[]> _fks) {
+    Deque<byte[]> fullKeyStk = _fks != null ? _fks : new ArrayDeque<>();
+
+    if (cur.parKey != null) {
+      fullKeyStk.addLast(cur.parKey);
+    }
+
+    for (Map.Entry<ByteArray, Object> entry : cur.fullKeyMap.entrySet()) {
+      if (entry.getValue() instanceof LLeaf) {
+        byte[] fk = checkFullKey(fullKeyStk, entry.getKey(), ((LLeaf)entry.getValue()).getParKey());
+        long fkHash = new String(fk, StandardCharsets.UTF_8).hashCode();
+        long ans = ((LLeaf)entry.getValue()).getValue();
+        if (fkHash != ans)
+          return false;
+        continue;
+      }
+
+      MiniTreeRep _rep = (MiniTreeRep) entry.getValue();
+      fullKeyStk.addLast(entry.getKey().getVal());
+      if (!checkCorrectness(_rep, fullKeyStk)) return false;
+      fullKeyStk.removeLast();
+    }
+
+    if (cur.parKey != null) {
+      fullKeyStk.removeLast();
+    }
+
     return true;
   }
 
@@ -122,6 +151,23 @@ public class MiniTreeRep {
     }
     res[res.length - 1] = k;
     return new ByteArray(res);
+  }
+
+  public static byte[] checkFullKey(Deque<byte[]> fkStk, ByteArray fk, byte[] pk) {
+    final byte[] root = new byte[] {114, 111, 111, 116, 46};  // "root." is truncated within TsTree.insert
+    int pos = 5, len = fkStk.stream().mapToInt(i->i.length).sum() + fk.getVal().length + 5;
+    if (pk != null) len += pk.length;
+
+    byte[] res = new byte[len];
+    for (byte[] ba: fkStk) {
+      System.arraycopy(ba, 0, res, pos, ba.length);
+      pos += ba.length;
+    }
+    System.arraycopy(fk.getVal(), 0, res, pos, fk.getVal().length);
+    pos += fk.getVal().length;
+    if (pk != null) System.arraycopy(pk, 0, res, pos, pk.length);
+    System.arraycopy(root, 0, res, 0, 5);
+    return res;
   }
 
 }
