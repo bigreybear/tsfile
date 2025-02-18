@@ -12,7 +12,7 @@ import optimize.util.InfixGroup;
 public interface ICNode extends IMicroNode {
 
   // for tree consists of MiniTreeReps
-  void fillContent(MiniTreeRep rep, int[] posArr);
+  default void fillContent(MiniTreeRep rep, int[] posArr) {};
 
   int[] getBranchingPos(); // no trailing 0s.
 

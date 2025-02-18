@@ -11,6 +11,18 @@ public class ByteArray implements Comparable<ByteArray> {
     val = null;
   }
 
+  public ByteArray(byte[] ...bas) {
+    int len = 0, pos = 0;
+    for (int i = 0; i < bas.length; i++) {
+      len += bas[i].length;
+    }
+    val = new byte[len];
+    for (int i = 0; i < bas.length; i++) {
+      System.arraycopy(bas[i], 0, val, pos, bas[i].length);
+      pos += bas[i].length;
+    }
+  }
+
   public ByteArray(ByteArray ori, byte add) {
     val = new byte[ori.val == null ? 1 : (ori.val.length + 1)];
     if (ori.val != null) System.arraycopy(ori.val, 0, val, 0, ori.val.length);
