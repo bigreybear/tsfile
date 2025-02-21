@@ -1,5 +1,6 @@
 package optimize.nodes.cdm.hashed;
 
+import optimize.IntegratedMain;
 import optimize.annotation.DebugOnly;
 import optimize.nodes.cdm.ByteEncode;
 import optimize.nodes.cdm.ICNode;
@@ -15,6 +16,7 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static optimize.IntegratedMain.INTERNAL_PROFILE;
 import static optimize.nodes.cdm.ByteEncode.short2Bytes;
 
 public class HCNode2 extends CNode2 {
@@ -66,18 +68,30 @@ public class HCNode2 extends CNode2 {
 
   @Override
   protected int getKeyPos(short k) {
-    int hash = HashHelper.hash1(k);
-    int pos = hash % bks.length;
+    if (INTERNAL_PROFILE) {
+      long watch = System.nanoTime();
+      int rehashCnt = 0;
 
-    @DebugOnly
-    int rehashCnt = 0;
-    while (bks[pos] != k || ptrs[pos] == null) {
-      hash = HashHelper.rehash(hash, k);
-      pos = hash % bks.length;
-      if (INTERNAL_PROFILE) rehashCnt++;
+      int hash = HashHelper.hash1(k);
+      int pos = hash % bks.length;
+      while (bks[pos] != k || ptrs[pos] == null) {
+        hash = HashHelper.rehash(hash, k);
+        pos = hash % bks.length;
+        rehashCnt++;
+      }
+      watch = System.nanoTime() - watch;
+      InternalInspector.appendEntry(codeName() + "_rehash_cnt", rehashCnt);
+      InternalInspector.appendEntry( codeName() + "_query_time", watch);
+      return pos;
+    } else {
+      int hash = HashHelper.hash1(k);
+      int pos = hash % bks.length;
+      while (bks[pos] != k || ptrs[pos] == null) {
+        hash = HashHelper.rehash(hash, k);
+        pos = hash % bks.length;
+      }
+      return pos;
     }
-    if (INTERNAL_PROFILE) InternalInspector.appendEntry(codeName() + "_rehash_cnt", rehashCnt);
-    return pos;
   }
 
   @Override

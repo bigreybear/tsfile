@@ -1,9 +1,11 @@
 package optimize.nodes.cdm.sorted;
 
-import optimize.nodes.NodeInspector;
+import optimize.IntegratedMain;
+import optimize.annotation.DebugOnly;
 import optimize.nodes.cdm.ICNode;
 import optimize.nodes.cdm.frame.CNode8;
 import optimize.util.InfixGroup;
+import optimize.util.InternalInspector;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -21,7 +23,16 @@ public class SCNode8 extends CNode8 {
 
   @Override
   protected int getKeyPos(long k) {
-    return Arrays.binarySearch(bks, k);
+    if (IntegratedMain.INTERNAL_PROFILE) {
+      @DebugOnly
+      long watch = System.nanoTime();
+      int res = Arrays.binarySearch(bks, k);
+      watch = System.nanoTime() - watch;
+      InternalInspector.appendEntry( codeName() + "_query_time", watch);
+      return res;
+    } else {
+      return Arrays.binarySearch(bks, k);
+    }
   }
 
   @Override

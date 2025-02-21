@@ -1,7 +1,6 @@
 package optimize.nodes.cdm.frame;
 
 import optimize.SearchStatus;
-import optimize.annotation.DebugOnly;
 import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.merge.skeleton.MiniTreeRep;
@@ -11,7 +10,6 @@ import optimize.nodes.NodeWithPartialKey;
 import optimize.nodes.cdm.ICNode;
 import optimize.util.ByteArray;
 import optimize.util.InfixGroup;
-import org.apache.commons.lang3.tuple.Triple;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,10 +34,6 @@ public sealed abstract class CNodeBase extends NodeWithPartialKey implements ICN
   //  2. init even no interleaved bytes, thus orphans are eliminated
   // an orphan leaf is a CLeaf with no partial key, i.e., a trivial leaf, only representing the dot.
   public static final boolean NO_ORPHAN_CLEAF = true;
-
-  // control inspection blocks that hurt performances.
-  @DebugOnly
-  public static final boolean INTERNAL_PROFILE = false;
 
 
   // Note(zx) significantly inefficient for HASH nodes.

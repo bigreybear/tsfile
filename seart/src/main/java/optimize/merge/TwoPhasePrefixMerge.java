@@ -4,6 +4,7 @@ import optimize.MainSupport;
 import optimize.MyDataSet;
 import optimize.TSTree;
 import optimize.merge.bum.BottomUpMergeStrategy;
+import optimize.merge.bum.PruneTallestChild;
 import optimize.merge.bum.PullUpSharedPosition;
 import optimize.merge.skeleton.BNode16;
 import optimize.merge.skeleton.BNode256;
@@ -32,7 +33,7 @@ import static optimize.nodes.cdm.CNodeHelper.groupPrefixes;
  */
 public class TwoPhasePrefixMerge {
 
-  private static final BottomUpMergeStrategy mergeStrategy = new PullUpSharedPosition();
+  private static final BottomUpMergeStrategy mergeStrategy = new PruneTallestChild();
 
   public static void main(String[] args) {
     TSTree tree = MainSupport.buildLogicalTree(MyDataSet.BW, true);

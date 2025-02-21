@@ -7,11 +7,14 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import optimize.nodes.NodeInspector;
+
+import optimize.IntegratedMain;
+import optimize.annotation.DebugOnly;
 import optimize.nodes.cdm.ByteEncode;
 import optimize.nodes.cdm.ICNode;
 import optimize.nodes.cdm.frame.CNode4;
 import optimize.util.InfixGroup;
+import optimize.util.InternalInspector;
 
 public class SCNode4 extends CNode4 {
   public SCNode4(int[] pos) {
@@ -20,7 +23,15 @@ public class SCNode4 extends CNode4 {
 
   @Override
   protected int getKeyPos(int k) {
-    return Arrays.binarySearch(bks, k);
+    if (IntegratedMain.INTERNAL_PROFILE) {
+      long watch = System.nanoTime();
+      int res = Arrays.binarySearch(bks, k);
+      watch = System.nanoTime() - watch;
+      InternalInspector.appendEntry( codeName() + "_query_time", watch);
+      return res;
+    } else {
+      return Arrays.binarySearch(bks, k);
+    }
   }
 
   @Override

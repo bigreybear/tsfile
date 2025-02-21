@@ -1,6 +1,5 @@
 package optimize.nodes.cdm.sorted;
 
-import static optimize.nodes.cdm.ByteEncode.int2Bytes;
 import static optimize.nodes.cdm.ByteEncode.short2Bytes;
 import static optimize.nodes.cdm.ByteEncode.short2BytesNoTrailing;
 
@@ -9,16 +8,27 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 
-import optimize.nodes.NodeInspector;
+import optimize.IntegratedMain;
+import optimize.annotation.DebugOnly;
 import optimize.nodes.cdm.ICNode;
 import optimize.nodes.cdm.frame.CNode2;
 import optimize.util.InfixGroup;
+import optimize.util.InternalInspector;
 import org.openjdk.jol.info.ClassLayout;
 
 public class SCNode2 extends CNode2 {
   @Override
   protected int getKeyPos(short k) {
-    return Arrays.binarySearch(bks, k);
+    if (IntegratedMain.INTERNAL_PROFILE) {
+      @DebugOnly
+      long watch = System.nanoTime();
+      int res = Arrays.binarySearch(bks, k);
+      watch = System.nanoTime() - watch;
+      InternalInspector.appendEntry( codeName() + "_query_time", watch);
+      return res;
+    } else {
+      return Arrays.binarySearch(bks, k);
+    }
   }
 
   public SCNode2(int[] pos) {

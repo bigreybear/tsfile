@@ -1,10 +1,13 @@
 package optimize.nodes.cdm.one;
 
 import optimize.nodes.cdm.ICNode;
+import optimize.util.InternalInspector;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import static optimize.IntegratedMain.INTERNAL_PROFILE;
 
 
 // BS for binary search
@@ -34,7 +37,15 @@ public class CNode1FBS extends CNodeOneBase {
 
   @Override
   protected ICNode getPointer(byte b) {
-    return ptrs[Arrays.binarySearch(keys, b)];
+    if (!INTERNAL_PROFILE) {
+      return ptrs[Arrays.binarySearch(keys, b)];
+    } else {
+      long watch = System.nanoTime();
+      ICNode ptr = ptrs[Arrays.binarySearch(keys, b)];
+      watch = System.nanoTime() - watch;
+      InternalInspector.appendEntry(codeName() + "_query_time", watch);
+      return ptr;
+    }
   }
 
   @Override

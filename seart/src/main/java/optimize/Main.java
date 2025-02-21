@@ -41,10 +41,10 @@ public class Main {
     // res += "-alias OLD_CDM";
     res += "-alias NEW_CDM";
 
-    res += " -ds bw";
+    // res += " -ds bw";
     // res += " -ds sw";
     // res += " -ds xyzc";
-    // res += " -ds zy";
+    res += " -ds zy";
 
     // res += " -space";
     res += " -latency";
@@ -72,6 +72,7 @@ public class Main {
   boolean estSpace, estLatency, logPrint;
 
   public void mainbody(String[] args) {
+    InternalInspector.reset();
     resetStaticArgs();
     ExpResultLogger resultPrinter = new ExpResultLogger(dataAlias);
     System.out.println(MainSupport.getBuildTimestamp());
