@@ -38,7 +38,7 @@ public class GreedMerge {
     TreeMap<ByteArray, ICNode> updatedK2C = new TreeMap<>();
     for (Map.Entry<ByteArray, IMicroNode> entry1 : es.k2c.entrySet()) {
       ICNode res;
-      if (!(entry1.getValue() instanceof LLeaf)) {
+      if (!(entry1.getValue().isLogicalLeaf())) {
         res = greedMerge(entry1.getValue());
       } else {
         res = (ICNode) entry1.getValue();

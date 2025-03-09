@@ -30,7 +30,6 @@ public class HCNode8 extends CNode8 {
   protected void setBranchKeyValRmk(Map<ByteArray, ICNode> m, Map<ByteArray, byte[]> k2r) {
     int size = m.size(), ttlRmkLen = 0, actIdx = -1, hash = -1;
     bks = new long[size];
-    rmk = new byte[size][];
 
     long k;
     BitSet bs = new BitSet(size);
@@ -44,6 +43,7 @@ public class HCNode8 extends CNode8 {
 
       bs.set(actIdx);
       bks[actIdx] = k;
+      ptrs[actIdx] = m.get(entry.getKey());
 
       curRmk = k2r.get(entry.getKey());
       rmk[actIdx] = curRmk.length == 0 ? null : curRmk;

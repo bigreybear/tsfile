@@ -41,15 +41,18 @@ public class MergingArea {
   final IFNode miniRoot;
 
   public MergingArea(ITSNode mrt) {
+    // from here on, the par-child relationship is embedded in the MergingArea
     miniRoot = (IFNode) mrt;
     brcPos.add(mrt.getInfoObj().brPos);
     for (byte k : miniRoot.getKeysFromFDM()) {
       IMicroNode c = miniRoot.get(k);
-      k2c.put(new ByteArray(k), c);
       k2r.put(new ByteArray(k), EMPTY_BYTE_ARR);
-
-      if (c instanceof LLeafAnnotated) continue;
-      updateCandidate(c.getInfoObj().brPos, c);
+      if (c instanceof LLeafAnnotated) {
+        k2c.put(new ByteArray(k), new LLeaf((LLeafAnnotated) c));
+      } else {
+        k2c.put(new ByteArray(k), c);
+        updateCandidate(c.getInfoObj().brPos, c);
+      }
     }
   }
 
@@ -89,6 +92,8 @@ public class MergingArea {
   }
 
   private MergingArea estimate(GreedMerge.IndexType type) {
+    if (candidates.isEmpty()) return null;
+
     int space0, space1;
     double time0, time1;
     int pm = candidates.firstKey();
@@ -130,9 +135,8 @@ public class MergingArea {
       // prepare to update rmk
       byte[] rmk = k2r.get(kb4);
 
-      if (cb4 instanceof LLeafAnnotated) {
-        LLeaf l = new LLeaf(cb4.getValue());
-        l.setParKey(cb4.getParKey());
+      if (cb4.isLogicalLeaf()) {
+        LLeaf l = cb4 instanceof LLeaf ? (LLeaf) cb4 : new LLeaf((LLeafAnnotated) cb4);
         int span = pm - lastBrcPos;
         int index = span - 1; // position to extract from par key
         ByteArray nk = index >= cb4.getParKeyLen()
@@ -143,10 +147,28 @@ public class MergingArea {
             l.getParKey() == null
                 ? rmk
                 : concatenate(
-                    rmk,
-                    Arrays.copyOfRange(l.getParKey(), 0, index)));
+                rmk,
+                Arrays.copyOfRange(l.getParKey(), 0, index)));
         continue;
       }
+
+      // if (cb4 instanceof LLeafAnnotated) {
+      //   LLeaf l = new LLeaf(cb4.getValue());
+      //   l.setParKey(cb4.getParKey());
+      //   int span = pm - lastBrcPos;
+      //   int index = span - 1; // position to extract from par key
+      //   ByteArray nk = index >= cb4.getParKeyLen()
+      //       ? new ByteArray(kb4, (byte) 0)
+      //       : new ByteArray(kb4, cb4.getParKey()[index]);
+      //   expSta.k2c.put(nk, l);
+      //   expSta.k2r.put(nk,
+      //       l.getParKey() == null
+      //           ? rmk
+      //           : concatenate(
+      //               rmk,
+      //               Arrays.copyOfRange(l.getParKey(), 0, index)));
+      //   continue;
+      // }
 
       if (cb4.getInfoObj().brPos < pm) throw new RuntimeException("Exceptional error brPos.");
       if (cb4.getInfoObj().brPos == pm) {
@@ -155,7 +177,11 @@ public class MergingArea {
 
         for (byte cb4k : cb4keys) {
           ByteArray nk = new ByteArray(kb4, cb4k);
-          expSta.k2c.put(nk, cb4.get(cb4k));
+          IMicroNode gcn  = cb4.get(cb4k); // grand child node
+          if (gcn instanceof LLeafAnnotated) {
+            gcn = new LLeaf((LLeafAnnotated) gcn);
+          }
+          expSta.k2c.put(nk, gcn);
           // the rmk is inflated, from 1 entry to as many as cb4.children().size()
           if (updateRMK) {
             expSta.k2r.put(nk, concatenate(rmk, cb4.getParKey()));
@@ -189,7 +215,7 @@ public class MergingArea {
       expSta.brcPos.add(pm);
       // trim all partial keys
       for (IMicroNode c : expSta.k2c.values()) {
-        if (c instanceof LLeaf) {
+        if (c instanceof LLeaf) {  // Note(zx) requires no annotated leaf in k2c
           // trim parKey for leaf
           if (c.getParKeyLen() == 0) continue;
           int index = pm-lastBrcPos-1;

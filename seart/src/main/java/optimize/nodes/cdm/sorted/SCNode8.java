@@ -28,13 +28,13 @@ public class SCNode8 extends CNode8 {
   protected void setBranchKeyValRmk(Map<ByteArray, ICNode> m, Map<ByteArray, byte[]> k2r) {
     int size = m.size(), ttlRmkLen = 0, curIdx = 0;
     bks = new long[size];
-    rmk = new byte[size][];
 
     long k;
     byte[] curRmk;
     for (Map.Entry<ByteArray, ICNode> entry : m.entrySet()) {
       k = ByteEncode.bytes2Long(entry.getKey().getVal());
       bks[curIdx] = k;
+      ptrs[curIdx] = m.get(entry.getKey());
       curRmk = k2r.get(entry.getKey());
       rmk[curIdx] = curRmk.length == 0 ? null : curRmk;
       ttlRmkLen += curRmk.length;

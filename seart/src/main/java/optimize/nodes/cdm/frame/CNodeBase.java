@@ -51,6 +51,8 @@ public sealed abstract class CNodeBase extends NodeWithPartialKey implements ICN
       Map<ByteArray, byte[]> k2r,
       GreedMerge.IndexType t) {
     CNodeBase r = consNode(pos, t == GreedMerge.IndexType.hash);
+    r.ptrs = new ICNode[map.size()];
+    r.rmk = new byte[map.size()][];
     r.setBranchKeyValRmk(map, k2r);
     r.setParKey(parKey);
     return r;

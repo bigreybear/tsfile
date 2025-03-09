@@ -20,6 +20,11 @@ public class LLeaf extends NodeWithPartialKey implements IMicroNode, IFNode, ICN
     value = val;
   }
 
+  public LLeaf(LLeafAnnotated annotated) {
+    value = annotated.value;
+    setParKey(annotated.getParKey());
+  }
+
   @Override
   public long getValue() {
     return value;
