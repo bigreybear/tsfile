@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import static optimize.MainSupport.dottedNanoSec;
+
 public class GreedMerge {
 
   private static class DecisionStat {
@@ -39,21 +41,11 @@ public class GreedMerge {
     }
   }
 
-  private static final float ALPHA = 1f;
-  private static final List<DecisionStat> DECISION_STATS = new ArrayList<DecisionStat>();
-
   static boolean decideToMerge(int s0, int s1, double t0, double t1) {
     boolean res = ALPHA*(s1-s0) + (1-ALPHA)*(t1-t0) < 0;
     DECISION_STATS.add(new DecisionStat(s0, s1, res));
     return res;
   }
-
-  public enum IndexType {
-    hash,
-    sorted;
-  }
-  private static final IndexType IT = IndexType.sorted;
-
 
   // return the new root
   public static ICNode greedMerge(ITSNode root) {
@@ -80,20 +72,55 @@ public class GreedMerge {
   }
 
 
-  public static void main(String[] args) {
-    MyDataSet ds = MyDataSet.BW;
+  public enum IndexType {
+    hash,
+    sorted;
+  }
+  private static final IndexType IT = IndexType.sorted;
+  private static final float ALPHA = 0f;
+  private static final List<DecisionStat> DECISION_STATS = new ArrayList<DecisionStat>();
+
+  public static void mainInternal(MyDataSet dataSet, boolean estSpace) {
+    System.out.println("DataSet: " + dataSet.name());
+    MyDataSet ds = dataSet;
     TSTree tree = MainSupport.buildLogicalTree(ds, true);
     // transformed into an annotated ART
     TwoPhasePrefixMerge.transformToAnnotatedART(tree);
     traverseAndMarkInfo(tree.root, 0,0 );
     ICNode r = greedMerge(tree.root);
-    System.out.println("HERE");
+    // System.out.println("HERE");
 
     tree.root = r;
     long lat = MainSupport.estimateLatency(tree, ds, PrefixMergeStrategy.FULL, MapType.CDM);
 
-    long size = GraphLayout.parseInstance(r).totalSize();
-    System.out.println(size);
+    if (estSpace) {
+      long size = GraphLayout.parseInstance(r).totalSize();
+      System.out.println(size);
+    }
+    System.out.println(dottedNanoSec(lat));
+  }
+
+  // todo list:
+  //  1. include all children into space/time estimation;
+  //  2. benchmark (gen code by LLM) search estimations;
+  //  3. improve space-saving estimation: consider saved-space per node
+  //  4. perfect hash at cost of a few parameter
+  public static void main(String[] args) {
+    mainInternal(MyDataSet.BW, true);
+    mainInternal(MyDataSet.BW, false);
+    mainInternal(MyDataSet.BW, false);
+
+    mainInternal(MyDataSet.SW, true);
+    mainInternal(MyDataSet.SW, false);
+    mainInternal(MyDataSet.SW, false);
+
+    mainInternal(MyDataSet.XYZC, true);
+    mainInternal(MyDataSet.XYZC, false);
+    mainInternal(MyDataSet.XYZC, false);
+
+    mainInternal(MyDataSet.ZY, true);
+    mainInternal(MyDataSet.ZY, false);
+    mainInternal(MyDataSet.ZY, false);
   }
 
   private static void traverseAndMarkInfo(ITSNode node, int depth, int offset) {

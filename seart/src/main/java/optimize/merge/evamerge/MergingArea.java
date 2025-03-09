@@ -86,6 +86,11 @@ public class MergingArea {
     return CNodeBase.buildNode(miniRoot.getParKey(), pos, m, k2r, t);
   }
 
+  private Object[] calcSpaceAndTime() {
+
+    return null; // [space: Integer, time: Double]
+  }
+
   private MergingArea estimate(GreedMerge.IndexType type) {
     if (candidates.isEmpty()) return null;
 
@@ -93,6 +98,9 @@ public class MergingArea {
     double time0, time1;
     int pm = candidates.firstKey();
     Set<IMicroNode> minPosCandidates = candidates.get(pm);
+
+    // todo calc space: involves all children, but only count par key for those not nearest
+    //  time calc should also include all children
 
     if (brcPos.size() == 1) {
       space0 = EvaHelper.estSpaceNativeART(miniRoot.getParKey(), k2c.size());
@@ -113,7 +121,7 @@ public class MergingArea {
     }
     time0 += ttlChdTime / minPosCandidates.size();
 
-    MergingArea expSta = new MergingArea(this);
+    MergingArea nxtSta = new MergingArea(this);
     boolean updateRMK = pm > brcPos.first() + 1;
 
     Set<ByteArray> keyB4Exp = k2c.keySet();
@@ -135,14 +143,13 @@ public class MergingArea {
         ByteArray nk = index >= cb4.getParKeyLen()
             ? new ByteArray(kb4, (byte) 0)
             : new ByteArray(kb4, cb4.getParKey()[index]);
-        expSta.k2c.put(nk, l);
-        expSta.k2r.put(nk,
+        nxtSta.k2c.put(nk, l);
+        nxtSta.k2r.put(nk,
             l.getParKey() == null
                 ? rmk
                 : concatenate(
                 rmk,
-                // fixme 不应拼接全 0 的 rmk
-                Arrays.copyOfRange(l.getParKey(), 0, index)));
+                Arrays.copyOfRange(l.getParKey(), 0, Math.min(index, l.getParKeyLen()))));
         continue;
       }
 
@@ -158,12 +165,12 @@ public class MergingArea {
             gcn = new LLeaf((LLeafAnnotated) gcn);
           }
           noTrimNodes.add(gcn);
-          expSta.k2c.put(nk, gcn);
+          nxtSta.k2c.put(nk, gcn);
           // the rmk is inflated, from 1 entry to as many as cb4.children().size()
           if (updateRMK) {
-            expSta.k2r.put(nk, concatenate(rmk, cb4.getParKey()));
+            nxtSta.k2r.put(nk, concatenate(rmk, cb4.getParKey()));
           } else {
-            expSta.k2r.put(nk, rmk);
+            nxtSta.k2r.put(nk, rmk);
           }
         }
       } else {
@@ -174,24 +181,24 @@ public class MergingArea {
         if (index < 0) throw new RuntimeException("Illegal short par key.");
         byte appendByte = cb4.getParKey()[index];
         ByteArray nk = new ByteArray(kb4, appendByte);
-        expSta.k2c.put(nk, cb4);
-        expSta.k2r.put(nk,
+        nxtSta.k2c.put(nk, cb4);
+        nxtSta.k2r.put(nk,
             updateRMK
-                ? concatenate(k2r.get(kb4), Arrays.copyOfRange(cb4.getParKey(), 0, index))
+                ? concatenate(k2r.get(kb4), Arrays.copyOfRange(cb4.getParKey(), 0, Math.min(index, cb4.getParKeyLen())))
                 : k2r.get(kb4));
       }
     }
 
-    expSta.brcPos.add(pm);
-    space1 = expSta.evaSpaceItself();
+    nxtSta.brcPos.add(pm);
+    space1 = nxtSta.evaSpaceItself();
     time1 = type == GreedMerge.IndexType.hash
-        ? EvaHelper.estTimeMBNHash(expSta.k2c.size())
-        : EvaHelper.estTimeMBNSorted(expSta.k2c.size());
+        ? EvaHelper.estTimeMBNHash(nxtSta.k2c.size())
+        : EvaHelper.estTimeMBNSorted(nxtSta.k2c.size());
 
 
     if (GreedMerge.decideToMerge(space0, space1, time0, time1)) {
       // trim all partial keys
-      for (IMicroNode c : expSta.k2c.values()) {
+      for (IMicroNode c : nxtSta.k2c.values()) {
         if (c instanceof LLeaf) {  // Note(zx) requires no annotated leaf in k2c
           // trim parKey for leaf
           if (c.getParKeyLen() == 0 || noTrimNodes.contains(c)) continue;
@@ -210,9 +217,9 @@ public class MergingArea {
         }
 
         // update candidates with remaining children
-        expSta.updateCandidate(c.getInfoObj().brPos, c);
+        nxtSta.updateCandidate(c.getInfoObj().brPos, c);
       }
-      return expSta;
+      return nxtSta;
     } else {
       // give up merging, just leave out the expected status
       return null;

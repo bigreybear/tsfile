@@ -66,6 +66,12 @@ public class ByteArray implements Comparable<ByteArray> {
     byte[] tar = new byte[pre.length + suc.length];
     System.arraycopy(pre, 0, tar, 0, pre.length);
     System.arraycopy(suc, 0, tar, pre.length, suc.length);
+
+    // debug
+    if (tar.length > 0 && tar[tar.length - 1] == 0) {
+      System.out.println("AAA");
+    }
+
     return tar;
   }
 

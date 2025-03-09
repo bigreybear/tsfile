@@ -87,8 +87,6 @@ public class MainSupport {
       case CDM:
         nano = System.nanoTime();
         for (int i = 0; i < qPaths.size(); i++) {
-          // if (ans[i] != tree.searchCDM(pathBytes[i])) throw new RuntimeException("Search for
-          // worng!");
           if (ans[i] != tree.searchCDM(qPaths.get(i)))
             throw new RuntimeException("Search for worng!");
         }
