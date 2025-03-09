@@ -155,8 +155,7 @@ public class MergingArea {
 
         for (byte cb4k : cb4keys) {
           ByteArray nk = new ByteArray(kb4, cb4k);
-          // the node should not be included
-          // expSta.k2c.put(nk, cb4.get(cb4k));
+          expSta.k2c.put(nk, cb4.get(cb4k));
           // the rmk is inflated, from 1 entry to as many as cb4.children().size()
           if (updateRMK) {
             expSta.k2r.put(nk, concatenate(rmk, cb4.getParKey()));
