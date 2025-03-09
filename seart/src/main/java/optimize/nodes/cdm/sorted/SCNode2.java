@@ -6,6 +6,7 @@ import static optimize.nodes.cdm.ByteEncode.short2BytesNoTrailing;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -69,12 +70,21 @@ public class SCNode2 extends CNode2 {
 
     short k;
     byte[] curRmk;
-    for (Map.Entry<ByteArray, ICNode> entry : m.entrySet()) {
-      k = ByteEncode.bytes2Short(entry.getKey().getVal());
-      bks[curIdx] = k;
-      ptrs[curIdx] = m.get(entry.getKey());
-      curRmk = k2r.get(entry.getKey());
-      rmk[curIdx] = curRmk.length == 0 ? null : curRmk;
+    Map<Short, ByteArray> remap = new HashMap<>();
+
+    int idx = 0;
+    for (ByteArray ba : m.keySet()) {
+      k = ByteEncode.bytes2Short(ba.getVal());
+      remap.put(k, ba);
+      bks[idx++] = k;
+    }
+    Arrays.sort(bks);
+
+    for (int i = 0; i < bks.length; i++) {
+      ByteArray bak = remap.get(bks[i]);
+      ptrs[i] = m.get(bak);
+      curRmk = k2r.get(bak);
+      rmk[i] = curRmk.length == 0 ? null : curRmk;
       ttlRmkLen += curRmk.length;
     }
 

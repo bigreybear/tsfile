@@ -1,6 +1,5 @@
 package optimize.merge.evamerge;
 
-import optimize.merge.MergePrefixVDev;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.ITSNode;
 import optimize.nodes.cdm.ICNode;
@@ -25,7 +24,7 @@ import java.util.TreeSet;
 import static optimize.util.ByteArray.concatenate;
 
 public class MergingArea {
-  private static final float ALPHA = 0.5f;
+
   private static final byte[] EMPTY_BYTE_ARR = new byte[0];
 
   // pos -> children, all outside the merging area
@@ -87,17 +86,13 @@ public class MergingArea {
     return CNodeBase.buildNode(miniRoot.getParKey(), pos, m, k2r, t);
   }
 
-  private boolean decideToMerge(int s0, int s1, double t0, double t1) {
-    return ALPHA*(s1-s0) + (1-ALPHA)*(t1-t0) < 0;
-  }
-
   private MergingArea estimate(GreedMerge.IndexType type) {
     if (candidates.isEmpty()) return null;
 
     int space0, space1;
     double time0, time1;
     int pm = candidates.firstKey();
-    Set<IMicroNode> pmc = candidates.get(pm);
+    Set<IMicroNode> minPosCandidates = candidates.get(pm);
 
     if (brcPos.size() == 1) {
       space0 = EvaHelper.estSpaceNativeART(miniRoot.getParKey(), k2c.size());
@@ -111,14 +106,12 @@ public class MergingArea {
     }
 
     double ttlChdTime = 0;
-    List<IMicroNode> grandChd = new ArrayList<>();
-    for (IMicroNode c : pmc) {
+    for (IMicroNode c : minPosCandidates) {
       List<IMicroNode> gc = c.getChildren();
       space0 += EvaHelper.estSpaceNativeART(c.getParKey(), gc.size());
       ttlChdTime += EvaHelper.estTimeNativeART(gc.size());
-      grandChd.addAll(gc);
     }
-    time0 += ttlChdTime / pmc.size();
+    time0 += ttlChdTime / minPosCandidates.size();
 
     MergingArea expSta = new MergingArea(this);
     boolean updateRMK = pm > brcPos.first() + 1;
@@ -126,11 +119,11 @@ public class MergingArea {
     Set<ByteArray> keyB4Exp = k2c.keySet();
 
     // Note(zx) 要解释为什么计算空间时，brp>pm 的节点不需要考虑：
-    //  那些节点的 parkey 只是移动到了 rmk 中，并不变化；
-    //  而其他节点的 parkey 则发生了膨胀，即原本单个孩子的 parkey 部分，被扩展为多个孩子的 rmk 了
 
     int lastBrcPos = brcPos.last();
+    Set<IMicroNode> noTrimNodes = new HashSet<>();  // these are children of minPosCandidate, shall not trim
     for (ByteArray kb4 : keyB4Exp) {
+      // 为了估计合并后的大小，要为合并后的 CNode 做预计算：
       IFNode cb4 = (IFNode) k2c.get(kb4);
       // prepare to update rmk
       byte[] rmk = k2r.get(kb4);
@@ -148,27 +141,10 @@ public class MergingArea {
                 ? rmk
                 : concatenate(
                 rmk,
+                // fixme 不应拼接全 0 的 rmk
                 Arrays.copyOfRange(l.getParKey(), 0, index)));
         continue;
       }
-
-      // if (cb4 instanceof LLeafAnnotated) {
-      //   LLeaf l = new LLeaf(cb4.getValue());
-      //   l.setParKey(cb4.getParKey());
-      //   int span = pm - lastBrcPos;
-      //   int index = span - 1; // position to extract from par key
-      //   ByteArray nk = index >= cb4.getParKeyLen()
-      //       ? new ByteArray(kb4, (byte) 0)
-      //       : new ByteArray(kb4, cb4.getParKey()[index]);
-      //   expSta.k2c.put(nk, l);
-      //   expSta.k2r.put(nk,
-      //       l.getParKey() == null
-      //           ? rmk
-      //           : concatenate(
-      //               rmk,
-      //               Arrays.copyOfRange(l.getParKey(), 0, index)));
-      //   continue;
-      // }
 
       if (cb4.getInfoObj().brPos < pm) throw new RuntimeException("Exceptional error brPos.");
       if (cb4.getInfoObj().brPos == pm) {
@@ -181,6 +157,7 @@ public class MergingArea {
           if (gcn instanceof LLeafAnnotated) {
             gcn = new LLeaf((LLeafAnnotated) gcn);
           }
+          noTrimNodes.add(gcn);
           expSta.k2c.put(nk, gcn);
           // the rmk is inflated, from 1 entry to as many as cb4.children().size()
           if (updateRMK) {
@@ -205,19 +182,19 @@ public class MergingArea {
       }
     }
 
+    expSta.brcPos.add(pm);
     space1 = expSta.evaSpaceItself();
     time1 = type == GreedMerge.IndexType.hash
         ? EvaHelper.estTimeMBNHash(expSta.k2c.size())
         : EvaHelper.estTimeMBNSorted(expSta.k2c.size());
 
 
-    if (decideToMerge(space0, space1, time0, time1)) {
-      expSta.brcPos.add(pm);
+    if (GreedMerge.decideToMerge(space0, space1, time0, time1)) {
       // trim all partial keys
       for (IMicroNode c : expSta.k2c.values()) {
         if (c instanceof LLeaf) {  // Note(zx) requires no annotated leaf in k2c
           // trim parKey for leaf
-          if (c.getParKeyLen() == 0) continue;
+          if (c.getParKeyLen() == 0 || noTrimNodes.contains(c)) continue;
           int index = pm-lastBrcPos-1;
           byte[] npk = index + 1 <= c.getParKeyLen()
               ? Arrays.copyOfRange(c.getParKey(), index+1, c.getParKeyLen())
@@ -237,7 +214,7 @@ public class MergingArea {
       }
       return expSta;
     } else {
-      // give up merging, expected status just left out
+      // give up merging, just leave out the expected status
       return null;
     }
   }

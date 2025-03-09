@@ -54,7 +54,7 @@ public class EvaHelper {
     int wid = width(d);
 
     boolean consecutive = (pmax - pmin + 1 == d);
-    int sum = 56 + xi(4+d) + xi(d*k) + xi(4*k);
+    int sum = 56 + xi(4+wid) + xi(wid*k) + xi(4*k);
     if (pk != null && pk.length != 0) {
       sum += 16 + xi(pk.length);
     }
