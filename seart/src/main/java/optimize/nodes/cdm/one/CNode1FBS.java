@@ -1,11 +1,13 @@
 package optimize.nodes.cdm.one;
 
 import optimize.nodes.cdm.ICNode;
+import optimize.util.ByteArray;
 import optimize.util.InternalInspector;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import static optimize.IntegratedMain.INTERNAL_PROFILE;
 
@@ -22,6 +24,18 @@ public class CNode1FBS extends CNodeOneBase {
       r.add(new byte[] {k});
     }
     return r;
+  }
+
+  @Override
+  void initByMap(Map<ByteArray, ICNode> m) {
+    keys = new byte[m.size()];
+    ptrs = new ICNode[m.size()];
+    int i = 0;
+    for (Map.Entry<ByteArray, ICNode> entry : m.entrySet()) {
+      keys[i] = entry.getKey().getVal()[0];
+      ptrs[i] = entry.getValue();
+      i++;
+    }
   }
 
   @Override

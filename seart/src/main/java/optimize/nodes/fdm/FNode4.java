@@ -2,6 +2,8 @@ package optimize.nodes.fdm;
 
 import java.util.Arrays;
 import optimize.util.ArrayHelper;
+import org.openjdk.jol.info.ClassLayout;
+import org.openjdk.jol.info.GraphLayout;
 
 public class FNode4 extends FNodeBase {
   public byte[] keys;
@@ -46,5 +48,11 @@ public class FNode4 extends FNodeBase {
   @Override
   protected String getInspectCode() {
     return "F004";
+  }
+
+  public static void main(String[] args) {
+    FNode4 n4 = new FNode4();
+    n4.setParKey(new byte[] {1});
+    System.out.println(ClassLayout.parseInstance(n4.pk).toPrintable());
   }
 }

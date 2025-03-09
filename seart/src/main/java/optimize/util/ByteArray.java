@@ -59,7 +59,9 @@ public class ByteArray implements Comparable<ByteArray> {
   }
 
   public static byte[] concatenate(byte[] pre, byte[] suc) {
-    if (pre == null || suc == null) throw new RuntimeException();
+    if (pre == null && suc == null) throw new RuntimeException();
+    if (pre == null) return Arrays.copyOfRange(suc, 0, suc.length);
+    if (suc == null) return Arrays.copyOfRange(pre, 0, pre.length);
 
     byte[] tar = new byte[pre.length + suc.length];
     System.arraycopy(pre, 0, tar, 0, pre.length);

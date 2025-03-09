@@ -5,6 +5,7 @@ import static optimize.nodes.cdm.ByteEncode.int2BytesNoTrailing;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -13,12 +14,34 @@ import optimize.annotation.DebugOnly;
 import optimize.nodes.cdm.ByteEncode;
 import optimize.nodes.cdm.ICNode;
 import optimize.nodes.cdm.frame.CNode4;
+import optimize.util.ByteArray;
 import optimize.util.InfixGroup;
 import optimize.util.InternalInspector;
 
 public class SCNode4 extends CNode4 {
   public SCNode4(int[] pos) {
     super(pos);
+  }
+
+  @Override
+  protected void setBranchKeyValRmk(Map<ByteArray, ICNode> m, Map<ByteArray, byte[]> k2r) {
+    int size = m.size(), ttlRmkLen = 0, curIdx = 0;
+    bks = new int[size];
+    rmk = new byte[size][];
+
+    int k;
+    byte[] curRmk;
+    for (Map.Entry<ByteArray, ICNode> entry : m.entrySet()) {
+      k = ByteEncode.bytes2Int(entry.getKey().getVal());
+      bks[curIdx] = k;
+      curRmk = k2r.get(entry.getKey());
+      rmk[curIdx] = curRmk.length == 0 ? null : curRmk;
+      ttlRmkLen += curRmk.length;
+    }
+
+    if (ttlRmkLen == 0) {
+      rmk = null;
+    }
   }
 
   @Override

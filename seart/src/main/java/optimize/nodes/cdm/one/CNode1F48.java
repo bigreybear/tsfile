@@ -2,11 +2,13 @@ package optimize.nodes.cdm.one;
 
 import optimize.nodes.NodeInspector;
 import optimize.nodes.cdm.ICNode;
+import optimize.util.ByteArray;
 
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 /** Imitate FNode48, uses byte array as indexes of ptr array.
  * <p>Dynamically compacted as {@linkplain #compactInit} indicated. */
@@ -22,6 +24,17 @@ public class CNode1F48 extends CNodeOneBase {
       if (k >= 0) r.add(new byte[] {k});
     }
     return r;
+  }
+
+  @Override
+  void initByMap(Map<ByteArray, ICNode> m) {
+    keys = new byte[256];
+    ptrs = new ICNode[m.size()];
+    for (Map.Entry<ByteArray, ICNode> entry : m.entrySet()) {
+      ptrs[keyNum] = entry.getValue();
+      keys[ubyte(entry.getKey().getVal()[0])] = keyNum;
+      keyNum++;
+    }
   }
 
   @Override

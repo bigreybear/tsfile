@@ -3,6 +3,7 @@ package optimize.nodes;
 import java.util.ArrayList;
 import java.util.List;
 import optimize.SearchStatus;
+import optimize.nodes.cdm.ICNode;
 
 public interface IMicroNode extends ITSNode {
 
@@ -39,4 +40,7 @@ public interface IMicroNode extends ITSNode {
   default void replace(String key, ITSNode node) {
     throw new UnsupportedOperationException();
   }
+
+  // replace child by position rather than key
+  default void repChdAt(int kid, ICNode c) {throw new UnsupportedOperationException();}
 }

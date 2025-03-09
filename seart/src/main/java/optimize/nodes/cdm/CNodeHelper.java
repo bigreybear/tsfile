@@ -382,15 +382,15 @@ public class CNodeHelper {
       case 1:
         if (fo > 48) {
           CNode1F256 node = new CNode1F256();
-          node.pos = pos[0];
+          // node.pos = pos[0];
           return node;
         } else if (fo > 32) {
           CNode1F48 node = new CNode1F48();
-          node.pos = pos[0];
+          // node.pos = pos[0];
           return node;
         } else {
           CNode1FBS node = new CNode1FBS();
-          node.pos = pos[0];
+          // node.pos = pos[0];
           return node;
         }
       default:

@@ -3,11 +3,18 @@ package optimize.nodes.cdm.frame;
 import optimize.SearchStatus;
 import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
+import optimize.merge.evamerge.GreedMerge;
 import optimize.merge.skeleton.MiniTreeRep;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.NodeInspector;
 import optimize.nodes.NodeWithPartialKey;
 import optimize.nodes.cdm.ICNode;
+import optimize.nodes.cdm.hashed.HCNode2;
+import optimize.nodes.cdm.hashed.HCNode4;
+import optimize.nodes.cdm.hashed.HCNode8;
+import optimize.nodes.cdm.sorted.SCNode2;
+import optimize.nodes.cdm.sorted.SCNode4;
+import optimize.nodes.cdm.sorted.SCNode8;
 import optimize.util.ByteArray;
 import optimize.util.InfixGroup;
 
@@ -35,6 +42,35 @@ public sealed abstract class CNodeBase extends NodeWithPartialKey implements ICN
   // an orphan leaf is a CLeaf with no partial key, i.e., a trivial leaf, only representing the dot.
   public static final boolean NO_ORPHAN_CLEAF = true;
 
+  protected abstract void setBranchKeyValRmk(Map<ByteArray, ICNode> m, Map<ByteArray, byte[]> k2r);
+
+  public static ICNode buildNode(
+      byte[] parKey,
+      int[] pos,
+      Map<ByteArray, ICNode> map,
+      Map<ByteArray, byte[]> k2r,
+      GreedMerge.IndexType t) {
+    CNodeBase r = consNode(pos, t == GreedMerge.IndexType.hash);
+    r.setBranchKeyValRmk(map, k2r);
+    r.setParKey(parKey);
+    return r;
+  }
+
+  private static CNodeBase consNode(int[] pos, boolean hash) {
+    if (pos.length <= 2) {
+      return hash ? new HCNode2(pos) : new SCNode2(pos);
+    } else if (pos.length <= 4) {
+      return hash ? new HCNode4(pos) : new SCNode4(pos);
+    } else if (pos.length <= 8) {
+      return hash ? new HCNode8(pos) : new SCNode8(pos);
+    }
+    return null;
+  }
+
+  @Override
+  public ICNode[] getPtrArr() {
+    return ptrs;
+  }
 
   // Note(zx) significantly inefficient for HASH nodes.
   protected abstract byte[] getBrKeyAt(int channel); // no trailing 0s.

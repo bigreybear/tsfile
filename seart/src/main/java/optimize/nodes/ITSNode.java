@@ -20,6 +20,11 @@ public interface ITSNode {
 
   byte[] getParKey();
 
+  default int getParKeyLen() {
+    if (getParKey() == null) return 0;
+    return getParKey().length;
+  }
+
   void setParKey(byte[] _pk);
 
   long getValue();

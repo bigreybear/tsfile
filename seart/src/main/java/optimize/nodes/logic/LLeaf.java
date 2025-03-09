@@ -108,6 +108,11 @@ public class LLeaf extends NodeWithPartialKey implements IMicroNode, IFNode, ICN
   }
 
   @Override
+  public ICNode[] getPtrArr() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public int[] getBranchingPos() {
     throw new UnsupportedOperationException();
   }

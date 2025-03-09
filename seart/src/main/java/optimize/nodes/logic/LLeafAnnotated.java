@@ -115,6 +115,11 @@ public class LLeafAnnotated extends NodeWithPartialKey implements IMicroNode, IF
   }
 
   @Override
+  public ICNode[] getPtrArr() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public int[] getBranchingPos() {
     throw new UnsupportedOperationException();
   }

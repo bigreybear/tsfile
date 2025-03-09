@@ -8,10 +8,12 @@ import optimize.nodes.IMicroNode;
 import optimize.nodes.NodeInspector;
 import optimize.nodes.NodeWithPartialKey;
 import optimize.nodes.cdm.ICNode;
+import optimize.util.ByteArray;
 import optimize.util.InfixGroup;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -20,8 +22,31 @@ import static optimize.merge.CDMPrefixMerge.recMergeCDM;
 import static optimize.nodes.cdm.frame.CNodeBase.NO_ORPHAN_CLEAF;
 
 public abstract class CNodeOneBase extends NodeWithPartialKey implements ICNode {
-  public int pos = -1;  // added for transformation from MiniTreeRep
+  // public int pos = -1;  // added for transformation from MiniTreeRep Note(zx) why this?
   ICNode[] ptrs;
+
+  abstract void initByMap(Map<ByteArray, ICNode> m);
+
+  public static ICNode buildNode(byte[] parKey, Map<ByteArray, ICNode> m) {
+    // build for greed merge
+    CNodeOneBase r;
+    if (m.size() < 17) {
+      r = new CNode1FBS();
+    } else if (m.size() < 192) {
+      // align with FNode48
+      r = new CNode1F48();
+    } else {
+      r = new CNode1F256();
+    }
+    r.initByMap(m);
+    r.setParKey(parKey);
+    return r;
+  }
+
+  @Override
+  public ICNode[] getPtrArr() {
+    return ptrs;
+  }
 
   @Override
   public List<IMicroNode> getChildren() {

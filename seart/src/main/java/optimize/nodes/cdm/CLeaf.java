@@ -69,6 +69,11 @@ public class CLeaf extends NodeWithPartialKey implements ICNode {
   }
 
   @Override
+  public ICNode[] getPtrArr() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public int[] getBranchingPos() {
     throw new UnsupportedOperationException();
   }

@@ -5,7 +5,6 @@ import optimize.MyDataSet;
 import optimize.TSTree;
 import optimize.merge.bum.BottomUpMergeStrategy;
 import optimize.merge.bum.PruneTallestChild;
-import optimize.merge.bum.PullUpSharedPosition;
 import optimize.merge.skeleton.BNode16;
 import optimize.merge.skeleton.BNode256;
 import optimize.merge.skeleton.BNode4;
@@ -42,7 +41,7 @@ public class TwoPhasePrefixMerge {
   }
 
   public static void startMerge(TSTree tree) {
-    transformToART(tree);
+    transformToAnnotatedART(tree);
     // first phase
     traverseAndMarkRecursive(tree.root, 0, 0);
     // phase-m: transform to mini-hash map
@@ -99,7 +98,7 @@ public class TwoPhasePrefixMerge {
   }
 
 
-  private static void transformToART(TSTree tree) {
+  public static void transformToAnnotatedART(TSTree tree) {
     tree.traversePostOrderRec(
         (par, key, cur, stk) -> {
           List<String> keyList = null;
@@ -108,7 +107,7 @@ public class TwoPhasePrefixMerge {
           }
           byte[][] keyBytes = strings2ByteArrays(keyList);
 
-          IFNode n2 = recNextMergeOnFDM(cur, keyBytes, 0);
+          IFNode n2 = recNextMergeOnAnnotatedFDM(cur, keyBytes, 0);
 
           if (n2 != cur) {
             if (par == null) {
@@ -127,7 +126,7 @@ public class TwoPhasePrefixMerge {
     else return new BNode256();
   }
 
-  private static IFNode recNextMergeOnFDM(
+  private static IFNode recNextMergeOnAnnotatedFDM(
       ITSNode oriNode, byte[][] keys, int preLen) {
 
     if (keys.length == 1) {
@@ -165,7 +164,7 @@ public class TwoPhasePrefixMerge {
     for (CNodeHelper.ValuedPrefixArray vpa : groupedPrefix) {
       repNode.add(
           vpa.bytes[0][len + preLen],
-          recNextMergeOnFDM(oriNode, vpa.bytes, len + preLen + 1));
+          recNextMergeOnAnnotatedFDM(oriNode, vpa.bytes, len + preLen + 1));
     }
     return repNode;
   }

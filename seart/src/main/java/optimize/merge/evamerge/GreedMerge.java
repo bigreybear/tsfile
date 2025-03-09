@@ -1,0 +1,85 @@
+package optimize.merge.evamerge;
+
+import optimize.MainSupport;
+import optimize.MyDataSet;
+import optimize.TSTree;
+import optimize.merge.TwoPhasePrefixMerge;
+import optimize.merge.skeleton.PartitionInfo;
+import optimize.nodes.IMicroNode;
+import optimize.nodes.ITSNode;
+import optimize.nodes.cdm.ICNode;
+import optimize.nodes.logic.LLeaf;
+import optimize.nodes.logic.LLeafAnnotated;
+import optimize.util.ByteArray;
+import org.antlr.v4.runtime.tree.Tree;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
+public class GreedMerge {
+
+  public enum IndexType {
+    hash,
+    sorted;
+  }
+  private static final IndexType IT = IndexType.hash;
+
+
+  // return the new root
+  public static ICNode greedMerge(ITSNode root) {
+    ICNode crt;
+    MergingArea es = new MergingArea(root);
+    es.estimateAndExpand(IT);
+
+    // CNodes only hold CNode child, for a pre-order traverse, while the parent subtree is determined,
+    // the descendants are not transformed yet where the recursion occurs.
+    TreeMap<ByteArray, ICNode> updatedK2C = new TreeMap<>();
+    for (Map.Entry<ByteArray, IMicroNode> entry1 : es.k2c.entrySet()) {
+      ICNode res;
+      if (!(entry1.getValue() instanceof LLeaf)) {
+        res = greedMerge(entry1.getValue());
+      } else {
+        res = (ICNode) entry1.getValue();
+      }
+      updatedK2C.put(entry1.getKey(), res);
+    }
+
+   // merge on each candidate by recursion
+    crt = es.transformToCNode(updatedK2C, IT);
+    return crt;
+  }
+
+
+  public static void main(String[] args) {
+    TSTree tree = MainSupport.buildLogicalTree(MyDataSet.BW, true);
+    // transformed into an annotated ART
+    TwoPhasePrefixMerge.transformToAnnotatedART(tree);
+    traverseAndMarkInfo(tree.root, 0,0 );
+    ICNode r = greedMerge(tree.root);
+    System.out.println("HERE");
+  }
+
+  private static void traverseAndMarkInfo(ITSNode node, int depth, int offset) {
+    int parKeyLen = node.getParKeyLen();
+    List<ITSNode> children = node.getPhysicalChildren();
+
+    PartitionInfo info = node.getInfoObj();
+    info.brPos = offset + parKeyLen;
+    info.dep = depth;
+
+    ITSNode chd;
+    for (int i = 0, len = children.size(); i < len; i++) {
+      if ((chd = children.get(i)).isLogicalLeaf()) { // skip all leaves
+        chd.getInfoObj().brPos = Integer.MAX_VALUE;
+        continue;
+      }
+
+      traverseAndMarkInfo(
+          chd,
+          depth + 1,
+          offset + 1 + parKeyLen);
+    }
+  }
+}

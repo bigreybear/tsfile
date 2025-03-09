@@ -8,6 +8,7 @@ import static optimize.util.ArrayHelper.findIntervals;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import optimize.SearchStatus;
@@ -18,6 +19,7 @@ import optimize.nodes.IMicroNode;
 import optimize.nodes.INode;
 import optimize.nodes.cdm.ByteEncode;
 import optimize.nodes.cdm.ICNode;
+import optimize.util.ByteArray;
 import optimize.util.InfixGroup;
 
 @Deprecated
@@ -154,6 +156,11 @@ public class LegacyCNode4EF extends CNode4 implements ICNode {
   //
   //   return asmkey;
   // }
+
+  @Override
+  protected void setBranchKeyValRmk(Map<ByteArray, ICNode> m, Map<ByteArray, byte[]> k2r) {
+    throw new UnsupportedOperationException();
+  }
 
   @Override
   protected byte[] getBrKeyAt(int pos) {

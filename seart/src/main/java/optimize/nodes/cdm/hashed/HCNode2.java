@@ -5,6 +5,7 @@ import optimize.annotation.DebugOnly;
 import optimize.nodes.cdm.ByteEncode;
 import optimize.nodes.cdm.ICNode;
 import optimize.nodes.cdm.frame.CNode2;
+import optimize.util.ByteArray;
 import optimize.util.InfixGroup;
 import optimize.util.InternalInspector;
 
@@ -13,6 +14,7 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -23,6 +25,35 @@ public class HCNode2 extends CNode2 {
 
   public HCNode2(int[] pos) {
     super(pos);
+  }
+
+  @Override
+  protected void setBranchKeyValRmk(Map<ByteArray, ICNode> m, Map<ByteArray, byte[]> k2r) {
+    int size = m.size(), ttlRmkLen = 0, actIdx = -1, hash = -1;
+    bks = new short[size];
+    rmk = new byte[size][];
+
+    short k;
+    BitSet bs = new BitSet(size);
+    byte[] curRmk;
+    for (Map.Entry<ByteArray, ICNode> entry : m.entrySet()) {
+      k = ByteEncode.bytes2Short(entry.getKey().getVal());
+      hash = HashHelper.hash1(k);
+      while (bs.get(actIdx = hash % size)) {
+        hash = HashHelper.rehash(hash, k);
+      }
+
+      bs.set(actIdx);
+      bks[actIdx] = k;
+
+      curRmk = k2r.get(entry.getKey());
+      rmk[actIdx] = curRmk.length == 0 ? null : curRmk;
+      ttlRmkLen += curRmk.length;
+    }
+
+    if (ttlRmkLen == 0) {
+      rmk = null;
+    }
   }
 
   @Override

@@ -8,6 +8,7 @@ import static optimize.util.ArrayHelper.removeTrailingZeros;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import optimize.SearchStatus;
 import optimize.merge.MapType;
@@ -251,6 +252,11 @@ public non-sealed class LegacyCNode extends CNodeBase implements ICNode {
   @Override
   public List<byte[]> getKeyBytes() {
     return Arrays.asList(bks);
+  }
+
+  @Override
+  protected void setBranchKeyValRmk(Map<ByteArray, ICNode> m, Map<ByteArray, byte[]> k2r) {
+    throw new UnsupportedOperationException();
   }
 
   @Override

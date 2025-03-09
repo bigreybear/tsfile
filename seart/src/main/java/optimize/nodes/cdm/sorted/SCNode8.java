@@ -2,14 +2,17 @@ package optimize.nodes.cdm.sorted;
 
 import optimize.IntegratedMain;
 import optimize.annotation.DebugOnly;
+import optimize.nodes.cdm.ByteEncode;
 import optimize.nodes.cdm.ICNode;
 import optimize.nodes.cdm.frame.CNode8;
+import optimize.util.ByteArray;
 import optimize.util.InfixGroup;
 import optimize.util.InternalInspector;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 import static optimize.nodes.cdm.ByteEncode.long2Bytes;
@@ -19,6 +22,27 @@ public class SCNode8 extends CNode8 {
 
   public SCNode8(int[] pos) {
     super(pos);
+  }
+
+  @Override
+  protected void setBranchKeyValRmk(Map<ByteArray, ICNode> m, Map<ByteArray, byte[]> k2r) {
+    int size = m.size(), ttlRmkLen = 0, curIdx = 0;
+    bks = new long[size];
+    rmk = new byte[size][];
+
+    long k;
+    byte[] curRmk;
+    for (Map.Entry<ByteArray, ICNode> entry : m.entrySet()) {
+      k = ByteEncode.bytes2Long(entry.getKey().getVal());
+      bks[curIdx] = k;
+      curRmk = k2r.get(entry.getKey());
+      rmk[curIdx] = curRmk.length == 0 ? null : curRmk;
+      ttlRmkLen += curRmk.length;
+    }
+
+    if (ttlRmkLen == 0) {
+      rmk = null;
+    }
   }
 
   @Override

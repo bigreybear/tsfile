@@ -11,6 +11,11 @@ import optimize.util.InfixGroup;
 
 public interface ICNode extends IMicroNode {
 
+  /**
+   * Empty slots may exist.
+   */
+  ICNode[] getPtrArr();
+
   // for tree consists of MiniTreeReps
   default void fillContent(MiniTreeRep rep, int[] posArr) {};
 
