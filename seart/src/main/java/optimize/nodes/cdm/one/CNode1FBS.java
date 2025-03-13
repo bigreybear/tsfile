@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import static optimize.IntegratedMain.INTERNAL_PROFILE;
 
@@ -31,7 +32,8 @@ public class CNode1FBS extends CNodeOneBase {
     keys = new byte[m.size()];
     ptrs = new ICNode[m.size()];
     int i = 0;
-    for (Map.Entry<ByteArray, ICNode> entry : m.entrySet()) {
+    TreeMap<ByteArray, ICNode> rmap = new TreeMap<>(m);
+    for (Map.Entry<ByteArray, ICNode> entry : rmap.entrySet()) {
       keys[i] = entry.getKey().getVal()[0];
       ptrs[i] = entry.getValue();
       i++;

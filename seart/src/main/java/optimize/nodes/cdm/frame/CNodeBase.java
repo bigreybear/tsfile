@@ -3,7 +3,7 @@ package optimize.nodes.cdm.frame;
 import optimize.SearchStatus;
 import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
-import optimize.merge.evamerge.GreedMerge;
+import optimize.merge.evamerge.EvaMergeConfig;
 import optimize.merge.skeleton.MiniTreeRep;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.NodeInspector;
@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 import static optimize.merge.CDMPrefixMerge.recMergeCDM;
+import static optimize.merge.evamerge.EvaMergeConfig.LOAD_FACTOR;
 import static optimize.nodes.cdm.CNodeHelper.extractBytes;
 import static optimize.util.ArrayHelper.findComplementary;
 import static optimize.util.ArrayHelper.findIntervals;
@@ -42,21 +43,27 @@ public sealed abstract class CNodeBase extends NodeWithPartialKey implements ICN
   // an orphan leaf is a CLeaf with no partial key, i.e., a trivial leaf, only representing the dot.
   public static final boolean NO_ORPHAN_CLEAF = true;
 
-  protected abstract void setBranchKeyValRmk(Map<ByteArray, ICNode> m, Map<ByteArray, byte[]> k2r);
+  protected abstract void setBranchKeyValRmk(Map<ByteArray, ICNode> m, Map<ByteArray, byte[]> k2r, int actualSize);
 
   public static ICNode buildNode(
       byte[] parKey,
       int[] pos,
       Map<ByteArray, ICNode> map,
       Map<ByteArray, byte[]> k2r,
-      GreedMerge.IndexType t) {
-    CNodeBase r = consNode(pos, t == GreedMerge.IndexType.hash);
-    r.ptrs = new ICNode[map.size()];
-    r.rmk = new byte[map.size()][];
-    r.setBranchKeyValRmk(map, k2r);
+      EvaMergeConfig.IndexType t) {
+    CNodeBase r = consNode(pos, t == EvaMergeConfig.IndexType.hash);
+    int relSize = t == EvaMergeConfig.IndexType.sorted
+        ? map.size()
+        : (int) (map.size() / LOAD_FACTOR);
+
+    r.ptrs = new ICNode[relSize];
+    r.rmk = new byte[relSize][];
+    r.setBranchKeyValRmk(map, k2r, relSize);
     r.setParKey(parKey);
     return r;
   }
+
+
 
   private static CNodeBase consNode(int[] pos, boolean hash) {
     if (pos.length <= 2) {

@@ -12,6 +12,8 @@ import optimize.nodes.ITSNode;
 
 public interface IFNode extends IMicroNode {
 
+  int getChildNum();
+
   IFNode getFDMChild(final byte[] key, final SearchStatus sts);
 
   /** Copy and modify from {@linkplain Arrays#binarySearch}. */

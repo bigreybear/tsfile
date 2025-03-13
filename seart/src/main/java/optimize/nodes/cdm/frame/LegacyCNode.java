@@ -14,7 +14,6 @@ import optimize.SearchStatus;
 import optimize.merge.MapType;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.nodes.IMicroNode;
-import optimize.nodes.NodeInspector;
 import optimize.nodes.cdm.CNodeHelper;
 import optimize.nodes.cdm.ICNode;
 import optimize.nodes.logic.LLeaf;
@@ -255,7 +254,7 @@ public non-sealed class LegacyCNode extends CNodeBase implements ICNode {
   }
 
   @Override
-  protected void setBranchKeyValRmk(Map<ByteArray, ICNode> m, Map<ByteArray, byte[]> k2r) {
+  protected void setBranchKeyValRmk(Map<ByteArray, ICNode> m, Map<ByteArray, byte[]> k2r, int actualSize) {
     throw new UnsupportedOperationException();
   }
 

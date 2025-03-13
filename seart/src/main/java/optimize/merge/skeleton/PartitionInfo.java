@@ -21,6 +21,12 @@ public class PartitionInfo {
   // indicating can only be attached to IFNodes
   private final IFNode host;
 
+  // region Greed Merge
+
+  public int parBranchPos;
+
+  // endregion
+
   public PartitionInfo(IFNode _host) {
     host = _host;
   }

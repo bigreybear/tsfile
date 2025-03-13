@@ -64,6 +64,11 @@ public class LLeafAnnotated extends NodeWithPartialKey implements IMicroNode, IF
   }
 
   @Override
+  public int getChildNum() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public IFNode getFDMChild(byte[] key, SearchStatus sts) {
     if (sts.getCurLen() != key.length) {
       throw new RuntimeException("Key Search Failed for unknown reason.");

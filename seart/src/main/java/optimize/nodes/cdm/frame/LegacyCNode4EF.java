@@ -158,7 +158,7 @@ public class LegacyCNode4EF extends CNode4 implements ICNode {
   // }
 
   @Override
-  protected void setBranchKeyValRmk(Map<ByteArray, ICNode> m, Map<ByteArray, byte[]> k2r) {
+  protected void setBranchKeyValRmk(Map<ByteArray, ICNode> m, Map<ByteArray, byte[]> k2r, int actualSize) {
     throw new UnsupportedOperationException();
   }
 

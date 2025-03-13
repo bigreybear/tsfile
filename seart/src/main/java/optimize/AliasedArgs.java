@@ -4,7 +4,9 @@ public enum AliasedArgs {
   MTree,
   ART,
   OLD_CDM,
-  NEW_CDM;
+  NEW_CDM,
+  GRD_SPC,
+  GRD_TIM;
 
   public String getBasicArg() {
     switch (this) {

@@ -5,7 +5,6 @@ import static optimize.nodes.cdm.ByteEncode.short2BytesNoTrailing;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.BitSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,7 +15,6 @@ import optimize.annotation.DebugOnly;
 import optimize.nodes.cdm.ByteEncode;
 import optimize.nodes.cdm.ICNode;
 import optimize.nodes.cdm.frame.CNode2;
-import optimize.nodes.cdm.hashed.HashHelper;
 import optimize.util.ByteArray;
 import optimize.util.InfixGroup;
 import optimize.util.InternalInspector;
@@ -64,8 +62,8 @@ public class SCNode2 extends CNode2 {
   }
 
   @Override
-  protected void setBranchKeyValRmk(Map<ByteArray, ICNode> m, Map<ByteArray, byte[]> k2r) {
-    int size = m.size(), ttlRmkLen = 0, curIdx = 0;
+  protected void setBranchKeyValRmk(Map<ByteArray, ICNode> m, Map<ByteArray, byte[]> k2r, int actualSize) {
+    int size = actualSize, ttlRmkLen = 0, curIdx = 0;
     bks = new short[size];
 
     short k;

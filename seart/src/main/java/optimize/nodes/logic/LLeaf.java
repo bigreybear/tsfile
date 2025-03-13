@@ -60,6 +60,11 @@ public class LLeaf extends NodeWithPartialKey implements IMicroNode, IFNode, ICN
   }
 
   @Override
+  public int getChildNum() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public IFNode getFDMChild(byte[] key, SearchStatus sts) {
     if (pk == null && sts.getCurLen() != key.length) {
       throw new RuntimeException("Key Search Failed for unknown reason.");

@@ -14,6 +14,8 @@ import java.util.stream.Collectors;
 import optimize.merge.MapType;
 import optimize.merge.MergePrefixVDev;
 import optimize.merge.PrefixMergeStrategy;
+import optimize.merge.TwoPhasePrefixMerge;
+import optimize.merge.evamerge.GreedMerge;
 import optimize.nodes.NodeInspector;
 import optimize.nodes.cdm.frame.CNodeBase;
 import optimize.util.InternalInspector;
@@ -37,16 +39,19 @@ public class Main {
     String res = "";
 
     // res += "-alias MTREE";
-    // res += "-alias ART";
+    res += "-alias ART";
     // res += "-alias OLD_CDM";
-    res += "-alias NEW_CDM";
+    // res += "-alias NEW_CDM";
+    // res += "-alias GRD_SPC";
+    // res += "-alias GRD_TIM";
+
 
     // res += " -ds bw";
     // res += " -ds sw";
-    // res += " -ds xyzc";
-    res += " -ds zy";
+    res += " -ds xyzc";
+    // res += " -ds zy";
 
-    // res += " -space";
+    res += " -space";
     res += " -latency";
     res += " -inspect";
 
@@ -97,6 +102,12 @@ public class Main {
     TSTree tree = MainSupport.buildLogicalTree(dataSet, flatTree);
     if (mergeStrategy != PrefixMergeStrategy.NO_MERGE) {
       MergePrefixVDev.mergePrefixes(tree, mapType, mergeStrategy);
+    }
+
+    if (dataAlias.toUpperCase().equals("GRD_TIM") || dataAlias.toUpperCase().equals("GRD_SPC")) {
+      TwoPhasePrefixMerge.transformToAnnotatedART(tree);
+      GreedMerge.traverseAndMarkInfo(tree.root, 0, 0);
+      tree.root = GreedMerge.greedMergeV2(tree.root, 0);
     }
 
     // space estimation is coupled with suffix-merging
@@ -189,6 +200,16 @@ public class Main {
     int idx = -1;
     if ((idx = args.indexOf("-alias")) >= 0) {
       switch (args.get(idx + 1).toUpperCase()) {
+        case "GRD_TIM":
+          dataAlias = "GRD_TIM";
+          flatTree = true;
+          mergeStrategy = PrefixMergeStrategy.NO_MERGE;
+          break;
+        case "GRD_SPC":
+          dataAlias = "GRD_SPC";
+          flatTree = true;
+          mergeStrategy = PrefixMergeStrategy.NO_MERGE;
+          break;
         case "MTREE":
           dataAlias = "MTree";
           mapType = MapType.HASH;

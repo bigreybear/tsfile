@@ -10,7 +10,6 @@ import optimize.nodes.logic.LLeaf;
 import optimize.nodes.logic.LLeafAnnotated;
 import optimize.util.ByteArray;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -75,7 +74,7 @@ public class MergingArea {
     candidates.get(pos).addAll(children);
   }
 
-  public ICNode transformToCNode(TreeMap<ByteArray, ICNode> m, GreedMerge.IndexType t) {
+  public ICNode transformToCNode(TreeMap<ByteArray, ICNode> m, EvaMergeConfig.IndexType t) {
     // use the entry value from passing in map
 
     if (brcPos.size() == 1) {
@@ -86,12 +85,7 @@ public class MergingArea {
     return CNodeBase.buildNode(miniRoot.getParKey(), pos, m, k2r, t);
   }
 
-  private Object[] calcSpaceAndTime() {
-
-    return null; // [space: Integer, time: Double]
-  }
-
-  private MergingArea estimate(GreedMerge.IndexType type) {
+  private MergingArea estimate(EvaMergeConfig.IndexType type) {
     if (candidates.isEmpty()) return null;
 
     int space0, space1;
@@ -108,7 +102,7 @@ public class MergingArea {
     } else {
       space0 = EvaHelper.estSpaceMultiBranchNode(miniRoot.getParKey(), k2c.size(), k2r.values(), brcPos);
       time0 =
-          type == GreedMerge.IndexType.hash
+          type == EvaMergeConfig.IndexType.hash
               ? EvaHelper.estTimeMBNHash(k2c.size())
               : EvaHelper.estTimeMBNSorted(k2c.size());
     }
@@ -191,7 +185,7 @@ public class MergingArea {
 
     nxtSta.brcPos.add(pm);
     space1 = nxtSta.evaSpaceItself();
-    time1 = type == GreedMerge.IndexType.hash
+    time1 = type == EvaMergeConfig.IndexType.hash
         ? EvaHelper.estTimeMBNHash(nxtSta.k2c.size())
         : EvaHelper.estTimeMBNSorted(nxtSta.k2c.size());
 
@@ -235,7 +229,7 @@ public class MergingArea {
     }
   }
 
-  public void estimateAndExpand(GreedMerge.IndexType type) {
+  public void estimateAndExpand(EvaMergeConfig.IndexType type) {
     MergingArea res = estimate(type), r2;
     while (res != null && res.brcPos.size() < 8 && ((r2 = res.estimate(type)) != null)) {
       res = r2;

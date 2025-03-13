@@ -11,7 +11,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import optimize.IntegratedMain;
-import optimize.annotation.DebugOnly;
 import optimize.nodes.cdm.ByteEncode;
 import optimize.nodes.cdm.ICNode;
 import optimize.nodes.cdm.frame.CNode4;
@@ -25,8 +24,8 @@ public class SCNode4 extends CNode4 {
   }
 
   @Override
-  protected void setBranchKeyValRmk(Map<ByteArray, ICNode> m, Map<ByteArray, byte[]> k2r) {
-    int size = m.size(), ttlRmkLen = 0, curIdx = 0;
+  protected void setBranchKeyValRmk(Map<ByteArray, ICNode> m, Map<ByteArray, byte[]> k2r, int actualSize) {
+    int size = actualSize, ttlRmkLen = 0, curIdx = 0;
     bks = new int[size];
 
     int k;

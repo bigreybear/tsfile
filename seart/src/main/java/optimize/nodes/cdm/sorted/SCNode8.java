@@ -26,8 +26,8 @@ public class SCNode8 extends CNode8 {
   }
 
   @Override
-  protected void setBranchKeyValRmk(Map<ByteArray, ICNode> m, Map<ByteArray, byte[]> k2r) {
-    int size = m.size(), ttlRmkLen = 0, curIdx = 0;
+  protected void setBranchKeyValRmk(Map<ByteArray, ICNode> m, Map<ByteArray, byte[]> k2r, int actualSize) {
+    int size = actualSize, ttlRmkLen = 0, curIdx = 0;
     bks = new long[size];
 
     long k;

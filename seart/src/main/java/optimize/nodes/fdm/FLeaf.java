@@ -3,11 +3,16 @@ package optimize.nodes.fdm;
 import optimize.SearchStatus;
 import optimize.annotation.DebugOnly;
 import optimize.exception.KeyNotFound;
+import optimize.nodes.IMicroNode;
 import optimize.nodes.NodeInspector;
+import optimize.nodes.NodeWithPartialKey;
 import optimize.nodes.logic.LLeaf;
 import optimize.nodes.logic.LLeafAnnotated;
 
-public class FLeaf extends FNodeBase {
+import java.util.List;
+
+// Note(zx) this class is effectively not used, refers to its constructor.
+public class FLeaf extends NodeWithPartialKey implements IFNode {
   public IFNode value;
 
   private FLeaf() {}
@@ -68,6 +73,11 @@ public class FLeaf extends FNodeBase {
   }
 
   @Override
+  public int getChildNum() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public IFNode getFDMChild(byte[] key, SearchStatus sts) {
     if (sts.getCurLen() == key.length) {
       sts.setFinished(true);
@@ -82,18 +92,17 @@ public class FLeaf extends FNodeBase {
   }
 
   @Override
-  protected IFNode[] getPtrs() {
-    return new IFNode[] {value};
-  }
-
-  @Override
   public void acceptInspector(NodeInspector noi) {
     noi.appendEntry("FLeaf_dep", noi.getCurDepth());
     noi.appendEntry("FLeaf_pk_len", getParKey().length);
   }
 
-  @Override
   protected String getInspectCode() {
     return "FLeaf";
+  }
+
+  @Override
+  public List<IMicroNode> getChildren() {
+    throw new UnsupportedOperationException();
   }
 }

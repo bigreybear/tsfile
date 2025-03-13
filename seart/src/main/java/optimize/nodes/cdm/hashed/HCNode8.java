@@ -1,7 +1,5 @@
 package optimize.nodes.cdm.hashed;
 
-import optimize.IntegratedMain;
-import optimize.annotation.DebugOnly;
 import optimize.nodes.cdm.ByteEncode;
 import optimize.nodes.cdm.ICNode;
 import optimize.nodes.cdm.frame.CNode8;
@@ -27,8 +25,8 @@ public class HCNode8 extends CNode8 {
   }
 
   @Override
-  protected void setBranchKeyValRmk(Map<ByteArray, ICNode> m, Map<ByteArray, byte[]> k2r) {
-    int size = m.size(), ttlRmkLen = 0, actIdx = -1, hash = -1;
+  protected void setBranchKeyValRmk(Map<ByteArray, ICNode> m, Map<ByteArray, byte[]> k2r, int actualSize) {
+    int size = actualSize, ttlRmkLen = 0, actIdx = -1, hash = -1;
     bks = new long[size];
 
     long k;

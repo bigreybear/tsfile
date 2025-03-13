@@ -9,6 +9,16 @@ import optimize.nodes.NodeWithPartialKey;
 
 public abstract class FNodeBase extends NodeWithPartialKey implements IFNode {
 
+  @Override
+  public int getChildNum() {
+    IFNode[] ptrs = getPtrs();
+    for (int i = 0, c = 0, l = ptrs.length; i < l;) {
+      if (ptrs[i++] != null) c++;
+      if (i == l) return c;
+    }
+    throw new RuntimeException();
+  }
+
   protected abstract IFNode[] getPtrs();
 
   public List<IMicroNode> getChildren() {

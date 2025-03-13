@@ -82,6 +82,11 @@ public class FDMRefNodeVDev extends NodeWithPartialKey implements IFNode {
   }
 
   @Override
+  public int getChildNum() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public IFNode getFDMChild(byte[] key, SearchStatus sts) {
     // todo
     throw new UnsupportedOperationException();
