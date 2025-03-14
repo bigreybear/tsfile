@@ -84,8 +84,9 @@ public class NodeInspector {
       int s = entry.getValue().stream().mapToInt(Integer::intValue).sum();
       builder.append(
           String.format(
-              "%s: -sum=%d -avg=%d -dist=%s\n",
+              "%s: -num=%d -sum=%d -avg=%d -dist=%s\n",
               entry.getKey(),
+              entry.getValue().size(),
               s,
               s / entry.getValue().size(),
               entry.getValue().size() < 5

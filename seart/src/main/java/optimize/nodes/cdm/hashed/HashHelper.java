@@ -10,15 +10,16 @@ public class HashHelper {
     return x & 0xFFFF;
   }
 
-  public static int hash1(int i) {
-    int hash = (i ^ (i >> 16)) * 0x85EBCA77;
-    return (hash ^ (hash >> 13)) & 0x7fff_ffff;
+  public static int hash1(int key) {
+    key = (key ^ (key >>> 16)) * 0x85ebca6b;
+    key = (key ^ (key >>> 13)) * 0xc2b2ae35;
+    return (key ^ (key >>> 16)) & 0x7FFFFFFF; // 保证结果为正
   }
 
   public static int hash1(long key) {
-    int low = (int) (key & 0xFFFFFFFFL);
-    int high = (int) ((key >> 32));
-    return (low ^ high) & 0x7ffff_fff;
+    key = (key ^ (key >>> 33)) * 0xff51afd7ed558ccdL;
+    key = (key ^ (key >>> 33)) * 0xc4ceb9fe1a85ec53L;
+    return ((int)(key ^ (key >>> 33))) & 0x7FFFFFFF; // 保证结果为正
   }
 
   public static int rehash(int hash, short key) {

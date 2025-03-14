@@ -8,10 +8,6 @@ import java.util.Scanner;
 // --add-opens java.base/java.util=ALL-UNNAMED
 public class IntegratedMain {
 
-  // control inspection blocks that hurt performances.
-  @DebugOnly
-  public static final boolean INTERNAL_PROFILE = true;
-
   private static void testVar(MyDataSet ds, AliasedArgs aliasedArgs, boolean estSpace, boolean log, int queryLoop) {
     Main main = new Main();
     String logFlag = log ? " -logPrint " : "";
@@ -24,15 +20,26 @@ public class IntegratedMain {
     }
   }
 
+  // control inspection blocks that hurt performances.
+  @DebugOnly
+  public static final boolean INTERNAL_PROFILE = false;
+  public static final float MIX_ALPHA = 0.5f;
+
   public static void main(String[] args) {
-    boolean estSpace = false, logConsole = true;
-    int queryLoop = 1;
+    boolean estSpace = true, logConsole = true;
+    int queryLoop = 5;
 
     AliasedArgs[] structures = new AliasedArgs[] {
-        // AliasedArgs.MTree,
-        // AliasedArgs.ART,
-        // AliasedArgs.OLD_CDM,
-        AliasedArgs.NEW_CDM
+        AliasedArgs.MTree,
+        AliasedArgs.ART,
+        AliasedArgs.OLD_CDM,
+        AliasedArgs.NEW_CDM,
+        AliasedArgs.G_SPC_S,
+        AliasedArgs.G_SPC_H,
+        AliasedArgs.G_TIM_S,
+        AliasedArgs.G_TIM_H,
+        AliasedArgs.G_MIX_S,
+        AliasedArgs.G_MIX_H
     };
     MyDataSet[] dataSets = new MyDataSet[] {
         MyDataSet.BW,

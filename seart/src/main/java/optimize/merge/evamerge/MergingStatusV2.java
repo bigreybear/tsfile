@@ -7,6 +7,7 @@ import optimize.nodes.cdm.frame.CNodeBase;
 import optimize.nodes.cdm.one.CNodeOneBase;
 import optimize.nodes.fdm.IFNode;
 import optimize.util.ByteArray;
+import optimize.util.IndependentInspector;
 
 import java.lang.reflect.Array;
 import java.util.Arrays;
@@ -33,6 +34,8 @@ import static optimize.util.ArrayHelper.removeTrailingZeros;
  * 即使如此都不要对原树做变化，直到最后再 transform
  */
 public class MergingStatusV2 {
+
+  public static final IndependentInspector perfInspector = new IndependentInspector();
 
   private static final byte[] EMPTY_BYTE_ARR = new byte[0];
 
@@ -334,7 +337,7 @@ public class MergingStatusV2 {
       }
 
       covNodNum = coveredNodes.size();
-      // Note(zx) not exactly accurate: some partial key bytes from other candidates should be excluded
+      // Note(zx) todo not exactly accurate: some partial key bytes from other candidates should be excluded
       covExpSpc = evaluateCoverAreaSpc();
       if (pvs != null) {
         covRawSpc = pvs.covRawSpc + pvs.nearSpc;

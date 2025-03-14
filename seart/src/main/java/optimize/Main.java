@@ -15,6 +15,7 @@ import optimize.merge.MapType;
 import optimize.merge.MergePrefixVDev;
 import optimize.merge.PrefixMergeStrategy;
 import optimize.merge.TwoPhasePrefixMerge;
+import optimize.merge.evamerge.EvaMergeConfig;
 import optimize.merge.evamerge.GreedMerge;
 import optimize.nodes.NodeInspector;
 import optimize.nodes.cdm.frame.CNodeBase;
@@ -42,9 +43,12 @@ public class Main {
     res += "-alias ART";
     // res += "-alias OLD_CDM";
     // res += "-alias NEW_CDM";
-    // res += "-alias GRD_SPC";
-    // res += "-alias GRD_TIM";
-
+    // res += "-alias G_TIM_S";
+    // res += "-alias G_TIM_H";
+    // res += "-alias G_SPC_S";
+    // res += "-alias G_SPC_H";
+    // res += "-alias G_MIX_S";
+    // res += "-alias G_MIX_H";
 
     // res += " -ds bw";
     // res += " -ds sw";
@@ -104,7 +108,12 @@ public class Main {
       MergePrefixVDev.mergePrefixes(tree, mapType, mergeStrategy);
     }
 
-    if (dataAlias.toUpperCase().equals("GRD_TIM") || dataAlias.toUpperCase().equals("GRD_SPC")) {
+    if (dataAlias.equalsIgnoreCase("G_SPC_H")
+        || dataAlias.equalsIgnoreCase("G_SPC_S")
+        || dataAlias.equalsIgnoreCase("G_TIM_H")
+        || dataAlias.equalsIgnoreCase("G_TIM_S")
+        || dataAlias.equalsIgnoreCase("G_MIX_S")
+        || dataAlias.equalsIgnoreCase("G_MIX_H")) {
       TwoPhasePrefixMerge.transformToAnnotatedART(tree);
       GreedMerge.traverseAndMarkInfo(tree.root, 0, 0);
       tree.root = GreedMerge.greedMergeV2(tree.root, 0);
@@ -200,15 +209,53 @@ public class Main {
     int idx = -1;
     if ((idx = args.indexOf("-alias")) >= 0) {
       switch (args.get(idx + 1).toUpperCase()) {
-        case "GRD_TIM":
-          dataAlias = "GRD_TIM";
+        case "G_MIX_S":
+          dataAlias = "G_MIX_S";
           flatTree = true;
           mergeStrategy = PrefixMergeStrategy.NO_MERGE;
+          mapType = MapType.CDM;
+          EvaMergeConfig.ALPHA = IntegratedMain.MIX_ALPHA;
+          EvaMergeConfig.INDEX_TYPE = EvaMergeConfig.IndexType.sorted;
           break;
-        case "GRD_SPC":
-          dataAlias = "GRD_SPC";
+        case "G_MIX_H":
+          dataAlias = "G_MIX_H";
           flatTree = true;
           mergeStrategy = PrefixMergeStrategy.NO_MERGE;
+          mapType = MapType.CDM;
+          EvaMergeConfig.ALPHA = IntegratedMain.MIX_ALPHA;
+          EvaMergeConfig.INDEX_TYPE = EvaMergeConfig.IndexType.hash;
+          break;
+        case "G_TIM_S":
+          dataAlias = "G_TIM_S";
+          flatTree = true;
+          mergeStrategy = PrefixMergeStrategy.NO_MERGE;
+          mapType = MapType.CDM;
+          EvaMergeConfig.ALPHA = 0f;
+          EvaMergeConfig.INDEX_TYPE = EvaMergeConfig.IndexType.sorted;
+          break;
+        case "G_TIM_H":
+          dataAlias = "G_TIM_H";
+          flatTree = true;
+          mergeStrategy = PrefixMergeStrategy.NO_MERGE;
+          mapType = MapType.CDM;
+          EvaMergeConfig.ALPHA = 0f;
+          EvaMergeConfig.INDEX_TYPE = EvaMergeConfig.IndexType.hash;
+          break;
+        case "G_SPC_S":
+          dataAlias = "G_SPC_S";
+          flatTree = true;
+          mergeStrategy = PrefixMergeStrategy.NO_MERGE;
+          mapType = MapType.CDM;
+          EvaMergeConfig.ALPHA = 1f;
+          EvaMergeConfig.INDEX_TYPE = EvaMergeConfig.IndexType.sorted;
+          break;
+        case "G_SPC_H":
+          dataAlias = "G_SPC_H";
+          flatTree = true;
+          mergeStrategy = PrefixMergeStrategy.NO_MERGE;
+          mapType = MapType.CDM;
+          EvaMergeConfig.ALPHA = 1f;
+          EvaMergeConfig.INDEX_TYPE = EvaMergeConfig.IndexType.hash;
           break;
         case "MTREE":
           dataAlias = "MTree";

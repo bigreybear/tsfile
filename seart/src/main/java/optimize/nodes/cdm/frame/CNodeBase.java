@@ -133,7 +133,10 @@ public sealed abstract class CNodeBase extends NodeWithPartialKey implements ICN
   public List<IMicroNode> getChildren() {
     List<IMicroNode> res = new ArrayList<>(ptrs.length);
     int i = 0;
-    while (i < ptrs.length && ptrs[i] != null) res.add(ptrs[i++]);
+    while (i < ptrs.length) {
+      if (ptrs[i] != null) res.add(ptrs[i]);
+      i++;
+    }
     return res;
   }
 
