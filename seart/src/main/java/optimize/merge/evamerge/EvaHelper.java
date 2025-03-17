@@ -150,6 +150,8 @@ public class EvaHelper {
 
     boolean consecutive = (pmax - pmin + 1 == d);
     // rmk array object
+    // todo RMK 是不是应该全部考虑空间？是不是某些孩子的 rmk 应该不应该记入？
+    // 应该和 raw space 对齐：叶子的 pk 应该全部移出；
     if (!consecutive) {
       int rmkTtlLen = 0; // total size of all rmk object(byte[])
       for (byte[] rmk : rmkArr) {

@@ -43,12 +43,12 @@ public class Main {
     res += "-alias ART";
     // res += "-alias OLD_CDM";
     // res += "-alias NEW_CDM";
-    // res += "-alias G_TIM_S";
-    // res += "-alias G_TIM_H";
-    // res += "-alias G_SPC_S";
-    // res += "-alias G_SPC_H";
-    // res += "-alias G_MIX_S";
-    // res += "-alias G_MIX_H";
+    // res += "-alias SORT_TIM";
+    // res += "-alias HASH_TIM";
+    // res += "-alias SORT_SPC";
+    // res += "-alias HASH_SPC";
+    // res += "-alias SORT_MIX";
+    // res += "-alias HASH_MIX";
 
     // res += " -ds bw";
     // res += " -ds sw";
@@ -108,12 +108,12 @@ public class Main {
       MergePrefixVDev.mergePrefixes(tree, mapType, mergeStrategy);
     }
 
-    if (dataAlias.equalsIgnoreCase("G_SPC_H")
-        || dataAlias.equalsIgnoreCase("G_SPC_S")
-        || dataAlias.equalsIgnoreCase("G_TIM_H")
-        || dataAlias.equalsIgnoreCase("G_TIM_S")
-        || dataAlias.equalsIgnoreCase("G_MIX_S")
-        || dataAlias.equalsIgnoreCase("G_MIX_H")) {
+    if (dataAlias.equalsIgnoreCase("HASH_SPC")
+        || dataAlias.equalsIgnoreCase("SORT_SPC")
+        || dataAlias.equalsIgnoreCase("HASH_TIM")
+        || dataAlias.equalsIgnoreCase("SORT_TIM")
+        || dataAlias.equalsIgnoreCase("SORT_MIX")
+        || dataAlias.equalsIgnoreCase("HASH_MIX")) {
       TwoPhasePrefixMerge.transformToAnnotatedART(tree);
       GreedMerge.traverseAndMarkInfo(tree.root, 0, 0);
       tree.root = GreedMerge.greedMergeV2(tree.root, 0);
@@ -209,48 +209,48 @@ public class Main {
     int idx = -1;
     if ((idx = args.indexOf("-alias")) >= 0) {
       switch (args.get(idx + 1).toUpperCase()) {
-        case "G_MIX_S":
-          dataAlias = "G_MIX_S";
+        case "SORT_MIX":
+          dataAlias = "SORT_MIX";
           flatTree = true;
           mergeStrategy = PrefixMergeStrategy.NO_MERGE;
           mapType = MapType.CDM;
           EvaMergeConfig.ALPHA = IntegratedMain.MIX_ALPHA;
           EvaMergeConfig.INDEX_TYPE = EvaMergeConfig.IndexType.sorted;
           break;
-        case "G_MIX_H":
-          dataAlias = "G_MIX_H";
+        case "HASH_MIX":
+          dataAlias = "HASH_MIX";
           flatTree = true;
           mergeStrategy = PrefixMergeStrategy.NO_MERGE;
           mapType = MapType.CDM;
           EvaMergeConfig.ALPHA = IntegratedMain.MIX_ALPHA;
           EvaMergeConfig.INDEX_TYPE = EvaMergeConfig.IndexType.hash;
           break;
-        case "G_TIM_S":
-          dataAlias = "G_TIM_S";
+        case "SORT_TIM":
+          dataAlias = "SORT_TIM";
           flatTree = true;
           mergeStrategy = PrefixMergeStrategy.NO_MERGE;
           mapType = MapType.CDM;
           EvaMergeConfig.ALPHA = 0f;
           EvaMergeConfig.INDEX_TYPE = EvaMergeConfig.IndexType.sorted;
           break;
-        case "G_TIM_H":
-          dataAlias = "G_TIM_H";
+        case "HASH_TIM":
+          dataAlias = "HASH_TIM";
           flatTree = true;
           mergeStrategy = PrefixMergeStrategy.NO_MERGE;
           mapType = MapType.CDM;
           EvaMergeConfig.ALPHA = 0f;
           EvaMergeConfig.INDEX_TYPE = EvaMergeConfig.IndexType.hash;
           break;
-        case "G_SPC_S":
-          dataAlias = "G_SPC_S";
+        case "SORT_SPC":
+          dataAlias = "SORT_SPC";
           flatTree = true;
           mergeStrategy = PrefixMergeStrategy.NO_MERGE;
           mapType = MapType.CDM;
           EvaMergeConfig.ALPHA = 1f;
           EvaMergeConfig.INDEX_TYPE = EvaMergeConfig.IndexType.sorted;
           break;
-        case "G_SPC_H":
-          dataAlias = "G_SPC_H";
+        case "HASH_SPC":
+          dataAlias = "HASH_SPC";
           flatTree = true;
           mergeStrategy = PrefixMergeStrategy.NO_MERGE;
           mapType = MapType.CDM;

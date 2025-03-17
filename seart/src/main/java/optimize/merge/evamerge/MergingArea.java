@@ -22,6 +22,7 @@ import java.util.TreeSet;
 
 import static optimize.util.ByteArray.concatenate;
 
+@Deprecated
 public class MergingArea {
 
   private static final byte[] EMPTY_BYTE_ARR = new byte[0];

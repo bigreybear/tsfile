@@ -5,12 +5,12 @@ public enum AliasedArgs {
   ART,
   OLD_CDM,
   NEW_CDM,
-  G_SPC_H,
-  G_TIM_H,
-  G_SPC_S,
-  G_TIM_S,
-  G_MIX_S,
-  G_MIX_H;
+  HASH_SPC,
+  HASH_MIX,
+  HASH_TIM,
+  SORT_SPC,
+  SORT_MIX,
+  SORT_TIM;
 
   public String getBasicArg() {
     switch (this) {

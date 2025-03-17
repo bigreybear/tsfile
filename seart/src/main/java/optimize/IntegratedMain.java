@@ -32,14 +32,14 @@ public class IntegratedMain {
     AliasedArgs[] structures = new AliasedArgs[] {
         AliasedArgs.MTree,
         AliasedArgs.ART,
-        AliasedArgs.OLD_CDM,
-        AliasedArgs.NEW_CDM,
-        AliasedArgs.G_SPC_S,
-        AliasedArgs.G_SPC_H,
-        AliasedArgs.G_TIM_S,
-        AliasedArgs.G_TIM_H,
-        AliasedArgs.G_MIX_S,
-        AliasedArgs.G_MIX_H
+        // AliasedArgs.OLD_CDM,
+        // AliasedArgs.NEW_CDM,
+        // AliasedArgs.HASH_SPC,
+        AliasedArgs.HASH_MIX,
+        AliasedArgs.HASH_TIM,
+        // AliasedArgs.SORT_SPC,
+        // AliasedArgs.SORT_MIX,
+        AliasedArgs.SORT_TIM
     };
     MyDataSet[] dataSets = new MyDataSet[] {
         MyDataSet.BW,

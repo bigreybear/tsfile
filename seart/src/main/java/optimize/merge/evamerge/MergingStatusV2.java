@@ -1,5 +1,6 @@
 package optimize.merge.evamerge;
 
+import optimize.annotation.DebugOnly;
 import optimize.nodes.IMicroNode;
 import optimize.nodes.ITSNode;
 import optimize.nodes.cdm.ICNode;
@@ -23,16 +24,6 @@ import static optimize.merge.evamerge.EvaMergeConfig.INDEX_TYPE;
 import static optimize.merge.evamerge.EvaMergeConfig.LOAD_FACTOR;
 import static optimize.util.ArrayHelper.removeTrailingZeros;
 
-/**
- * 给定一个 BNode，计算合并 1-8 层的 时空效率、平均节点的时空效率，最后决定是否转换
- * 在决策转换前，所有节点都维持不变，仅改变 BNode 中的 info 信息（主要是 pk 的起点）
- *
- * 对 Area 的状态更新十分清晰了
- *
- * 决策要考虑合并 1-8 层，再用独立的方法决策究竟采取哪种；
- * 设计一个方法，从原节点直接到合并 n 层的情况
- * 即使如此都不要对原树做变化，直到最后再 transform
- */
 public class MergingStatusV2 {
 
   public static final IndependentInspector perfInspector = new IndependentInspector();
@@ -46,6 +37,7 @@ public class MergingStatusV2 {
   Set<IMicroNode> coveredNodes = new HashSet<>(); // in the area
 
   /**
+   * 啊啊啊啊啊
    * Following members are constructed during merge procession.<p>
    * candidates = near + wait, children of covered ones <br>
    * Branch Fan Out: the fan out number it incurs in original ART path <br>
@@ -150,8 +142,8 @@ public class MergingStatusV2 {
 
         if (pk == null || pk.length <= pks) { // all 0s
           // Arrays.fill(nrmk, rmkLen, nrmk.length, (byte) 0);
-          // nrmk = rmk;  // debug: shall pad nothing
-          nrmk = EMPTY_BYTE_ARR;  // Note(zx) TRICK NOTICE: null rmk will skip check
+          nrmk = rmk;  // debug: shall pad nothing
+          // nrmk = EMPTY_BYTE_ARR;  // Note(zx) TRICK NOTICE: null rmk will skip check
         } else if (pk.length <= bktIdx - 1) { // partial padding
           System.arraycopy(pk, pks, nrmk, rmkLen, pk.length-pks);
           nrmk = Arrays.copyOfRange(nrmk, 0, rmkLen + pk.length - pks); // debug
@@ -337,9 +329,23 @@ public class MergingStatusV2 {
       }
 
       covNodNum = coveredNodes.size();
-      // Note(zx) todo not exactly accurate: some partial key bytes from other candidates should be excluded
+      // Note(zx) todo some partial key bytes from candidates should be excluded
       covExpSpc = evaluateCoverAreaSpc();
       if (pvs != null) {
+        {
+          // debug only 0317: 将 candidates 中，被添加到 rmk 尾部的 pk 长度去除
+          // int toReduce = 0;
+          // int bl = brcPos.last();
+          //
+          // for (Map.Entry<ByteArray, Object[]> entry : candidKeysMaps.entrySet()) {
+          //   IMicroNode c = (IMicroNode) entry.getValue()[0];
+          //   // number of bytes included in Covered Area from c.pk
+          //   int incIdx = bl - c.getInfoObj().parBranchPos;
+          //   toReduce -= incIdx;
+          // }
+          // covExpSpc -= toReduce;
+        }
+
         covRawSpc = pvs.covRawSpc + pvs.nearSpc;
         spcEff = 1.0d * (covExpSpc) / (covRawSpc);
         prev = pvs;

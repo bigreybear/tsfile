@@ -34,5 +34,6 @@ public class LoggedPrintStream extends PrintStream {
     } catch (IOException e) {
       e.printStackTrace();
     }
+    builder.delete(0, builder.length());
   }
 }
