@@ -30,22 +30,23 @@ public class IntegratedMain {
     int queryLoop = 5;
 
     AliasedArgs[] structures = new AliasedArgs[] {
-        AliasedArgs.MTree,
-        AliasedArgs.ART,
-        // AliasedArgs.OLD_CDM,
-        // AliasedArgs.NEW_CDM,
-        // AliasedArgs.HASH_SPC,
-        AliasedArgs.HASH_MIX,
+        // AliasedArgs.MTree,
+        // AliasedArgs.ART,
+        AliasedArgs.OLD_CDM,
+        AliasedArgs.NEW_CDM,
+        AliasedArgs.HASH_SPC,
+        // AliasedArgs.HASH_MIX,
         AliasedArgs.HASH_TIM,
-        // AliasedArgs.SORT_SPC,
+        AliasedArgs.SORT_SPC,
         // AliasedArgs.SORT_MIX,
         AliasedArgs.SORT_TIM
     };
     MyDataSet[] dataSets = new MyDataSet[] {
-        MyDataSet.BW,
-        MyDataSet.SW,
-        MyDataSet.XYZC,
-        MyDataSet.ZY
+        // MyDataSet.BW,
+        // MyDataSet.SW,
+        // MyDataSet.XYZC,
+        // MyDataSet.ZY,
+        MyDataSet.TSBS
     };
 
     checkPerfornaceUnimpacted();  // for internal options impacting performance

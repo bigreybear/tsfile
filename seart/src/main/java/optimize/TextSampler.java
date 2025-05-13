@@ -8,7 +8,7 @@ import seart.utils.PathUtils;
 public class TextSampler {
 
   public static void main(String[] args) throws Exception {
-    MyDataSet ds = MyDataSet.SW;
+    MyDataSet ds = MyDataSet.TSBS;
     PathTxtLoader loader = new PathTxtLoader(ds.rfile /* source file */);
     List<String> ori = loader.getAllLines();
     Collections.shuffle(ori);

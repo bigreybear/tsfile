@@ -36,7 +36,7 @@ public abstract non-sealed class CNode8 extends CNodeBase {
 
   @Override
   public int[] getBranchingPos() {
-    if (p1 == 0) throw new RuntimeException("Invalid branch pos for CNode8");
+    // if (p1 == 0) throw new RuntimeException("Invalid branch pos for CNode8");
     if (p2 == 0) return new int[] { p1 & 0xff };
     if (p3 == 0) return new int[] { p1 & 0xff, p2 & 0xff };
     if (p4 == 0) return new int[] { p1 & 0xff, p2 & 0xff, p3 & 0xff };
